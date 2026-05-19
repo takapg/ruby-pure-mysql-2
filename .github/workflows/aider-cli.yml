@@ -74,7 +74,6 @@ jobs:
                 --yes-always \
                 --chat-language japanese \
                 --architect \
-                --no-pretty \
                 --test-cmd "bundle exec rspec" \
                 --auto-test \
                 --message "$INSTRUCTION"
