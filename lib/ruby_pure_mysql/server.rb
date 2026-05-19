@@ -12,4 +12,5 @@ module RubyPureMysql
     def run
       # TODO: 実装してください。
     end
+  end
 end
