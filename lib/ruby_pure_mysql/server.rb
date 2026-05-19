@@ -54,6 +54,7 @@ module RubyPureMysql
       loop do
         packet = read_packet(client)
         break unless packet
+        puts "Received packet: #{packet.inspect}"
 
         seq, payload = packet
         command = payload[0].unpack1('C')
@@ -90,7 +91,8 @@ module RubyPureMysql
     def handle_query(client, seq, packet_body)
       # クエリに対する応答は、受信したパケットのシーケンス番号の次から始まる
       current_seq = seq + 1
-      query = packet_body[1..-1]
+      query = packet_body.byteslice(1..-1)
+      puts "Query: #{query}"
 
       if query.downcase.include?('select 1')
         # Column Count (1)
