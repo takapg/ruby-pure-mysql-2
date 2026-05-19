@@ -49,7 +49,7 @@ module RubyPureMysql
     def handle_client(client)
       send_handshake(client)
       read_packet(client)
-      send_ok_packet(client, 2)
+      send_ok_packet(client, 1)
 
       loop do
         packet = read_packet(client)
@@ -85,7 +85,7 @@ module RubyPureMysql
     end
 
     def send_ok_packet(client, sequence)
-      send_packet(client, sequence, [0x00, 0x00, 0x00, 0x02, 0x00, 0x00].pack('C*'))
+      send_packet(client, sequence, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*'))
     end
 
     def handle_query(client, seq, packet_body)
@@ -96,22 +96,27 @@ module RubyPureMysql
 
       if query.downcase.include?('select 1')
         # Column Count (1)
+        puts "Sending packet with seq: #{current_seq}"
         send_packet(client, current_seq, [1].pack('C'))
         current_seq += 1
 
         # Column Definition
+        puts "Sending packet with seq: #{current_seq}"
         send_packet(client, current_seq, build_column_definition_payload)
         current_seq += 1
 
         # EOF
+        puts "Sending packet with seq: #{current_seq}"
         send_eof(client, current_seq)
         current_seq += 1
 
         # Row Data
+        puts "Sending packet with seq: #{current_seq}"
         send_packet(client, current_seq, lenenc_str('1'))
         current_seq += 1
 
         # EOF
+        puts "Sending packet with seq: #{current_seq}"
         send_eof(client, current_seq)
       else
         # 未対応のクエリに対してはエラーを返す（簡易実装）
@@ -134,7 +139,7 @@ module RubyPureMysql
     end
 
     def send_eof(client, sequence)
-      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
+      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*'))
     end
   end
 end
