@@ -1,16 +1,24 @@
 # frozen_string_literal: true
 
 require 'logger'
+require 'thread'
 require_relative 'ruby_pure_mysql/server'
 
 # Ruby による純粋な MySQL の再実装を提供します。
 module RubyPureMysql
   # ロガーの設定
+  @logger_mutex = Mutex.new
+
   def self.logger
-    @logger ||= Logger.new($stdout).tap do |log|
-      log.level = ENV.fetch('LOG_LEVEL', 'DEBUG')
-      log.formatter = proc do |severity, datetime, _progname, msg|
-        "#{datetime.strftime('%Y-%m-%d %H:%M:%S')} [#{severity}] #{msg}\n"
+    return @logger if @logger
+
+    @logger_mutex.synchronize do
+      @logger ||= Logger.new($stdout).tap do |log|
+        level_name = ENV.fetch('LOG_LEVEL', 'DEBUG').upcase
+        log.level = Logger.const_defined?(level_name) ? Logger.const_get(level_name) : Logger::DEBUG
+        log.formatter = proc do |severity, datetime, _progname, msg|
+          "#{datetime.strftime('%Y-%m-%d %H:%M:%S')} [#{severity}] #{msg}\n"
+        end
       end
     end
   end
