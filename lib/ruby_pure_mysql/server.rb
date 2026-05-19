@@ -134,10 +134,14 @@ module RubyPureMysql
         lenenc_str(''),
         lenenc_str('1'),
         lenenc_str('1'),
-        [0x0C, 0x21].pack('CS<'),
-        [10].pack('L<'),
-        [0x08, 0].pack('CS<'),
-        [0, 0, 0].pack('C3')
+        lenenc_str('1'), # org_name
+        [0x0C].pack('C'), # filler
+        [33].pack('S<'), # charsetnr (utf8mb4_general_ci)
+        [10].pack('L<'), # length
+        [0x08].pack('C'), # type (MYSQL_TYPE_LONGLONG)
+        [0x0000].pack('S<'), # flags
+        [0].pack('C'), # decimals
+        [0, 0].pack('C2') # filler
       ].join
     end
 
