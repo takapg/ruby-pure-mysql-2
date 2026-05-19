@@ -4,17 +4,19 @@ module RubyPureMysql
   # MySQLプロトコルのパケット構築を支援するモジュール
   module PacketBuilder
     def lenenc_str(str)
-      len = str.bytesize
-      prefix = if len < 251
-                 [len].pack('C')
-               elsif len <= 0xFFFF
-                 [0xFC, len].pack('Cv')
-               elsif len <= 0xFFFFFF
-                 [0xFD, len].pack('CvC')
-               else
-                 [0xFE, len].pack('CQ<')
-               end
-      prefix + str
+      lenenc_prefix(str.bytesize) + str
+    end
+
+    def lenenc_prefix(len)
+      if len < 251
+        [len].pack('C')
+      elsif len <= 0xFFFF
+        [0xFC, len].pack('Cv')
+      elsif len <= 0xFFFFFF
+        [0xFD, len].pack('CvC')
+      else
+        [0xFE, len].pack('CQ<')
+      end
     end
 
     def build_handshake_payload
