@@ -96,18 +96,17 @@ module RubyPureMysql
     end
 
     def handle_query(client, packet_body)
-      sql = packet_body[1..]
+      sql = packet_body[1..].strip
       puts "Received Query: #{sql}"
 
-      case sql.downcase.strip
-      when 'select 1', 'select 1;'
-        send_result_set(client)
+      if sql.downcase =~ /\Aselect\s+(\d+);?\z/
+        send_result_set(client, $1)
       else
         send_ok_packet(client, 0)
       end
     end
 
-    def send_result_set(client)
+    def send_result_set(client, value)
       # 1. Column Count (seq 1)
       send_packet(client, 1, [1].pack('C'))
       # 2. Column Definition (seq 2)
@@ -115,7 +114,7 @@ module RubyPureMysql
       # 3. EOF (seq 3)
       send_eof(client, 3)
       # 4. Row Data (seq 4)
-      send_packet(client, 4, lenenc_str('1'))
+      send_packet(client, 4, lenenc_str(value))
       # 5. EOF (seq 5)
       send_eof(client, 5)
     end
