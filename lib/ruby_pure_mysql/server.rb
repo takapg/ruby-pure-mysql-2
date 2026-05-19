@@ -71,7 +71,7 @@ module RubyPureMysql
     end
 
     def build_handshake_header
-      [[10].pack('C'), "8.0.0\0", [1].pack('L<'), '12345678', [0x00].pack('C')].join
+      [[10].pack('C'), "Hey-MySQL-8.0\0", [1].pack('L<'), '12345678', [0x00].pack('C')].join
     end
 
     def build_handshake_auth_data
