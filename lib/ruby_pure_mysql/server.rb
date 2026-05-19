@@ -29,7 +29,7 @@ module RubyPureMysql
       len = payload.bytesize
       header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
       packet = header + [seq].pack('C') + payload
-      
+
       puts "DEBUG: Sending packet [seq: #{seq}, len: #{len}]"
       client.write(packet)
     end
@@ -42,7 +42,7 @@ module RubyPureMysql
       len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
       seq = header[3].unpack1('C')
       payload = client.read(len)
-      
+
       puts "DEBUG: Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]
     end
@@ -61,7 +61,7 @@ module RubyPureMysql
         packet = read_packet(client)
         break unless packet
 
-        seq, payload = packet
+        _, payload = packet
         command = payload[0].unpack1('C')
 
         handle_query(client, payload) if command == 0x03
@@ -100,7 +100,7 @@ module RubyPureMysql
       puts "Received Query: #{sql}"
 
       if sql.downcase =~ /\Aselect\s+(\d+);?\z/
-        send_result_set(client, $1)
+        send_result_set(client, ::Regexp.last_match(1))
       else
         send_ok_packet(client, 0)
       end
