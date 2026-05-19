@@ -77,7 +77,7 @@ jobs:
         run: |
           echo "Executing instruction: $INSTRUCTION"
 
-          aider --model gemini/gemma-4-31b-it \
+          aider --model gemini/gemini-3.1-flash-lite \
                 --editor-model gemini/gemini-3.1-flash-lite \
                 --weak-model gemini/gemini-3.1-flash-lite \
                 --yes-always \
