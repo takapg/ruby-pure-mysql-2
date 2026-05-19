@@ -1,0 +1,24 @@
+# --- Ruby / Bundler ---
+# 依存ライブラリのインストール先（vendor/bundle を使う場合）
+/vendor/bundle/
+# Bundler の設定
+/.bundle/
+# gem のビルド済みバイナリ
+*.gem
+
+# --- 開発ツール / キャッシュ ---
+# RuboCop の実行結果キャッシュ
+/.rubocop_cache/
+# RSpec の実行履歴（失敗したテストのみ再実行する機能用）
+/.rspec_status
+# 実行時の ID やプロセス管理ファイル
+/tmp/
+*.log
+*.pid
+
+# --- OS 固有のファイル ---
+.DS_Store
+Thumbs.db
+
+# --- 環境変数 ---
+.env*
