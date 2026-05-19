@@ -1,0 +1,8 @@
+services:
+  mysql-real:
+    image: mysql:8.0-debian
+    container_name: mysql-real
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "3306:3306"
