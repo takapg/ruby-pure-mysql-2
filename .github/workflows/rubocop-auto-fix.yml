@@ -1,0 +1,31 @@
+name: RuboCop Auto-fix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Run RuboCop Auto-correct
+        run: |
+          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
+
+      - name: Auto-commit changes
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "style: auto-fix RuboCop offenses"
+          status_options: '--untracked-files=no'
+          add_options: '-u'
