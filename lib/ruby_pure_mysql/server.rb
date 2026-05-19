@@ -108,21 +108,16 @@ module RubyPureMysql
     end
 
     def send_result_set(client)
-      send_column_definition(client)
-      send_eof(client, 5)
-      send_row_data(client)
-      send_eof(client, 7)
-    end
-
-    def send_column_definition(client)
+      # 1. Column Count (seq 1)
       send_packet(client, 1, [1].pack('C'))
+      # 2. Column Definition (seq 2)
       send_packet(client, 2, build_column_definition_payload)
+      # 3. EOF (seq 3)
       send_eof(client, 3)
-      send_eof(client, 4)
-    end
-
-    def send_row_data(client)
-      send_packet(client, 6, lenenc_str('1'))
+      # 4. Row Data (seq 4)
+      send_packet(client, 4, lenenc_str('1'))
+      # 5. EOF (seq 5)
+      send_eof(client, 5)
     end
 
     def build_column_definition_payload
