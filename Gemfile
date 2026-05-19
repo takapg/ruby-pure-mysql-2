@@ -4,8 +4,6 @@ source 'https://rubygems.org'
 
 ruby file: '.ruby-version'
 
-gem 'logger'
-
 group :development, :test do
   gem 'rspec'
   gem 'rubocop', require: false
