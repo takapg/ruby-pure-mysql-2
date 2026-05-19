@@ -1,0 +1,30 @@
+name: Update Gemfile.lock
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-gemfile-lock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: false # 更新が目的なのでキャッシュは使わない
+
+      - name: Update Gemfile.lock
+        run: |
+          bundle install
+
+      - name: Auto-commit Gemfile.lock
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: update Gemfile.lock"
+          file_pattern: 'Gemfile.lock'
