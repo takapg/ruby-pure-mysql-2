@@ -63,71 +63,41 @@ module RubyPureMysql
     end
 
     def send_handshake(client)
-      protocol_version = 10
-      server_version = "8.0.0\0"
-      connection_id = 1
-      auth_part1 = '12345678'
-      filler = 0x00
-      capability_flags_lower = 0xF7FF
-      character_set = 0x21
-      status_flags = 0x0002
-      capability_flags_upper = 0x8007
-      auth_plugin_data_len = 0x15
-      reserved = "\0" * 10
-      auth_part2 = '1234567890123'
-      auth_plugin_name = "mysql_native_password\0"
+      send_packet(client, 0, build_handshake_payload)
+    end
 
-      payload = [protocol_version].pack('C') +
-                server_version +
-                [connection_id].pack('L<') +
-                auth_part1 +
-                [filler].pack('C') +
-                [capability_flags_lower].pack('S<') +
-                [character_set].pack('C') +
-                [status_flags].pack('S<') +
-                [capability_flags_upper].pack('S<') +
-                [auth_plugin_data_len].pack('C') +
-                reserved +
-                auth_part2 +
-                auth_plugin_name
-
-      send_packet(client, 0, payload)
+    def build_handshake_payload
+      [10].pack('C') + "8.0.0\0" + [1].pack('L<') + '12345678' + [0x00].pack('C') +
+        [0xF7FF].pack('S<') + [0x21].pack('C') + [0x0002].pack('S<') +
+        [0x8007].pack('S<') + [0x15].pack('C') + "\0" * 10 + '1234567890123' +
+        "mysql_native_password\0"
     end
 
     def send_ok_packet(client, sequence)
       send_packet(client, sequence, [0x00, 0x00, 0x00, 0x02, 0x00, 0x00].pack('C*'))
     end
 
-    def handle_query(client, packet_body)
-      # 1. カラム数
+    def handle_query(client, _packet_body)
+      send_column_definition(client)
+      send_eof(client, 5)
+      send_row_data(client)
+      send_eof(client, 7)
+    end
+
+    def send_column_definition(client)
       send_packet(client, 3, [1].pack('C'))
-
-      # 2. カラム定義
-      col_def = lenenc_str('') + # catalog
-                lenenc_str('') + # schema
-                lenenc_str('') + # table
-                lenenc_str('') + # org_table
-                lenenc_str('1') + # name
-                lenenc_str('1') + # org_name
-                [0x0C].pack('C') + # length of fixed fields
-                [0x21, 0x00].pack('S<') + # charset
-                [10].pack('L<') + # column length
-                [0x08].pack('C') + # type (LONGLONG)
-                [0x0000].pack('S<') + # flags
-                [0].pack('C') + # decimals
-                [0x00, 0x00].pack('C2') # filler
-
+      col_def = lenenc_str('') * 4 + lenenc_str('1') * 2 + [0x0C].pack('C') +
+                [0x21, 0x00].pack('S<') + [10].pack('L<') + [0x08].pack('C') +
+                [0x0000].pack('S<') + [0].pack('C') + [0x00, 0x00].pack('C2')
       send_packet(client, 4, col_def)
+    end
 
-      # 3. EOF
-      send_packet(client, 5, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
+    def send_row_data(client)
+      send_packet(client, 6, lenenc_str('1'))
+    end
 
-      # 4. 行データ
-      row_data = lenenc_str('1')
-      send_packet(client, 6, row_data)
-
-      # 5. 最終EOF
-      send_packet(client, 7, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
+    def send_eof(client, sequence)
+      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
     end
   end
 end
