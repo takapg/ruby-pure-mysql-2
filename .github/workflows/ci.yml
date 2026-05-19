@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  rubocop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Run RuboCop
+        id: run-rubocop
+        run: |
+          bundle exec rubocop
+
+      - name: Show RuboCop Auto-correction Diff
+        if: failure() && steps.run-rubocop.outcome == 'failure'
+        run: |
+          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
+          git diff --color
+
+  rspec:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start MySQL in background
+        run: docker compose up -d > /dev/null 2>&1 &
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Wait for MySQL to be ready
+        run: |
+          MAX_ATTEMPTS=60
+          ATTEMPT_NUM=1
+          until docker compose exec -T mysql-real mysql -h 127.0.0.1 -u root -e "SELECT version();" > /dev/null 2>&1; do
+            if [ $ATTEMPT_NUM -ge $MAX_ATTEMPTS ]; then
+              echo "Error: MySQL did not start after $MAX_ATTEMPTS attempts."
+              docker compose ps
+              docker compose logs mysql-real --tail=200
+              exit 1
+            fi
+            echo "Waiting for MySQL to start (Attempt: $ATTEMPT_NUM/$MAX_ATTEMPTS)..."
+            sleep 1
+            ATTEMPT_NUM=$((ATTEMPT_NUM + 1))
+          done
+          echo "MySQL is up and running!"
+
+      - name: Run RSpec
+        run: |
+          bundle exec rspec
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
