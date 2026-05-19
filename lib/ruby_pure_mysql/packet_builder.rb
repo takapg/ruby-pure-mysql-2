@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # MySQLプロトコルのパケット構築を支援するモジュール
   module PacketBuilder
     def lenenc_str(str)
       [str.bytesize].pack('C') + str
