@@ -67,10 +67,20 @@ module RubyPureMysql
     end
 
     def build_handshake_payload
-      [10].pack('C') + "8.0.0\0" + [1].pack('L<') + '12345678' + [0x00].pack('C') +
-        [0xF7FF].pack('S<') + [0x21].pack('C') + [0x0002].pack('S<') +
-        [0x8007].pack('S<') + [0x15].pack('C') + "\0" * 10 + '1234567890123' +
+      [build_handshake_header, build_handshake_auth_data].join
+    end
+
+    def build_handshake_header
+      [[10].pack('C'), "8.0.0\0", [1].pack('L<'), '12345678', [0x00].pack('C')].join
+    end
+
+    def build_handshake_auth_data
+      [
+        [0xF7FF, 0x21, 0x0002, 0x8007, 0x15].pack('S< C S< S< C'),
+        "\0" * 10,
+        '1234567890123',
         "mysql_native_password\0"
+      ].join
     end
 
     def send_ok_packet(client, sequence)
@@ -86,10 +96,18 @@ module RubyPureMysql
 
     def send_column_definition(client)
       send_packet(client, 3, [1].pack('C'))
-      col_def = lenenc_str('') * 4 + lenenc_str('1') * 2 + [0x0C].pack('C') +
-                [0x21, 0x00].pack('S<') + [10].pack('L<') + [0x08].pack('C') +
-                [0x0000].pack('S<') + [0].pack('C') + [0x00, 0x00].pack('C2')
-      send_packet(client, 4, col_def)
+      send_packet(client, 4, build_column_definition_payload)
+    end
+
+    def build_column_definition_payload
+      [
+        lenenc_str('') * 4,
+        lenenc_str('1') * 2,
+        [0x0C, 0x21].pack('CS<'),
+        [10].pack('L<'),
+        [0x08, 0].pack('CS<'),
+        [0, 0, 0].pack('C3')
+      ].join
     end
 
     def send_row_data(client)
