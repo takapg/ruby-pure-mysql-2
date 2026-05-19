@@ -1,0 +1,18 @@
+language: "ja-JP"
+
+reviews:
+  profile: "chill"
+  high_level_summary: true
+  path_filters:
+    - "!Gemfile.lock"
+    - "!.ruby-version"
+  instructions: >
+    あなたは熟練のRubyエンジニアとしてレビューしてください。
+    特に以下の点に注意して指摘してください：
+    - Rubyらしい（Rubyish）簡潔な書き方になっているか。
+    - RSpecのテストが網羅的で、エッジケース（引数がnilの場合など）が考慮されているか。
+    - RuboCopの警告が出そうな箇所はないか。
+    - メソッドの責務が適切に分離されているか。
+
+chat:
+  auto_reply: true
