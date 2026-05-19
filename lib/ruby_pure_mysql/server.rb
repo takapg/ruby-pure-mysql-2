@@ -28,7 +28,10 @@ module RubyPureMysql
       # ペイロードの長さを3バイト（リトルエンディアン）で取得
       len = payload.bytesize
       header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
-      client.write(header + [seq].pack('C') + payload)
+      packet = header + [seq].pack('C') + payload
+      
+      puts "DEBUG: Sending packet [seq: #{seq}, len: #{len}]"
+      client.write(packet)
     end
 
     def read_packet(client)
@@ -39,6 +42,8 @@ module RubyPureMysql
       len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
       seq = header[3].unpack1('C')
       payload = client.read(len)
+      
+      puts "DEBUG: Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]
     end
 
@@ -55,7 +60,6 @@ module RubyPureMysql
       loop do
         packet = read_packet(client)
         break unless packet
-        puts "Received packet: #{packet.inspect}"
 
         seq, payload = packet
         command = payload[0].unpack1('C')
@@ -86,38 +90,36 @@ module RubyPureMysql
     end
 
     def send_ok_packet(client, sequence)
-      send_packet(client, sequence, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*'))
+      # OKパケット: 0x00, affected_rows(0), last_insert_id(0), status_flags(0x0002), warnings(0)
+      payload = [0x00, 0x00, 0x00, 0x02, 0x00, 0x00].pack('C*')
+      send_packet(client, sequence, payload)
     end
 
     def handle_query(client, seq, packet_body)
-      # クエリに対する応答は、受信したパケットのシーケンス番号の次から始まる
-      current_seq = seq + 1
+      # MySQLプロトコルでは、コマンドに対するレスポンスはシーケンス番号1から開始する
+      # クライアントからのコマンドパケットのシーケンス番号は通常0
+      current_seq = 1
       query = packet_body.byteslice(1..-1)
-      puts "Query: #{query}"
+      puts "DEBUG: Processing query: #{query}"
 
       if query.downcase.include?('select 1')
-        # Column Count (1)
-        puts "Sending packet with seq: #{current_seq}"
+        # 1. Column Count (1)
         send_packet(client, current_seq, [1].pack('C'))
         current_seq += 1
 
-        # Column Definition
-        puts "Sending packet with seq: #{current_seq}"
+        # 2. Column Definition
         send_packet(client, current_seq, build_column_definition_payload)
         current_seq += 1
 
-        # EOF
-        puts "Sending packet with seq: #{current_seq}"
+        # 3. EOF
         send_eof(client, current_seq)
         current_seq += 1
 
-        # Row Data
-        puts "Sending packet with seq: #{current_seq}"
+        # 4. Row Data
         send_packet(client, current_seq, lenenc_str('1'))
         current_seq += 1
 
-        # EOF
-        puts "Sending packet with seq: #{current_seq}"
+        # 5. EOF
         send_eof(client, current_seq)
       else
         # 未対応のクエリに対してはエラーを返す（簡易実装）
@@ -140,7 +142,7 @@ module RubyPureMysql
     end
 
     def send_eof(client, sequence)
-      # EOFパケットは通常5バイト: 0xFE, warning_count(2), status_flags(2)
+      # EOFパケット: 0xFE, warning_count(0), status_flags(0x0002)
       send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
     end
   end
