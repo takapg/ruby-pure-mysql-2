@@ -87,11 +87,17 @@ module RubyPureMysql
       send_packet(client, sequence, [0x00, 0x00, 0x00, 0x02, 0x00, 0x00].pack('C*'))
     end
 
-    def handle_query(client, _packet_body)
-      send_column_definition(client)
-      send_eof(client, 5)
-      send_row_data(client)
-      send_eof(client, 7)
+    def handle_query(client, packet_body)
+      query = packet_body[1..-1]
+      if query.downcase.include?('select 1')
+        send_column_definition(client)
+        send_eof(client, 5)
+        send_row_data(client)
+        send_eof(client, 7)
+      else
+        # 未対応のクエリに対してはエラーを返す（簡易実装）
+        send_ok_packet(client, 3)
+      end
     end
 
     def send_column_definition(client)
@@ -101,8 +107,11 @@ module RubyPureMysql
 
     def build_column_definition_payload
       [
-        lenenc_str('') * 4,
-        lenenc_str('1') * 2,
+        lenenc_str('def'),
+        lenenc_str(''),
+        lenenc_str(''),
+        lenenc_str('1'),
+        lenenc_str('1'),
         [0x0C, 0x21].pack('CS<'),
         [10].pack('L<'),
         [0x08, 0].pack('CS<'),
