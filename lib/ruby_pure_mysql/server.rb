@@ -84,7 +84,7 @@ module RubyPureMysql
       if sql.downcase =~ /\Aselect\s+(\d+);?\z/
         send_result_set(client, ::Regexp.last_match(1))
       else
-        send_ok_packet(client, 0)
+        send_ok_packet(client, 1)
       end
     end
 
