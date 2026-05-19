@@ -85,6 +85,7 @@ jobs:
                 --architect \
                 --test-cmd "bundle exec rspec" \
                 --auto-test \
+                --map-refresh always \
                 --message "$INSTRUCTION"
 
       - name: Push changes
