@@ -1,0 +1,12 @@
+plugins:
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 4.0
+  Exclude:
+    - 'vendor/**/*'
+    - 'Gemfile'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
