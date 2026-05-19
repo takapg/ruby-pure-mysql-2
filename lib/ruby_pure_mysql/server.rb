@@ -3,7 +3,7 @@
 require 'socket'
 
 module RubyPureMysql
-  # TODO: class についての説明を更新してください。
+  # class についての説明を更新してください。
   class Server
     def initialize(host: '127.0.0.1', port: 3307)
       @server = TCPServer.new(host, port)
