@@ -21,7 +21,7 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
+          permission-contents: write
 
       - name: Checkout code
         uses: actions/checkout@v4
