@@ -1,0 +1,84 @@
+name: Aider CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: 'AIに指示したい内容'
+        required: true
+        default: ''
+
+jobs:
+  aider-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Start MySQL in background
+        run: docker compose up -d > /dev/null 2>&1 &
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Install Aider
+        run: |
+          uv tool install aider-chat
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Wait for MySQL to be ready
+        run: |
+          MAX_ATTEMPTS=60
+          ATTEMPT_NUM=1
+          until docker compose exec -T mysql-real mysql -h 127.0.0.1 -u root -e "SELECT version();" > /dev/null 2>&1; do
+            if [ $ATTEMPT_NUM -ge $MAX_ATTEMPTS ]; then
+              echo "Error: MySQL did not start after $MAX_ATTEMPTS attempts."
+              docker compose ps
+              docker compose logs mysql-real --tail=200
+              exit 1
+            fi
+            echo "Waiting for MySQL to start (Attempt: $ATTEMPT_NUM/$MAX_ATTEMPTS)..."
+            sleep 1
+            ATTEMPT_NUM=$((ATTEMPT_NUM + 1))
+          done
+          echo "MySQL is up and running!"
+
+      - name: Run AI Agent CLI
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          INSTRUCTION: ${{ github.event.inputs.instruction }}
+        run: |
+          echo "Executing instruction: $INSTRUCTION"
+
+          aider --model gemini/gemma-4-31b-it \
+                --editor-model gemini/gemini-3.1-flash-lite \
+                --weak-model gemini/gemini-3.1-flash-lite \
+                --yes-always \
+                --chat-language japanese \
+                --architect \
+                --no-pretty \
+                --test-cmd "bundle exec rspec" \
+                --auto-test \
+                --message "$INSTRUCTION"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
