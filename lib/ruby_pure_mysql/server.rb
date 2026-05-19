@@ -44,6 +44,10 @@ module RubyPureMysql
       [seq, payload]
     end
 
+    def lenenc_str(s)
+      [s.bytesize].pack("C") + s
+    end
+
     def handle_client(client)
       # A. ハンドシェイク (Seq: 0)
       # MySQL 8.0 Handshake Packet
@@ -95,14 +99,33 @@ module RubyPureMysql
         if command == 0x03 # COM_QUERY
           # 1. カラム数
           send_packet(client, 3, [1].pack("C"))
+          
           # 2. カラム定義
-          send_packet(client, 4, [0].pack("C") + "1".ljust(10, "\0") + [0].pack("C") + "\0" * 20)
+          col_def = lenenc_str("") + # catalog
+                    lenenc_str("") + # schema
+                    lenenc_str("") + # table
+                    lenenc_str("") + # org_table
+                    lenenc_str("1") + # name
+                    lenenc_str("1") + # org_name
+                    [0x0C].pack("C") + # length of fixed fields
+                    [0x21, 0x00].pack("S<") + # charset
+                    [10].pack("L<") + # column length
+                    [0x08].pack("C") + # type (LONGLONG)
+                    [0x0000].pack("S<") + # flags
+                    [0].pack("C") + # decimals
+                    [0x00, 0x00].pack("C2") # filler
+          
+          send_packet(client, 4, col_def)
+          
           # 3. EOF
-          send_packet(client, 5, [0xFF].pack("C"))
+          send_packet(client, 5, [0xFE, 0x00, 0x00, 0x02, 0x00].pack("C*"))
+          
           # 4. 行データ
-          send_packet(client, 6, [1].pack("C") + "1")
+          row_data = lenenc_str("1")
+          send_packet(client, 6, row_data)
+          
           # 5. 最終EOF
-          send_packet(client, 7, [0xFF].pack("C"))
+          send_packet(client, 7, [0xFE, 0x00, 0x00, 0x02, 0x00].pack("C*"))
         end
       end
     end
