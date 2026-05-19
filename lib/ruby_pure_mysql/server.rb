@@ -140,7 +140,8 @@ module RubyPureMysql
     end
 
     def send_eof(client, sequence)
-      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00].pack('C*'))
+      # EOFパケットは通常5バイト: 0xFE, warning_count(2), status_flags(2)
+      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
     end
   end
 end
