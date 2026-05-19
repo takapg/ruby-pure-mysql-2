@@ -22,3 +22,13 @@ Thumbs.db
 
 # --- 環境変数 ---
 .env*
+
+# --- Aider ---
+# Aiderの設定やチャット履歴（共有したくない場合）
+.aider*
+# ただし、.aider.conf.yml をチームで共有したい場合は以下のように個別に除外
+# .aider.chat.history.md
+# .aider.input.history
+!.aider.model.settings.yml
+!.aider.model.metadata.json
+.cache
