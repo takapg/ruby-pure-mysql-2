@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'logger'
-require 'thread'
 require_relative 'ruby_pure_mysql/server'
 
 # Ruby による純粋な MySQL の再実装を提供します。
