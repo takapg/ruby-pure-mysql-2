@@ -64,7 +64,7 @@ module RubyPureMysql
         seq, payload = packet
         command = payload[0].unpack1('C')
 
-        handle_query(client, seq, payload) if command == 0x03
+        handle_query(client, payload) if command == 0x03
       end
     end
 
@@ -95,36 +95,34 @@ module RubyPureMysql
       send_packet(client, sequence, payload)
     end
 
-    def handle_query(client, seq, packet_body)
-      # MySQLプロトコルでは、コマンドに対するレスポンスはシーケンス番号1から開始する
-      # クライアントからのコマンドパケットのシーケンス番号は通常0
-      current_seq = 1
-      query = packet_body.byteslice(1..-1)
-      puts "DEBUG: Processing query: #{query}"
+    def handle_query(client, packet_body)
+      sql = packet_body[1..]
+      puts "Received Query: #{sql}"
 
-      if query.downcase.include?('select 1')
-        # 1. Column Count (1)
-        send_packet(client, current_seq, [1].pack('C'))
-        current_seq += 1
-
-        # 2. Column Definition
-        send_packet(client, current_seq, build_column_definition_payload)
-        current_seq += 1
-
-        # 3. EOF
-        send_eof(client, current_seq)
-        current_seq += 1
-
-        # 4. Row Data
-        send_packet(client, current_seq, lenenc_str('1'))
-        current_seq += 1
-
-        # 5. EOF
-        send_eof(client, current_seq)
+      case sql.downcase.strip
+      when 'select 1', 'select 1;'
+        send_result_set(client)
       else
-        # 未対応のクエリに対してはエラーを返す（簡易実装）
-        send_ok_packet(client, current_seq)
+        send_ok_packet(client, 0)
       end
+    end
+
+    def send_result_set(client)
+      send_column_definition(client)
+      send_eof(client, 5)
+      send_row_data(client)
+      send_eof(client, 7)
+    end
+
+    def send_column_definition(client)
+      send_packet(client, 1, [1].pack('C'))
+      send_packet(client, 2, build_column_definition_payload)
+      send_eof(client, 3)
+      send_eof(client, 4)
+    end
+
+    def send_row_data(client)
+      send_packet(client, 6, lenenc_str('1'))
     end
 
     def build_column_definition_payload
