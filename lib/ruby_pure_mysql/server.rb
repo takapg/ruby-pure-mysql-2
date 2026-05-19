@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 require 'socket'
+require_relative 'packet_builder'
 
 module RubyPureMysql
   # MySQLサーバーの簡易実装クラス
   class Server
+    include PacketBuilder
+
     def initialize(host: '127.0.0.1', port: 3307)
       @server = TCPServer.new(host, port)
     end
@@ -47,10 +50,6 @@ module RubyPureMysql
       [seq, payload]
     end
 
-    def lenenc_str(str)
-      [str.bytesize].pack('C') + str
-    end
-
     def handle_client(client)
       send_handshake(client)
       read_packet(client)
@@ -70,23 +69,6 @@ module RubyPureMysql
 
     def send_handshake(client)
       send_packet(client, 0, build_handshake_payload)
-    end
-
-    def build_handshake_payload
-      [build_handshake_header, build_handshake_auth_data].join
-    end
-
-    def build_handshake_header
-      [[10].pack('C'), "Hey-MySQL-8.0\0", [1].pack('L<'), '12345678', [0x00].pack('C')].join
-    end
-
-    def build_handshake_auth_data
-      [
-        [0xF7FF, 0x21, 0x0002, 0x8007, 0x15].pack('S< C S< S< C'),
-        "\0" * 10,
-        '1234567890123',
-        "mysql_native_password\0"
-      ].join
     end
 
     def send_ok_packet(client, sequence)
@@ -117,24 +99,6 @@ module RubyPureMysql
       send_packet(client, 4, lenenc_str(value))
       # 5. EOF (seq 5)
       send_eof(client, 5)
-    end
-
-    def build_column_definition_payload
-      [
-        lenenc_str('def'),
-        lenenc_str(''),
-        lenenc_str(''),
-        lenenc_str('1'),
-        lenenc_str('1'),
-        lenenc_str('1'), # org_name
-        [0x0C].pack('C'), # filler
-        [33].pack('S<'), # charsetnr (utf8mb4_general_ci)
-        [10].pack('L<'), # length
-        [0x08].pack('C'), # type (MYSQL_TYPE_LONGLONG)
-        [0x0000].pack('S<'), # flags
-        [0].pack('C'), # decimals
-        [0, 0].pack('C2') # filler
-      ].join
     end
 
     def send_eof(client, sequence)
