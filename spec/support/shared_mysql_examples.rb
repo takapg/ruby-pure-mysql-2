@@ -78,4 +78,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
   end
+
+  describe 'Empty result set' do
+    it 'executes a query that returns no rows (e.g., SELECT 1 WHERE 1=0)' do
+      results = client.query('SELECT 1 WHERE 1=0;')
+      expect(results.count).to eq(0)
+    end
+  end
 end

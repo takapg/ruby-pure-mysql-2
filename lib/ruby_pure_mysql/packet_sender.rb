@@ -69,8 +69,12 @@ module RubyPureMysql
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
 
-      # 4. Row Data (行がある場合のみ)
-      send_rows(client, (seq + 1) & 0xFF, rows) unless rows.empty?
+      # 4. Row Data / 終端
+      if rows.empty?
+        send_eof(client, (seq + 1) & 0xFF)
+      else
+        send_rows(client, (seq + 1) & 0xFF, rows)
+      end
     end
 
     def send_rows(client, start_seq, rows)
