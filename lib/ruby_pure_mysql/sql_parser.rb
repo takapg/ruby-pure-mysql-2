@@ -16,17 +16,22 @@ module RubyPureMysql
       rows = []
       expected_columns = nil
       parts.each do |part|
-        result = parse_part(part)
-        return result if result.key?(:error)
+        res = validate_part(part, expected_columns)
+        return res if res.key?(:error)
 
-        expected_columns ||= result[:result].size
-        if result[:result].size != expected_columns
-          return { error: 'The used SELECT statements have a different number of columns' }
-        end
-
-        rows << result[:result]
+        expected_columns ||= res[:size]
+        rows << res[:result]
       end
       { result: rows }
+    end
+
+    def self.validate_part(part, expected_columns)
+      result = parse_part(part)
+      return result if result.key?(:error)
+      if expected_columns && result[:result].size != expected_columns
+        return { error: 'The used SELECT statements have a different number of columns' }
+      end
+      { result: result[:result], size: result[:result].size }
     end
 
     def self.parse_part(part)
@@ -46,6 +51,6 @@ module RubyPureMysql
 
       col.split('+').map(&:strip).map(&:to_i).sum
     end
-    private_class_method :parse_part, :evaluate_expression, :process_parts
+    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part
   end
 end
