@@ -10,10 +10,16 @@ module RubyPureMysql
     def self.parse(query)
       parts = query.split(/UNION/i).map(&:strip)
       rows = []
+      expected_columns = nil
 
       parts.each do |part|
         result = parse_part(part)
         return result if result.key?(:error)
+
+        expected_columns ||= result[:result].size
+        if result[:result].size != expected_columns
+          return { error: 'The used SELECT statements have a different number of columns' }
+        end
 
         rows << result[:result]
       end
