@@ -32,6 +32,7 @@ module RubyPureMysql
       while buf.bytesize < len
         chunk = client.read(len - buf.bytesize)
         return nil if chunk.nil? || chunk.empty?
+
         buf << chunk
       end
       buf
