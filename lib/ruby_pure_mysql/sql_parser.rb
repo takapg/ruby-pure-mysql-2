@@ -48,6 +48,11 @@ module RubyPureMysql
     end
 
     def self.evaluate_expression(col)
+      col = col.strip
+      return nil if col.casecmp?('NULL')
+      if (match = col.match(/\A(['"])(.*?)\1\z/))
+        return match[2]
+      end
       return :error unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
 
       col.split('+').map(&:strip).map(&:to_i).sum

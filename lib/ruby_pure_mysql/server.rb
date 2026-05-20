@@ -136,7 +136,13 @@ module RubyPureMysql
     end
 
     def send_row_data(client, seq, values)
-      row_payload = values.map { |v| lenenc_str(v.to_s) }.join
+      row_payload = values.map do |v|
+        if v.nil?
+          [NULL_COLUMN_VALUE].pack('C')
+        else
+          lenenc_str(v.to_s)
+        end
+      end.join
       send_packet(client, seq, row_payload)
     end
 
