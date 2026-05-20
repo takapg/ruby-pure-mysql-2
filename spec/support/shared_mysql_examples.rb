@@ -25,4 +25,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     results = client.query('SELECT 2;')
     expect(results.first.values.first).to eq(2)
   end
+
+  describe 'SQL Parsing & Calculation' do
+    it 'can calculate basic arithmetic (SELECT 1 + 1;)' do
+      results = client.query('SELECT 1 + 1;')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'handles queries with extra spaces and semicolons' do
+      results = client.query('  SELECT   42  ;  ')
+      expect(results.first.values.first).to eq(42)
+    end
+
+    it 'handles case-insensitive SELECT' do
+      results = client.query('select 100;')
+      expect(results.first.values.first).to eq(100)
+    end
+
+    it 'returns an error for unsupported syntax' do
+      expect {
+        client.query('INVALID SQL')
+      }.to raise_error(Mysql2::Error)
+    end
 end
