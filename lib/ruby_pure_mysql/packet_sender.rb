@@ -58,7 +58,7 @@ module RubyPureMysql
     def send_result_set(client, rows, columns = nil)
       # 行が空の場合、列定義が明示的に渡されていないとメタデータを送信できないためエラーとする
       cols = columns || (rows.first if rows && !rows.empty?)
-      raise "Columns must be provided for empty result sets" if cols.nil?
+      raise 'Columns must be provided for empty result sets' if cols.nil?
 
       # 1. Column Count (seq 1)
       send_packet(client, 1, lenenc_int(cols.size))
