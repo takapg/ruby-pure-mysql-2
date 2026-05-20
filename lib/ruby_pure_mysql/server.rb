@@ -3,6 +3,7 @@
 require 'socket'
 require_relative 'packet_builder'
 require_relative 'constants'
+require_relative 'sql_parser'
 
 module RubyPureMysql
   # MySQLサーバーの簡易実装クラス
@@ -85,14 +86,22 @@ module RubyPureMysql
       send_packet(client, sequence, payload)
     end
 
+    def send_err_packet(client, sequence, message)
+      # ERR Packet: 0xFF, ErrorCode(2), SQLStateMarker('#'), SQLState(5), Message
+      payload = "#{[0xFF].pack('C')}#{[1].pack('v')}#HY000#{message}"
+      send_packet(client, sequence, payload)
+    end
+
     def handle_query(client, packet_body)
       sql = packet_body[1..].strip
       RubyPureMysql.logger.info "Received Query: #{sql}"
 
-      if sql.downcase =~ /\Aselect\s+(\d+);?\z/
-        send_result_set(client, ::Regexp.last_match(1))
+      result = SqlParser.parse(sql)
+
+      if result[:error]
+        send_err_packet(client, 1, result[:error])
       else
-        send_ok_packet(client, 1)
+        send_result_set(client, result[:result])
       end
     end
 
@@ -104,7 +113,7 @@ module RubyPureMysql
       # 3. EOF (seq 3)
       send_eof(client, 3)
       # 4. Row Data (seq 4)
-      send_packet(client, 4, lenenc_str(value))
+      send_packet(client, 4, lenenc_str(value.to_s))
       # 5. EOF (seq 5)
       send_eof(client, 5)
     end
