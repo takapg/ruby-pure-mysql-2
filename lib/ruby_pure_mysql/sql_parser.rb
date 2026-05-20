@@ -13,14 +13,18 @@ module RubyPureMysql
       return { error: 'Invalid SQL' } unless match
 
       expression = match[1]
+      parts = expression.split(',').map(&:strip)
 
-      # 簡易的な算術演算（数字と+のみ）に対応
-      if /\A\d+(\s*\+\s*\d+)*\z/.match?(expression)
-        result = expression.split('+').map(&:strip).map(&:to_i).sum
-        { result: result }
-      else
-        { error: 'Unsupported expression' }
+      results = parts.map do |part|
+        # 簡易的な算術演算（数字と+のみ）に対応
+        if /\A\d+(\s*\+\s*\d+)*\z/.match?(part)
+          part.split('+').map(&:strip).map(&:to_i).sum
+        else
+          return { error: 'Unsupported expression' }
+        end
       end
+
+      { result: results }
     end
   end
 end

@@ -105,17 +105,30 @@ module RubyPureMysql
       end
     end
 
-    def send_result_set(client, value)
+    def send_result_set(client, values)
+      values = [values] unless values.is_a?(Array)
+
       # 1. Column Count (seq 1)
-      send_packet(client, 1, [1].pack('C'))
-      # 2. Column Definition (seq 2)
-      send_packet(client, 2, build_column_definition_payload)
-      # 3. EOF (seq 3)
-      send_eof(client, 3)
-      # 4. Row Data (seq 4)
-      send_packet(client, 4, lenenc_str(value.to_s))
-      # 5. EOF (seq 5)
-      send_eof(client, 5)
+      send_packet(client, 1, [values.size].pack('C'))
+
+      # 2. Column Definition (seq 2...)
+      seq = 2
+      values.each_with_index do |_, index|
+        send_packet(client, seq, build_column_definition_payload((index + 1).to_s))
+        seq += 1
+      end
+
+      # 3. EOF (seq N)
+      send_eof(client, seq)
+      seq += 1
+
+      # 4. Row Data (seq N+1)
+      row_payload = values.map { |v| lenenc_str(v.to_s) }.join
+      send_packet(client, seq, row_payload)
+      seq += 1
+
+      # 5. EOF (seq N+2)
+      send_eof(client, seq)
     end
 
     def send_eof(client, sequence)
