@@ -4,6 +4,7 @@ module RubyPureMysql
   # MySQLプロトコルのパケット送信を支援するモジュール
   module PacketSender
     include Constants
+    include PacketBuilder
 
     def send_packet(client, seq, payload)
       len = payload.bytesize
@@ -16,12 +17,13 @@ module RubyPureMysql
 
     def read_packet(client)
       header = client.read(4)
-      return nil unless header
+      return nil unless header&.bytesize == 4
 
       # lenは3バイトのリトルエンディアン
       len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
       seq = header[3].unpack1('C')
       payload = client.read(len)
+      return nil unless payload&.bytesize == len
 
       RubyPureMysql.logger.debug "Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]

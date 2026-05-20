@@ -61,15 +61,5 @@ module RubyPureMysql
         send_result_set(client, result[:result])
       end
     end
-
-    def lenenc_str(str)
-      len = str.bytesize
-      if len < 251
-        [len].pack('C') + str
-      else
-        # 251以上の場合の処理
-        [0xFC, len & 0xFF, (len >> 8) & 0xFF].pack('C C C') + str
-      end
-    end
   end
 end
