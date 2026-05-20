@@ -140,7 +140,15 @@ module RubyPureMysql
         if v.nil?
           [NULL_COLUMN_VALUE].pack('C')
         else
-          lenenc_str(v.to_s)
+          # 文字列をLength Encoded Stringとしてエンコードする
+          s = v.to_s
+          len = s.bytesize
+          if len < 251
+            [len].pack('C') + s
+          else
+            # 251以上の場合の処理
+            [0xFC, len & 0xFF, (len >> 8) & 0xFF].pack('C C C') + s
+          end
         end
       end.join
       send_packet(client, seq, row_payload)
