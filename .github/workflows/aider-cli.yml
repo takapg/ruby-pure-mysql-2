@@ -83,7 +83,7 @@ jobs:
                 --yes-always \
                 --chat-language japanese \
                 --architect \
-                --test-cmd "bundle exec rspec" \
+                --test-cmd "bundle exec rspec && bundle exec rubocop" \
                 --auto-test \
                 --message "$INSTRUCTION"
 
