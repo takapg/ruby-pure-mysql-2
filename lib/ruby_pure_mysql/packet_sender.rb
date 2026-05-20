@@ -2,6 +2,8 @@
 
 module RubyPureMysql
   module PacketSender
+    include Constants
+
     def send_packet(client, seq, payload)
       len = payload.bytesize
       header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
