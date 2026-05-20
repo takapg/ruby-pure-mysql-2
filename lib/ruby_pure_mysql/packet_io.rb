@@ -5,6 +5,9 @@ module RubyPureMysql
   module PacketIO
     def send_packet(client, seq, payload)
       len = payload.bytesize
+      # MySQL packet header (4 bytes):
+      #   - 3 bytes: payload length (little-endian)
+      #   - 1 byte: sequence number
       header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
       packet = header + [seq].pack('C') + payload
 
@@ -13,20 +16,32 @@ module RubyPureMysql
     end
 
     def read_packet(client)
-      header = client.read(4)
-      return nil unless header&.bytesize == 4
+      header = read_exactly(client, 4)
+      return nil unless header
 
       len, seq = parse_packet_header(header)
-      payload = client.read(len)
-      return nil unless payload&.bytesize == len
+      payload = read_exactly(client, len)
+      return nil unless payload
 
       RubyPureMysql.logger.debug "Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]
     end
 
+    def read_exactly(client, len)
+      buf = String.new(encoding: 'ASCII-8BIT', capacity: len)
+      while buf.bytesize < len
+        chunk = client.read(len - buf.bytesize)
+        return nil if chunk.nil? || chunk.empty?
+        buf << chunk
+      end
+      buf
+    end
+
     def parse_packet_header(header)
-      len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
-      seq = header[3].unpack1('C')
+      # MySQL packet header: 3-byte length (little-endian) + 1-byte sequence
+      combined = header.unpack1('V')
+      len = combined & 0xFFFFFF
+      seq = (combined >> 24) & 0xFF
       [len, seq]
     end
   end

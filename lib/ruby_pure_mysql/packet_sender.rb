@@ -49,8 +49,8 @@ module RubyPureMysql
     end
 
     def valid_row_width?(client, rows, cols)
-      if rows.any? { |row| row.size != cols.size }
-        send_err_packet(client, 1, 'Internal error: Row width mismatch')
+      if rows.any? { |row| !row.respond_to?(:size) || row.size != cols.size }
+        send_err_packet(client, 1, 'Internal error: Invalid row type or width mismatch')
         return false
       end
       true
@@ -98,6 +98,20 @@ module RubyPureMysql
       seq
     end
 
+    # MySQL Column Definition Packet (COM_QUERY response):
+    #   - catalog: lenenc_str "def"
+    #   - schema: lenenc_str (empty)
+    #   - table: lenenc_str (empty)
+    #   - org_table: lenenc_str (empty)
+    #   - name: lenenc_str column name
+    #   - org_name: lenenc_str column name
+    #   - fixed_fields_length: 0x0c (12 bytes follow)
+    #   - character_set: 2 bytes (0x21, 0x00 = utf8_general_ci)
+    #   - column_length: 4 bytes
+    #   - column_type: 1 byte
+    #   - flags: 2 bytes
+    #   - decimals: 1 byte
+    #   - filler: 2 bytes
     def pack_column_definition(type, name)
       # Column Definition Packet
       data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
