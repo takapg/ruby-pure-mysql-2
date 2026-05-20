@@ -58,7 +58,7 @@ module RubyPureMysql
       if result[:error]
         send_err_packet(client, 1, result[:error])
       else
-        # columns 引数は省略可能（nil の場合は rows から推論される）
+        # :columns を明示的に渡す
         send_result_set(client, result[:result], result[:columns])
       end
     end

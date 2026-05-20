@@ -76,7 +76,13 @@ module RubyPureMysql
     end
 
     def resolve_columns(rows, columns)
-      cols = columns || (rows.first if rows && !rows.empty?)
+      # columnsが明示的に渡されている場合はそれを優先
+      return columns if columns && !columns.empty?
+
+      # 渡されていない場合はrowsから推論
+      cols = (rows.first if rows && !rows.empty?)
+
+      # どちらも存在しない場合はエラー
       raise 'Columns must be provided for empty result sets' if cols.nil?
 
       cols

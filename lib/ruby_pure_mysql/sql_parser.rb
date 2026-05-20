@@ -15,14 +15,16 @@ module RubyPureMysql
     def self.process_parts(parts)
       rows = []
       expected_columns = nil
+      column_names = nil
       parts.each do |part|
         res = validate_part(part, expected_columns)
         return res if res.key?(:error)
 
         expected_columns ||= res[:size]
+        column_names ||= res[:columns]
         rows << res[:result]
       end
-      { result: rows }
+      { result: rows, columns: column_names }
     end
 
     def self.validate_part(part, expected_columns)
@@ -32,7 +34,7 @@ module RubyPureMysql
         return { error: 'The used SELECT statements have a different number of columns' }
       end
 
-      { result: result[:result], size: result[:result].size }
+      { result: result[:result], columns: result[:columns], size: result[:result].size }
     end
 
     def self.parse_part(part)
@@ -44,12 +46,22 @@ module RubyPureMysql
 
       return { error: 'Unsupported expression' } if values.include?(:error)
 
-      { result: values }
+      { result: values, columns: columns }
     end
 
     def self.evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
+
+      # システム変数対応
+      if col.start_with?('@@')
+        return case col.downcase
+               when '@@version_comment' then 'ruby-pure-mysql-2'
+               when '@@max_allowed_packet' then 67108864
+               else :error
+               end
+      end
+
       if (match = col.match(/\A(['"])(.*?)\1\z/))
         return match[2]
       end
