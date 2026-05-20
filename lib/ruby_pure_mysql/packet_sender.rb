@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'packet_io'
+
 module RubyPureMysql
   # MySQLプロトコルのパケット送信を支援するモジュール
   module PacketSender
