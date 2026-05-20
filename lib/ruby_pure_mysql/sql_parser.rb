@@ -9,9 +9,12 @@ module RubyPureMysql
     # @return [Hash] 解析結果またはエラー情報を含むハッシュ
     def self.parse(query)
       parts = query.split(/UNION/i).map(&:strip)
+      process_parts(parts)
+    end
+
+    def self.process_parts(parts)
       rows = []
       expected_columns = nil
-
       parts.each do |part|
         result = parse_part(part)
         return result if result.key?(:error)
@@ -23,7 +26,6 @@ module RubyPureMysql
 
         rows << result[:result]
       end
-
       { result: rows }
     end
 
@@ -44,6 +46,6 @@ module RubyPureMysql
 
       col.split('+').map(&:strip).map(&:to_i).sum
     end
-    private_class_method :parse_part, :evaluate_expression
+    private_class_method :parse_part, :evaluate_expression, :process_parts
   end
 end
