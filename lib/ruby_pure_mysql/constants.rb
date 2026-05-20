@@ -19,6 +19,11 @@ module RubyPureMysql
     LENENC_INT_3_BYTES = 0xFD
     LENENC_INT_LIMIT_3 = 0xFFFFFF
     LENENC_INT_8_BYTES = 0xFE
+    NULL_COLUMN_VALUE = 0xFB
+
+    # MySQL Type Codes
+    MYSQL_TYPE_LONGLONG = 0x08
+    MYSQL_TYPE_VAR_STRING = 0xFD
 
     # Handshake
     PROTOCOL_VERSION_10 = 10

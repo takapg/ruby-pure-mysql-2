@@ -17,9 +17,21 @@ module RubyPureMysql
       elsif len <= LENENC_INT_LIMIT_2
         [LENENC_INT_2_BYTES, len].pack('Cv')
       elsif len <= LENENC_INT_LIMIT_3
-        [LENENC_INT_3_BYTES, len].pack('CvC')
+        [LENENC_INT_3_BYTES, len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('CCCC')
       else
         [LENENC_INT_8_BYTES, len].pack('CQ<')
+      end
+    end
+
+    def lenenc_int(number)
+      if number < 251
+        [number].pack('C')
+      elsif number < 65_536
+        [0xFC, number].pack('Cv')
+      elsif number < 16_777_216
+        [0xFD, number & 0xFF, (number >> 8) & 0xFF, (number >> 16) & 0xFF].pack('C4')
+      else
+        [0xFE, number].pack('CQ<')
       end
     end
 
