@@ -61,31 +61,31 @@ module RubyPureMysql
       raise "Columns must be provided for empty result sets" if cols.nil?
 
       # 1. Column Count (seq 1)
-      send_packet(client, 1, [cols.size].pack('C'))
+      send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, cols)
+      seq = send_column_definitions(client, 2, cols)
 
       # 3. EOF (seq N)
-      send_eof(client, seq)
+      send_eof(client, seq & 0xFF)
 
       # 4. Row Data (行がある場合のみ)
-      send_rows(client, seq + 1, rows) unless rows.empty?
+      send_rows(client, (seq + 1) & 0xFF, rows) unless rows.empty?
     end
 
     def send_rows(client, start_seq, rows)
-      current_seq = start_seq & 0xFF
+      current_seq = start_seq
       rows.each do |row|
-        send_row_data(client, current_seq, row)
-        current_seq = (current_seq + 1) & 0xFF
+        send_row_data(client, current_seq & 0xFF, row)
+        current_seq += 1
       end
-      send_eof(client, current_seq)
+      send_eof(client, current_seq & 0xFF)
     end
 
-    def send_column_definitions(client, values)
-      seq = 2
+    def send_column_definitions(client, start_seq, values)
+      seq = start_seq
       values.each_with_index do |val, index|
-        send_packet(client, seq, build_column_definition_payload(val, index + 1))
+        send_packet(client, seq & 0xFF, build_column_definition_payload(val, index + 1))
         seq += 1
       end
       seq

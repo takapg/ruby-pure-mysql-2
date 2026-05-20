@@ -23,6 +23,18 @@ module RubyPureMysql
       end
     end
 
+    def lenenc_int(n)
+      if n < 251
+        [n].pack('C')
+      elsif n < 65536
+        [0xFC, n].pack('Cv')
+      elsif n < 16777216
+        [0xFD, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF].pack('C3')
+      else
+        [0xFE, n].pack('CQ<')
+      end
+    end
+
     def build_handshake_payload
       [build_handshake_header, build_handshake_auth_data].join
     end
