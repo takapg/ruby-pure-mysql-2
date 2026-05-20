@@ -18,6 +18,7 @@ module RubyPureMysql
       parts.each do |part|
         res = validate_part(part, expected_columns)
         return res if res.key?(:error)
+
         expected_columns ||= res[:size]
         rows << res[:result]
       end
