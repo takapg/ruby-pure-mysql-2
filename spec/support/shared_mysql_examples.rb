@@ -56,4 +56,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values).to eq([1, 2])
     end
   end
+
+  describe 'Multi-row support' do
+    it 'executes a query that returns multiple rows (e.g., UNION)' do
+      results = client.query('SELECT 1 UNION SELECT 2;')
+      expect(results.count).to eq(2)
+      rows = results.to_a
+      expect(rows[0].values).to eq([1])
+      expect(rows[1].values).to eq([2])
+    end
+  end
 end
