@@ -77,5 +77,5 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil
     end
-end
+  end
 end

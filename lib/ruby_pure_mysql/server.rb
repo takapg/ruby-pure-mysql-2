@@ -131,7 +131,7 @@ module RubyPureMysql
       values.each_with_index do |val, index|
         type = val.is_a?(String) ? MYSQL_TYPE_VAR_STRING : MYSQL_TYPE_LONGLONG
         name = (index + 1).to_s
-        
+
         # Column Definition Packet
         # catalog: "def"
         # schema: ""
@@ -146,12 +146,12 @@ module RubyPureMysql
         # flags: 0x00, 0x00
         # decimals: 0x00
         # filler: 0x00, 0x00
-        
+
         payload = [
-          lenenc_str("def"),
-          lenenc_str(""),
-          lenenc_str(""),
-          lenenc_str(""),
+          lenenc_str('def'),
+          lenenc_str(''),
+          lenenc_str(''),
+          lenenc_str(''),
           lenenc_str(name),
           lenenc_str(name),
           0x0c,
@@ -162,7 +162,7 @@ module RubyPureMysql
           0x00,
           0x00, 0x00
         ].pack('a*a*a*a*a*a*C C C C C C C C C C C C C')
-        
+
         send_packet(client, seq, payload)
         seq += 1
       end
