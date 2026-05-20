@@ -55,30 +55,22 @@ module RubyPureMysql
       send_packet(client, sequence, payload)
     end
 
-    def send_result_set(client, rows)
-      return if rows.nil?
-
-      if rows.empty?
-        send_empty_result_set(client)
-        return
-      end
+    def send_result_set(client, rows, columns = nil)
+      # 行が空の場合、列定義が明示的に渡されていないとメタデータを送信できないためエラーとする
+      cols = columns || (rows.first if rows && !rows.empty?)
+      raise "Columns must be provided for empty result sets" if cols.nil?
 
       # 1. Column Count (seq 1)
-      send_packet(client, 1, [rows.first.size].pack('C'))
+      send_packet(client, 1, [cols.size].pack('C'))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, rows.first)
+      seq = send_column_definitions(client, cols)
 
       # 3. EOF (seq N)
       send_eof(client, seq)
 
-      # 4. Row Data & 5. EOF
-      send_rows(client, seq + 1, rows)
-    end
-
-    def send_empty_result_set(client)
-      send_packet(client, 1, [0].pack('C'))
-      send_eof(client, 2)
+      # 4. Row Data (行がある場合のみ)
+      send_rows(client, seq + 1, rows) unless rows.empty?
     end
 
     def send_rows(client, start_seq, rows)
