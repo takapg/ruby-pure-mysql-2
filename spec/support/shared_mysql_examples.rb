@@ -47,4 +47,5 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('INVALID SQL')
       }.to raise_error(Mysql2::Error)
     end
+  end
 end
