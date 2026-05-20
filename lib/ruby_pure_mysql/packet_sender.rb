@@ -57,28 +57,34 @@ module RubyPureMysql
 
     def send_result_set(client, rows, columns = nil)
       cols = resolve_columns(rows, columns)
-
-      # 行データの要素数が列定義と一致するか検証
-      if rows.any? { |row| row.size != cols.size }
-        send_err_packet(client, 1, 'Internal error: Row width mismatch')
-        return
-      end
+      return unless valid_row_width?(client, rows, cols)
 
       # 1. Column Count (seq 1)
       send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      # カラム名と、型判定のためのサンプル行(rows.first)を渡す
       seq = send_column_definitions(client, 2, cols, rows.first)
 
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
 
       # 4. Row Data / 終端
+      send_result_set_data(client, seq + 1, rows)
+    end
+
+    def valid_row_width?(client, rows, cols)
+      if rows.any? { |row| row.size != cols.size }
+        send_err_packet(client, 1, 'Internal error: Row width mismatch')
+        return false
+      end
+      true
+    end
+
+    def send_result_set_data(client, start_seq, rows)
       if rows.empty?
-        send_eof(client, (seq + 1) & 0xFF)
+        send_eof(client, start_seq & 0xFF)
       else
-        send_rows(client, (seq + 1) & 0xFF, rows)
+        send_rows(client, start_seq & 0xFF, rows)
       end
     end
 
