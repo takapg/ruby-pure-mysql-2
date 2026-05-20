@@ -113,18 +113,8 @@ module RubyPureMysql
     #   - decimals: 1 byte
     #   - filler: 2 bytes
     def pack_column_definition(type, name)
-      # Column Definition Packet
-      data = [
-        lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-        lenenc_str(name), lenenc_str(name),
-        0x0c,        # fixed_fields_length (1 byte)
-        0x0021,      # character_set (2 bytes, little-endian)
-        0x00000000,  # column_length (4 bytes, little-endian)
-        type,        # column_type (1 byte)
-        0x0000,      # flags (2 bytes, little-endian)
-        0x00,        # decimals (1 byte)
-        0x0000       # filler (2 bytes, little-endian)
-      ]
+      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
+              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, type, 0, 0, 0]
       data.pack('a*a*a*a*a*a*C v V C v C v')
     end
 
