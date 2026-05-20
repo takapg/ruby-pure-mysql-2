@@ -118,10 +118,10 @@ module RubyPureMysql
       send_eof(client, seq)
 
       # 4. Row Data (seq N+1...) & 5. EOF (seq N+last)
-      current_seq = seq + 1
+      current_seq = (seq + 1) & 0xFF
       rows.each do |row|
         send_row_data(client, current_seq, row)
-        current_seq += 1
+        current_seq = (current_seq + 1) & 0xFF
       end
       send_eof(client, current_seq)
     end
