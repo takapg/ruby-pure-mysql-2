@@ -31,6 +31,7 @@ module RubyPureMysql
       if expected_columns && result[:result].size != expected_columns
         return { error: 'The used SELECT statements have a different number of columns' }
       end
+
       { result: result[:result], size: result[:result].size }
     end
 
