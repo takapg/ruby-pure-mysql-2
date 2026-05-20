@@ -105,21 +105,25 @@ module RubyPureMysql
       end
     end
 
-    def send_result_set(client, values)
-      values = [values] unless values.is_a?(Array)
-
+    def send_result_set(client, rows)
       # 1. Column Count (seq 1)
-      send_packet(client, 1, [values.size].pack('C'))
+      # rows.first.size でカラム数を取得
+      send_packet(client, 1, [rows.first.size].pack('C'))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, values)
+      # カラム定義は最初の行の構造に基づいて作成
+      seq = send_column_definitions(client, rows.first)
 
       # 3. EOF (seq N)
       send_eof(client, seq)
 
-      # 4. Row Data (seq N+1) & 5. EOF (seq N+2)
-      send_row_data(client, seq + 1, values)
-      send_eof(client, seq + 2)
+      # 4. Row Data (seq N+1...) & 5. EOF (seq N+last)
+      current_seq = seq + 1
+      rows.each do |row|
+        send_row_data(client, current_seq, row)
+        current_seq += 1
+      end
+      send_eof(client, current_seq)
     end
 
     def send_column_definitions(client, values)
