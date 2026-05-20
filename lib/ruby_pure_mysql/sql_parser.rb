@@ -13,22 +13,29 @@ module RubyPureMysql
     end
 
     def self.process_parts(parts)
-      rows = []
-      expected = nil
-      columns = nil
-      parts.each do |part|
-        res = validate_part(part, expected)
+      state = { expected: nil, columns: nil }
+      rows = parts.map do |part|
+        res = process_single_part(part, state)
         return res if res.key?(:error)
-        expected ||= res[:size]
-        columns ||= res[:columns]
-        rows << res[:result]
+
+        res[:result]
       end
-      { result: rows, columns: columns }
+      { result: rows, columns: state[:columns] }
+    end
+
+    def self.process_single_part(part, state)
+      res = validate_part(part, state[:expected])
+      return res if res.key?(:error)
+
+      state[:expected] ||= res[:size]
+      state[:columns] ||= res[:columns]
+      res
     end
 
     def self.validate_part(part, expected_columns)
       result = parse_part(part)
       return result if result.key?(:error)
+
       if expected_columns && result[:result].size != expected_columns
         return { error: 'The used SELECT statements have a different number of columns' }
       end
@@ -74,6 +81,7 @@ module RubyPureMysql
       col.split('+').sum { |x| x.strip.to_i }
     end
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
-                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math
+                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
+                         :process_single_part
   end
 end
