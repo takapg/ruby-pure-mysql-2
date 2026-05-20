@@ -23,15 +23,15 @@ module RubyPureMysql
       end
     end
 
-    def lenenc_int(n)
-      if n < 251
-        [n].pack('C')
-      elsif n < 65_536
-        [0xFC, n].pack('Cv')
-      elsif n < 16_777_216
-        [0xFD, n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF].pack('C3')
+    def lenenc_int(number)
+      if number < 251
+        [number].pack('C')
+      elsif number < 65_536
+        [0xFC, number].pack('Cv')
+      elsif number < 16_777_216
+        [0xFD, number & 0xFF, (number >> 8) & 0xFF, (number >> 16) & 0xFF].pack('C3')
       else
-        [0xFE, n].pack('CQ<')
+        [0xFE, number].pack('CQ<')
       end
     end
 
