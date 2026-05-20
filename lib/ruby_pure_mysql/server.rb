@@ -2,11 +2,13 @@
 
 require 'socket'
 require_relative 'packet_builder'
+require_relative 'constants'
 
 module RubyPureMysql
   # MySQLサーバーの簡易実装クラス
   class Server
     include PacketBuilder
+    include Constants
 
     def initialize(host: '127.0.0.1', port: 3307)
       @server = TCPServer.new(host, port)
@@ -63,7 +65,7 @@ module RubyPureMysql
         _, payload = packet
         command = payload[0].unpack1('C')
 
-        handle_query(client, payload) if command == 0x03
+        handle_query(client, payload) if command == COM_QUERY
       end
     end
 
@@ -72,8 +74,14 @@ module RubyPureMysql
     end
 
     def send_ok_packet(client, sequence)
-      # OKパケット: 0x00, affected_rows(0), last_insert_id(0), status_flags(0x0002), warnings(0)
-      payload = [0x00, 0x00, 0x00, 0x02, 0x00, 0x00].pack('C*')
+      # OKパケット: 0x00, affected_rows(0), last_insert_id(0), status_flags(2 bytes), warnings(2 bytes)
+      payload = [
+        OK_PACKET_HEADER,
+        0, # affected_rows
+        0, # last_insert_id
+        SERVER_STATUS_AUTOCOMMIT, # status_flags (2 bytes, little-endian)
+        0                         # warnings (2 bytes, little-endian)
+      ].pack('C C C v v')
       send_packet(client, sequence, payload)
     end
 
@@ -103,7 +111,7 @@ module RubyPureMysql
 
     def send_eof(client, sequence)
       # EOFパケット: 0xFE, warning_count(0), status_flags(0x0002)
-      send_packet(client, sequence, [0xFE, 0x00, 0x00, 0x02, 0x00].pack('C*'))
+      send_packet(client, sequence, [EOF_PACKET_HEADER, 0x00, 0x00, SERVER_STATUS_AUTOCOMMIT, 0x00].pack('C*'))
     end
   end
 end

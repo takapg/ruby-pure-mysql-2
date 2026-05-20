@@ -1,21 +1,25 @@
 # frozen_string_literal: true
 
+require_relative 'constants'
+
 module RubyPureMysql
   # MySQLプロトコルのパケット構築を支援するモジュール
   module PacketBuilder
+    include Constants
+
     def lenenc_str(str)
       lenenc_prefix(str.bytesize) + str
     end
 
     def lenenc_prefix(len)
-      if len < 251
+      if len < LENENC_INT_LIMIT_1
         [len].pack('C')
-      elsif len <= 0xFFFF
-        [0xFC, len].pack('Cv')
-      elsif len <= 0xFFFFFF
-        [0xFD, len].pack('CvC')
+      elsif len <= LENENC_INT_LIMIT_2
+        [LENENC_INT_2_BYTES, len].pack('Cv')
+      elsif len <= LENENC_INT_LIMIT_3
+        [LENENC_INT_3_BYTES, len].pack('CvC')
       else
-        [0xFE, len].pack('CQ<')
+        [LENENC_INT_8_BYTES, len].pack('CQ<')
       end
     end
 
@@ -24,15 +28,15 @@ module RubyPureMysql
     end
 
     def build_handshake_header
-      [[10].pack('C'), "Hi-MySQL-8.0\0", [1].pack('L<'), '12345678', [0x00].pack('C')].join
+      [[PROTOCOL_VERSION_10].pack('C'), SERVER_VERSION, [1].pack('L<'), '12345678', [0x00].pack('C')].join
     end
 
     def build_handshake_auth_data
       [
-        [0xF7FF, 0x21, 0x0002, 0x8007, 0x15].pack('S< C S< S< C'),
+        [0xF7FF, DEFAULT_CHARSET, SERVER_STATUS_AUTOCOMMIT, 0x8007, 0x15].pack('S< C S< S< C'),
         "\0" * 10,
         '1234567890123',
-        "mysql_native_password\0"
+        AUTH_PLUGIN_NAME
       ].join
     end
 
@@ -45,7 +49,7 @@ module RubyPureMysql
 
     def build_column_definition_details
       [
-        [0x0C].pack('C'), [33].pack('S<'), [10].pack('L<'),
+        [0x0C].pack('C'), [DEFAULT_CHARSET].pack('S<'), [10].pack('L<'),
         [0x08].pack('C'), [0x0000].pack('S<'), [0].pack('C'), [0, 0].pack('C2')
       ].join
     end
