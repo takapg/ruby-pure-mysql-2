@@ -83,6 +83,8 @@ jobs:
                 --yes-always \
                 --chat-language japanese \
                 --architect \
+                --lint-cmd "bundle exec rubocop" \
+                --auto-lint \
                 --test-cmd "bundle exec rspec" \
                 --auto-test \
                 --message "$INSTRUCTION"
