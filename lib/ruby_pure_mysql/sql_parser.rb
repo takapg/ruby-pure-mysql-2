@@ -8,23 +8,36 @@ module RubyPureMysql
     # @param query [String] 解析対象のSQLクエリ
     # @return [Hash] 解析結果またはエラー情報を含むハッシュ
     def self.parse(query)
-      # UNIONで分割して各パートを処理
       parts = query.split(/UNION/i).map(&:strip)
-      rows = parts.map do |part|
-        match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
-        return { error: 'Invalid SQL' } unless match
+      rows = []
 
-        expression = match[1]
-        columns = expression.split(',').map(&:strip)
+      parts.each do |part|
+        result = parse_part(part)
+        return result if result.key?(:error)
 
-        columns.map do |col|
-          return { error: 'Unsupported expression' } unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
-
-          col.split('+').map(&:strip).map(&:to_i).sum
-        end
+        rows << result[:result]
       end
 
       { result: rows }
     end
+
+    def self.parse_part(part)
+      match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
+      return { error: 'Invalid SQL' } unless match
+
+      columns = match[1].split(',').map(&:strip)
+      values = columns.map { |col| evaluate_expression(col) }
+
+      return { error: 'Unsupported expression' } if values.include?(:error)
+
+      { result: values }
+    end
+
+    def self.evaluate_expression(col)
+      return :error unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+
+      col.split('+').map(&:strip).map(&:to_i).sum
+    end
+    private_class_method :parse_part, :evaluate_expression
   end
 end
