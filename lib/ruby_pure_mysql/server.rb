@@ -74,8 +74,14 @@ module RubyPureMysql
     end
 
     def send_ok_packet(client, sequence)
-      # OKパケット: 0x00, affected_rows(0), last_insert_id(0), status_flags(0x0002), warnings(0)
-      payload = [OK_PACKET_HEADER, 0x00, 0x00, SERVER_STATUS_AUTOCOMMIT, 0x00, 0x00].pack('C*')
+      # OKパケット: 0x00, affected_rows(0), last_insert_id(0), status_flags(2 bytes), warnings(2 bytes)
+      payload = [
+        OK_PACKET_HEADER,
+        0, # affected_rows
+        0, # last_insert_id
+        SERVER_STATUS_AUTOCOMMIT, # status_flags (2 bytes, little-endian)
+        0                         # warnings (2 bytes, little-endian)
+      ].pack('C C C v v')
       send_packet(client, sequence, payload)
     end
 
