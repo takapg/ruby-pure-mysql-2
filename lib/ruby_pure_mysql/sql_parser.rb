@@ -55,7 +55,7 @@ module RubyPureMysql
       end
       return :error unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
 
-      col.split('+').map(&:strip).map(&:to_i).sum
+      col.split('+').sum { |x| x.strip.to_i }
     end
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part
   end
