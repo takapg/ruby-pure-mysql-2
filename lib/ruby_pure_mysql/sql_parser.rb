@@ -19,6 +19,7 @@ module RubyPureMysql
 
         columns.map do |col|
           return { error: 'Unsupported expression' } unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+
           col.split('+').map(&:strip).map(&:to_i).sum
         end
       end
