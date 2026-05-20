@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # MySQLプロトコルのパケット送信を支援するモジュール
   module PacketSender
     include Constants
 
@@ -81,37 +82,15 @@ module RubyPureMysql
     def build_column_definition_payload(val, index)
       type = val.is_a?(String) ? MYSQL_TYPE_VAR_STRING : MYSQL_TYPE_LONGLONG
       name = index.to_s
+      pack_column_definition(type, name)
+    end
 
+    def pack_column_definition(type, name)
       # Column Definition Packet
-      # catalog: "def"
-      # schema: ""
-      # table: ""
-      # org_table: ""
-      # name: name
-      # org_name: name
-      # length: 0x0c
-      # charset: 0x21, 0x00 (utf8)
-      # column_length: 0x00, 0x00, 0x00, 0x00
-      # type: type
-      # flags: 0x00, 0x00
-      # decimals: 0x00
-      # filler: 0x00, 0x00
-
-      [
-        lenenc_str('def'),
-        lenenc_str(''),
-        lenenc_str(''),
-        lenenc_str(''),
-        lenenc_str(name),
-        lenenc_str(name),
-        0x0c,
-        0x21, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-        type,
-        0x00, 0x00,
-        0x00,
-        0x00, 0x00
-      ].pack('a*a*a*a*a*a*C C C C C C C C C C C C C')
+      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
+              lenenc_str(name), lenenc_str(name), 0x0c, 0x21, 0x00,
+              0x00, 0x00, 0x00, 0x00, type, 0x00, 0x00, 0x00, 0x00, 0x00]
+      data.pack('a*a*a*a*a*a*C C C C C C C C C C C C C')
     end
 
     def send_row_data(client, seq, values)
