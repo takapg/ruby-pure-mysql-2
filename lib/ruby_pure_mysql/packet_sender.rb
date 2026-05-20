@@ -50,6 +50,8 @@ module RubyPureMysql
     end
 
     def send_result_set(client, rows)
+      return if rows.nil? || rows.empty?
+
       # 1. Column Count (seq 1)
       # rows.first.size でカラム数を取得
       send_packet(client, 1, [rows.first.size].pack('C'))
