@@ -112,23 +112,28 @@ module RubyPureMysql
       send_packet(client, 1, [values.size].pack('C'))
 
       # 2. Column Definition (seq 2...)
+      seq = send_column_definitions(client, values)
+
+      # 3. EOF (seq N)
+      send_eof(client, seq)
+
+      # 4. Row Data (seq N+1) & 5. EOF (seq N+2)
+      send_row_data(client, seq + 1, values)
+      send_eof(client, seq + 2)
+    end
+
+    def send_column_definitions(client, values)
       seq = 2
       values.each_with_index do |_, index|
         send_packet(client, seq, build_column_definition_payload((index + 1).to_s))
         seq += 1
       end
+      seq
+    end
 
-      # 3. EOF (seq N)
-      send_eof(client, seq)
-      seq += 1
-
-      # 4. Row Data (seq N+1)
+    def send_row_data(client, seq, values)
       row_payload = values.map { |v| lenenc_str(v.to_s) }.join
       send_packet(client, seq, row_payload)
-      seq += 1
-
-      # 5. EOF (seq N+2)
-      send_eof(client, seq)
     end
 
     def send_eof(client, sequence)
