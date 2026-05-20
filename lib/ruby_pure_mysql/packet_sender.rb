@@ -62,7 +62,8 @@ module RubyPureMysql
       send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, 2, cols)
+      # カラム名と、型判定のためのサンプル行(rows.first)を渡す
+      seq = send_column_definitions(client, 2, cols, rows.first)
 
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
@@ -85,7 +86,8 @@ module RubyPureMysql
       # どちらも存在しない場合はエラー
       raise 'Columns must be provided for empty result sets' if cols.nil?
 
-      cols
+      # カラム名がない場合はインデックスを名前にする
+      cols.each_with_index.map { |_, i| (i + 1).to_s }
     end
 
     def send_rows(client, start_seq, rows)
@@ -97,19 +99,15 @@ module RubyPureMysql
       send_eof(client, current_seq & 0xFF)
     end
 
-    def send_column_definitions(client, start_seq, values)
+    def send_column_definitions(client, start_seq, column_names, sample_row)
       seq = start_seq
-      values.each_with_index do |val, index|
-        send_packet(client, seq & 0xFF, build_column_definition_payload(val, index + 1))
+      column_names.each_with_index do |name, index|
+        val = sample_row ? sample_row[index] : nil
+        type = val.is_a?(Integer) ? MYSQL_TYPE_LONGLONG : MYSQL_TYPE_VAR_STRING
+        send_packet(client, seq & 0xFF, pack_column_definition(type, name))
         seq += 1
       end
       seq
-    end
-
-    def build_column_definition_payload(val, index)
-      type = val.is_a?(String) ? MYSQL_TYPE_VAR_STRING : MYSQL_TYPE_LONGLONG
-      name = index.to_s
-      pack_column_definition(type, name)
     end
 
     def pack_column_definition(type, name)
