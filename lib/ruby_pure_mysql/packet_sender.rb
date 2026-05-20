@@ -52,7 +52,15 @@ module RubyPureMysql
     end
 
     def send_result_set(client, rows)
-      return if rows.nil? || rows.empty?
+      return if rows.nil?
+
+      if rows.empty?
+        # 1. Column Count (seq 1) - 0 columns
+        send_packet(client, 1, [0].pack('C'))
+        # 2. EOF (seq 2)
+        send_eof(client, 2)
+        return
+      end
 
       # 1. Column Count (seq 1)
       # rows.first.size でカラム数を取得
