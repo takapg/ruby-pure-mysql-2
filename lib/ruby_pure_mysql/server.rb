@@ -113,7 +113,7 @@ module RubyPureMysql
       # 3. EOF (seq 3)
       send_eof(client, 3)
       # 4. Row Data (seq 4)
-      send_packet(client, 4, lenenc_str(value))
+      send_packet(client, 4, lenenc_str(value.to_s))
       # 5. EOF (seq 5)
       send_eof(client, 5)
     end
