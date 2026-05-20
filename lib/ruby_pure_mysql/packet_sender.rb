@@ -58,6 +58,12 @@ module RubyPureMysql
     def send_result_set(client, rows, columns = nil)
       cols = resolve_columns(rows, columns)
 
+      # 行データの要素数が列定義と一致するか検証
+      if rows.any? { |row| row.size != cols.size }
+        send_err_packet(client, 1, 'Internal error: Row width mismatch')
+        return
+      end
+
       # 1. Column Count (seq 1)
       send_packet(client, 1, lenenc_int(cols.size))
 
