@@ -13,26 +13,34 @@ module RubyPureMysql
     end
 
     def self.process_parts(parts)
-      rows = []
-      expected_columns = nil
-      parts.each do |part|
-        res = validate_part(part, expected_columns)
+      state = { expected: nil, columns: nil }
+      rows = parts.map do |part|
+        res = process_single_part(part, state)
         return res if res.key?(:error)
 
-        expected_columns ||= res[:size]
-        rows << res[:result]
+        res[:result]
       end
-      { result: rows }
+      { result: rows, columns: state[:columns] }
+    end
+
+    def self.process_single_part(part, state)
+      res = validate_part(part, state[:expected])
+      return res if res.key?(:error)
+
+      state[:expected] ||= res[:size]
+      state[:columns] ||= res[:columns]
+      res
     end
 
     def self.validate_part(part, expected_columns)
       result = parse_part(part)
       return result if result.key?(:error)
+
       if expected_columns && result[:result].size != expected_columns
         return { error: 'The used SELECT statements have a different number of columns' }
       end
 
-      { result: result[:result], size: result[:result].size }
+      { result: result[:result], columns: result[:columns], size: result[:result].size }
     end
 
     def self.parse_part(part)
@@ -44,19 +52,36 @@ module RubyPureMysql
 
       return { error: 'Unsupported expression' } if values.include?(:error)
 
-      { result: values }
+      { result: values, columns: columns }
     end
 
     def self.evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
-      if (match = col.match(/\A(['"])(.*?)\1\z/))
-        return match[2]
-      end
-      return :error unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+      return evaluate_system_variable(col) if col.start_with?('@@')
+      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
+      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
 
+      :error
+    end
+
+    def self.evaluate_system_variable(col)
+      case col.downcase
+      when '@@version_comment' then 'ruby-pure-mysql-2'
+      when '@@max_allowed_packet' then 67_108_864
+      else :error
+      end
+    end
+
+    def self.evaluate_string_literal(col)
+      col.match(/\A(['"])(.*?)\1\z/)[2]
+    end
+
+    def self.evaluate_math(col)
       col.split('+').sum { |x| x.strip.to_i }
     end
-    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part
+    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
+                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
+                         :process_single_part
   end
 end

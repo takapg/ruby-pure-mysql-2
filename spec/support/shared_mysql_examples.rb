@@ -85,4 +85,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
   #     expect(results.count).to eq(0)
   #   end
   # end
+
+  describe 'System Variables support' do
+    it 'returns a value for SELECT @@version_comment;' do
+      results = client.query('SELECT @@version_comment;')
+      expect(results.first.values.first).to be_a(String)
+      expect(results.fields.first).to eq('@@version_comment')
+    end
+  end
 end

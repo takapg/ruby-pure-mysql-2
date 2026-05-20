@@ -1,37 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'packet_io'
+
 module RubyPureMysql
   # MySQLプロトコルのパケット送信を支援するモジュール
   module PacketSender
     include Constants
     include PacketBuilder
-
-    def send_packet(client, seq, payload)
-      len = payload.bytesize
-      header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
-      packet = header + [seq].pack('C') + payload
-
-      RubyPureMysql.logger.debug "Sending packet [seq: #{seq}, len: #{len}]"
-      client.write(packet)
-    end
-
-    def read_packet(client)
-      header = client.read(4)
-      return nil unless header&.bytesize == 4
-
-      len, seq = parse_packet_header(header)
-      payload = client.read(len)
-      return nil unless payload&.bytesize == len
-
-      RubyPureMysql.logger.debug "Received packet [seq: #{seq}, len: #{len}]"
-      [seq, payload]
-    end
-
-    def parse_packet_header(header)
-      len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
-      seq = header[3].unpack1('C')
-      [len, seq]
-    end
+    include PacketIO
 
     def send_handshake(client)
       send_packet(client, 0, build_handshake_payload)
@@ -57,29 +33,49 @@ module RubyPureMysql
 
     def send_result_set(client, rows, columns = nil)
       cols = resolve_columns(rows, columns)
+      return unless valid_row_width?(client, rows, cols)
 
       # 1. Column Count (seq 1)
       send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, 2, cols)
+      seq = send_column_definitions(client, 2, cols, rows.first)
 
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
 
       # 4. Row Data / 終端
+      send_result_set_data(client, seq + 1, rows)
+    end
+
+    def valid_row_width?(client, rows, cols)
+      if rows.any? { |row| !row.respond_to?(:size) || row.size != cols.size }
+        send_err_packet(client, 1, 'Internal error: Invalid row type or width mismatch')
+        return false
+      end
+      true
+    end
+
+    def send_result_set_data(client, start_seq, rows)
       if rows.empty?
-        send_eof(client, (seq + 1) & 0xFF)
+        send_eof(client, start_seq & 0xFF)
       else
-        send_rows(client, (seq + 1) & 0xFF, rows)
+        send_rows(client, start_seq & 0xFF, rows)
       end
     end
 
     def resolve_columns(rows, columns)
-      cols = columns || (rows.first if rows && !rows.empty?)
+      # columnsが明示的に渡されている場合はそれを優先
+      return columns if columns && !columns.empty?
+
+      # 渡されていない場合はrowsから推論
+      cols = (rows.first if rows && !rows.empty?)
+
+      # どちらも存在しない場合はエラー
       raise 'Columns must be provided for empty result sets' if cols.nil?
 
-      cols
+      # カラム名がない場合はインデックスを名前にする
+      cols.each_with_index.map { |_, i| (i + 1).to_s }
     end
 
     def send_rows(client, start_seq, rows)
@@ -91,27 +87,35 @@ module RubyPureMysql
       send_eof(client, current_seq & 0xFF)
     end
 
-    def send_column_definitions(client, start_seq, values)
+    def send_column_definitions(client, start_seq, column_names, sample_row)
       seq = start_seq
-      values.each_with_index do |val, index|
-        send_packet(client, seq & 0xFF, build_column_definition_payload(val, index + 1))
+      column_names.each_with_index do |name, index|
+        val = sample_row ? sample_row[index] : nil
+        type = val.is_a?(Integer) ? MYSQL_TYPE_LONGLONG : MYSQL_TYPE_VAR_STRING
+        send_packet(client, seq & 0xFF, pack_column_definition(type, name))
         seq += 1
       end
       seq
     end
 
-    def build_column_definition_payload(val, index)
-      type = val.is_a?(String) ? MYSQL_TYPE_VAR_STRING : MYSQL_TYPE_LONGLONG
-      name = index.to_s
-      pack_column_definition(type, name)
-    end
-
+    # MySQL Column Definition Packet (COM_QUERY response):
+    #   - catalog: lenenc_str "def"
+    #   - schema: lenenc_str (empty)
+    #   - table: lenenc_str (empty)
+    #   - org_table: lenenc_str (empty)
+    #   - name: lenenc_str column name
+    #   - org_name: lenenc_str column name
+    #   - fixed_fields_length: 0x0c (12 bytes follow)
+    #   - character_set: 2 bytes (0x21, 0x00 = utf8_general_ci)
+    #   - column_length: 4 bytes
+    #   - column_type: 1 byte
+    #   - flags: 2 bytes
+    #   - decimals: 1 byte
+    #   - filler: 2 bytes
     def pack_column_definition(type, name)
-      # Column Definition Packet
       data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(name), 0x0c, 0x21, 0x00,
-              0x00, 0x00, 0x00, 0x00, type, 0x00, 0x00, 0x00, 0x00, 0x00]
-      data.pack('a*a*a*a*a*a*C C C C C C C C C C C C C')
+              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, type, 0, 0, 0]
+      data.pack('a*a*a*a*a*a*C v V C v C v')
     end
 
     def send_row_data(client, seq, values)
