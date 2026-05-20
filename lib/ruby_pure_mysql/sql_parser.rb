@@ -57,7 +57,7 @@ module RubyPureMysql
       if col.start_with?('@@')
         return case col.downcase
                when '@@version_comment' then 'ruby-pure-mysql-2'
-               when '@@max_allowed_packet' then 67108864
+               when '@@max_allowed_packet' then 67_108_864
                else :error
                end
       end
