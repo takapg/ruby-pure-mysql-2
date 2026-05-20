@@ -19,14 +19,18 @@ module RubyPureMysql
       header = client.read(4)
       return nil unless header&.bytesize == 4
 
-      # lenは3バイトのリトルエンディアン
-      len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
-      seq = header[3].unpack1('C')
+      len, seq = parse_packet_header(header)
       payload = client.read(len)
       return nil unless payload&.bytesize == len
 
       RubyPureMysql.logger.debug "Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]
+    end
+
+    def parse_packet_header(header)
+      len = header[0..2].unpack('C3').then { |b| b[0] + (b[1] << 8) + (b[2] << 16) }
+      seq = header[3].unpack1('C')
+      [len, seq]
     end
 
     def send_handshake(client)
@@ -55,26 +59,30 @@ module RubyPureMysql
       return if rows.nil?
 
       if rows.empty?
-        # 1. Column Count (seq 1) - 0 columns
-        send_packet(client, 1, [0].pack('C'))
-        # 2. EOF (seq 2)
-        send_eof(client, 2)
+        send_empty_result_set(client)
         return
       end
 
       # 1. Column Count (seq 1)
-      # rows.first.size でカラム数を取得
       send_packet(client, 1, [rows.first.size].pack('C'))
 
       # 2. Column Definition (seq 2...)
-      # カラム定義は最初の行の構造に基づいて作成
       seq = send_column_definitions(client, rows.first)
 
       # 3. EOF (seq N)
       send_eof(client, seq)
 
-      # 4. Row Data (seq N+1...) & 5. EOF (seq N+last)
-      current_seq = (seq + 1) & 0xFF
+      # 4. Row Data & 5. EOF
+      send_rows(client, seq + 1, rows)
+    end
+
+    def send_empty_result_set(client)
+      send_packet(client, 1, [0].pack('C'))
+      send_eof(client, 2)
+    end
+
+    def send_rows(client, start_seq, rows)
+      current_seq = start_seq & 0xFF
       rows.each do |row|
         send_row_data(client, current_seq, row)
         current_seq = (current_seq + 1) & 0xFF
