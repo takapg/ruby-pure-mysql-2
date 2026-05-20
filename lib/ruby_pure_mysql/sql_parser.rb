@@ -14,17 +14,16 @@ module RubyPureMysql
 
     def self.process_parts(parts)
       rows = []
-      expected_columns = nil
-      column_names = nil
+      expected = nil
+      columns = nil
       parts.each do |part|
-        res = validate_part(part, expected_columns)
+        res = validate_part(part, expected)
         return res if res.key?(:error)
-
-        expected_columns ||= res[:size]
-        column_names ||= res[:columns]
+        expected ||= res[:size]
+        columns ||= res[:columns]
         rows << res[:result]
       end
-      { result: rows, columns: column_names }
+      { result: rows, columns: columns }
     end
 
     def self.validate_part(part, expected_columns)
@@ -52,23 +51,29 @@ module RubyPureMysql
     def self.evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
+      return evaluate_system_variable(col) if col.start_with?('@@')
+      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
+      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
 
-      # システム変数対応
-      if col.start_with?('@@')
-        return case col.downcase
-               when '@@version_comment' then 'ruby-pure-mysql-2'
-               when '@@max_allowed_packet' then 67_108_864
-               else :error
-               end
+      :error
+    end
+
+    def self.evaluate_system_variable(col)
+      case col.downcase
+      when '@@version_comment' then 'ruby-pure-mysql-2'
+      when '@@max_allowed_packet' then 67_108_864
+      else :error
       end
+    end
 
-      if (match = col.match(/\A(['"])(.*?)\1\z/))
-        return match[2]
-      end
-      return :error unless /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+    def self.evaluate_string_literal(col)
+      col.match(/\A(['"])(.*?)\1\z/)[2]
+    end
 
+    def self.evaluate_math(col)
       col.split('+').sum { |x| x.strip.to_i }
     end
-    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part
+    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
+                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math
   end
 end
