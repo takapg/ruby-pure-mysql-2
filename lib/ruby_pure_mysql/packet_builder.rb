@@ -29,7 +29,7 @@ module RubyPureMysql
       elsif number < 65_536
         [0xFC, number].pack('Cv')
       elsif number < 16_777_216
-        [0xFD, number & 0xFF, (number >> 8) & 0xFF, (number >> 16) & 0xFF].pack('C3')
+        [0xFD, number & 0xFF, (number >> 8) & 0xFF, (number >> 16) & 0xFF].pack('C4')
       else
         [0xFE, number].pack('CQ<')
       end
