@@ -66,4 +66,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[1].values).to eq([2])
     end
   end
+
+  describe 'Data Type support' do
+    it 'returns a string value for SELECT "hello";' do
+      results = client.query('SELECT "hello";')
+      expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'returns nil for SELECT NULL;' do
+      results = client.query('SELECT NULL;')
+      expect(results.first.values.first).to be_nil
+    end
+end
 end
