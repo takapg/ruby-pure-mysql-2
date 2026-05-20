@@ -8,7 +8,7 @@ module RubyPureMysql
     # @param query [String] 解析対象のSQLクエリ
     # @return [Hash] 解析結果またはエラー情報を含むハッシュ
     def self.parse(query)
-      parts = query.split(/UNION/i).map(&:strip)
+      parts = query.split(/\s+UNION\s+/i).map(&:strip)
       process_parts(parts)
     end
 
@@ -18,7 +18,6 @@ module RubyPureMysql
       parts.each do |part|
         res = validate_part(part, expected_columns)
         return res if res.key?(:error)
-
         expected_columns ||= res[:size]
         rows << res[:result]
       end
