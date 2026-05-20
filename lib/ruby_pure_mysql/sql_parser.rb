@@ -17,11 +17,9 @@ module RubyPureMysql
 
       results = parts.map do |part|
         # 簡易的な算術演算（数字と+のみ）に対応
-        if /\A\d+(\s*\+\s*\d+)*\z/.match?(part)
-          part.split('+').map(&:strip).map(&:to_i).sum
-        else
-          return { error: 'Unsupported expression' }
-        end
+        return { error: 'Unsupported expression' } unless /\A\d+(\s*\+\s*\d+)*\z/.match?(part)
+
+        part.split('+').map(&:strip).map(&:to_i).sum
       end
 
       { result: results }
