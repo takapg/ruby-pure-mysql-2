@@ -126,7 +126,8 @@ module RubyPureMysql
 
     def send_eof(client, sequence)
       # EOFパケット: 0xFE, warning_count(0), status_flags(0x0002)
-      send_packet(client, sequence, [EOF_PACKET_HEADER, 0x00, 0x00, SERVER_STATUS_AUTOCOMMIT, 0x00].pack('C*'))
+      payload = [EOF_PACKET_HEADER, 0, SERVER_STATUS_AUTOCOMMIT].pack('C v v')
+      send_packet(client, sequence, payload)
     end
   end
 end
