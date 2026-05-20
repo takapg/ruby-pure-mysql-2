@@ -128,8 +128,42 @@ module RubyPureMysql
 
     def send_column_definitions(client, values)
       seq = 2
-      values.each_with_index do |_, index|
-        send_packet(client, seq, build_column_definition_payload((index + 1).to_s))
+      values.each_with_index do |val, index|
+        type = val.is_a?(String) ? MYSQL_TYPE_VAR_STRING : MYSQL_TYPE_LONGLONG
+        name = (index + 1).to_s
+        
+        # Column Definition Packet
+        # catalog: "def"
+        # schema: ""
+        # table: ""
+        # org_table: ""
+        # name: name
+        # org_name: name
+        # length: 0x0c
+        # charset: 0x21, 0x00 (utf8)
+        # column_length: 0x00, 0x00, 0x00, 0x00
+        # type: type
+        # flags: 0x00, 0x00
+        # decimals: 0x00
+        # filler: 0x00, 0x00
+        
+        payload = [
+          lenenc_str("def"),
+          lenenc_str(""),
+          lenenc_str(""),
+          lenenc_str(""),
+          lenenc_str(name),
+          lenenc_str(name),
+          0x0c,
+          0x21, 0x00,
+          0x00, 0x00, 0x00, 0x00,
+          type,
+          0x00, 0x00,
+          0x00,
+          0x00, 0x00
+        ].pack('a*a*a*a*a*a*C C C C C C C C C C C C C')
+        
+        send_packet(client, seq, payload)
         seq += 1
       end
       seq
@@ -140,18 +174,20 @@ module RubyPureMysql
         if v.nil?
           [NULL_COLUMN_VALUE].pack('C')
         else
-          # 文字列をLength Encoded Stringとしてエンコードする
-          s = v.to_s
-          len = s.bytesize
-          if len < 251
-            [len].pack('C') + s
-          else
-            # 251以上の場合の処理
-            [0xFC, len & 0xFF, (len >> 8) & 0xFF].pack('C C C') + s
-          end
+          lenenc_str(v.to_s)
         end
       end.join
       send_packet(client, seq, row_payload)
+    end
+
+    def lenenc_str(s)
+      len = s.bytesize
+      if len < 251
+        [len].pack('C') + s
+      else
+        # 251以上の場合の処理
+        [0xFC, len & 0xFF, (len >> 8) & 0xFF].pack('C C C') + s
+      end
     end
 
     def send_eof(client, sequence)
