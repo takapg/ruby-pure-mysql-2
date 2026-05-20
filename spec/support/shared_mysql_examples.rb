@@ -48,4 +48,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
   end
+
+  describe 'Multi-column support' do
+    it 'executes SELECT 1, 2; and returns two columns with correct values' do
+      results = client.query('SELECT 1, 2;')
+      expect(results.fields.size).to eq(2)
+      expect(results.first.values).to eq([1, 2])
+    end
+  end
 end

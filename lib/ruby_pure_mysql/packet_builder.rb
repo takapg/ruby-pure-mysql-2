@@ -40,10 +40,10 @@ module RubyPureMysql
       ].join
     end
 
-    def build_column_definition_payload
+    def build_column_definition_payload(name)
       [
         lenenc_str('def'), lenenc_str(''), lenenc_str(''),
-        lenenc_str('1'), lenenc_str('1'), lenenc_str('1')
+        lenenc_str(name), lenenc_str(name), lenenc_str(name)
       ].join + build_column_definition_details
     end
 
