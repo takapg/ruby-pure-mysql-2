@@ -88,7 +88,7 @@ module RubyPureMysql
 
     def send_err_packet(client, sequence, message)
       # ERR Packet: 0xFF, ErrorCode(2), SQLStateMarker('#'), SQLState(5), Message
-      payload = [0xFF].pack('C') + [1].pack('v') + "#HY000" + message
+      payload = "#{[0xFF].pack('C')}#{[1].pack('v')}#HY000#{message}"
       send_packet(client, sequence, payload)
     end
 

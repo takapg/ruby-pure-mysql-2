@@ -43,9 +43,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'returns an error for unsupported syntax' do
-      expect {
+      expect do
         client.query('INVALID SQL')
-      }.to raise_error(Mysql2::Error)
+      end.to raise_error(Mysql2::Error)
     end
   end
 end
