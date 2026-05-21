@@ -101,7 +101,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          INSTRUCTION=$(echo "$RAW_INSTRUCTION" | sed -e 's|^\/aider[[:space:]]*||')
+          INSTRUCTION=$(echo "$RAW_INSTRUCTION" | sed -e 's|^\/aider-code[[:space:]]*||')
 
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
             if [ -z "$(echo "$INSTRUCTION" | tr -d '[:space:]')" ]; then
