@@ -75,11 +75,12 @@ module RubyPureMysql
     end
 
     def handle_insert(client, result)
-      if @storage_engine.insert(result[:table_name], result[:values])
-        send_ok_packet(client, 1)
-      else
-        send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
-      end
+      columns = @storage_engine.get_columns(result[:table_name])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
+      return send_err_packet(client, 1, "Column count doesn't match value count at row 1", 1136) if result[:values].size != columns.size
+
+      @storage_engine.insert(result[:table_name], result[:values])
+      send_ok_packet(client, 1)
     end
 
     def handle_select(client, result)
