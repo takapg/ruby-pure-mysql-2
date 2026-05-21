@@ -40,7 +40,7 @@ module RubyPureMysql
       end
     end
 
-    def update(table_name, col_idx, new_value, where_col_idx, where_value)
+    def update(table_name, col_idx, where_col_idx, new_value, where_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
