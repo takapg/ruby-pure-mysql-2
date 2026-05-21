@@ -75,8 +75,11 @@ module RubyPureMysql
     end
 
     def handle_insert(client, result)
-      @storage_engine.insert(result[:table_name], result[:values])
-      send_ok_packet(client, 1)
+      if @storage_engine.insert(result[:table_name], result[:values])
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
+      end
     end
 
     def handle_select(client, result)
