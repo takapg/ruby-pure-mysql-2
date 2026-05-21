@@ -32,20 +32,21 @@ module RubyPureMysql
       cols = []
       buf = +''
       depth = 0
-
-      definition.each_char do |ch|
-        depth += 1 if ch == '('
-        depth -= 1 if ch == ')' && depth.positive?
-
-        if ch == ',' && depth.zero?
-          cols << buf.strip
-          buf = +''
-        else
-          buf << ch
-        end
-      end
+      definition.each_char { |ch| depth, buf = process_char(ch, depth, buf, cols) }
       cols << buf.strip unless buf.strip.empty?
       cols
+    end
+
+    def self.process_char(ch, depth, buf, cols)
+      depth += 1 if ch == '('
+      depth -= 1 if ch == ')' && depth.positive?
+      if ch == ',' && depth.zero?
+        cols << buf.strip
+        buf = +''
+      else
+        buf << ch
+      end
+      [depth, buf]
     end
 
     def self.process_parts(parts)
@@ -118,6 +119,6 @@ module RubyPureMysql
 
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
                          :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
-                         :process_single_part, :split_columns
+                         :process_single_part, :split_columns, :process_char
   end
 end
