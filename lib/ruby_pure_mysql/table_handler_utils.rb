@@ -46,5 +46,14 @@ module RubyPureMysql
 
       [col_idx, where_col_idx]
     end
+
+    def get_delete_params(client, columns, result)
+      return [nil, nil] unless result[:where]
+
+      col_idx = get_column_index(client, columns, result[:where][:column])
+      return nil unless col_idx
+
+      [col_idx, result[:where][:value]]
+    end
   end
 end

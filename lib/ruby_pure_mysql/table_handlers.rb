@@ -39,15 +39,10 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      where_col_idx = nil
-      where_value = nil
-      if result[:where]
-        where_col_idx = get_column_index(client, columns, result[:where][:column])
-        return unless where_col_idx
-        where_value = result[:where][:value]
-      end
+      params = get_delete_params(client, columns, result)
+      return unless params
 
-      success = @storage_engine.delete(result[:table_name], where_col_idx, where_value)
+      success = @storage_engine.delete(result[:table_name], *params)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
