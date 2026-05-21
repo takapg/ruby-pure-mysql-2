@@ -31,9 +31,11 @@ module RubyPureMysql
 
     def insert(table_name, values)
       @tables_mutex.synchronize do
-        return false unless @tables.key?(table_name)
+        columns = @tables[table_name]
+        return false unless columns
+        return false unless values.size == columns.size
 
-        @data[table_name] << values
+        @data[table_name] << values.dup
         true
       end
     end
