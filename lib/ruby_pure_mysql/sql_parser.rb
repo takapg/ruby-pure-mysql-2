@@ -100,7 +100,9 @@ module RubyPureMysql
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: split_columns(match[3])
+        columns: split_columns(match[3]).map do |col_def|
+          col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
+        end
       }
     end
 
