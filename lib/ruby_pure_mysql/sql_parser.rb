@@ -17,10 +17,15 @@ module RubyPureMysql
     end
 
     def self.parse_create_table(query)
-      match = query.match(/\ACREATE\s+TABLE\s+(\w+)\s*\((.+)\)\s*;?\s*\z/i)
+      match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid CREATE TABLE syntax' } unless match
 
-      { type: :create_table, table_name: match[1], columns: match[2].split(',').map(&:strip) }
+      {
+        type: :create_table,
+        if_not_exists: !match[1].nil?,
+        table_name: match[2],
+        columns: match[3].split(',').map(&:strip)
+      }
     end
 
     def self.process_parts(parts)
