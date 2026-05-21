@@ -20,7 +20,7 @@ module RubyPureMysql
     end
 
     def handle_update(client, result)
-      columns = validate_table_and_where(client, result)
+      columns = validate_table(client, result[:table_name])
       return unless columns
 
       indices = get_update_indices(client, columns, result)
@@ -33,7 +33,7 @@ module RubyPureMysql
     end
 
     def handle_delete(client, result)
-      columns = validate_table_and_where(client, result)
+      columns = validate_table(client, result[:table_name])
       return unless columns
 
       where_col_idx = get_column_index(client, columns, result[:where][:column])

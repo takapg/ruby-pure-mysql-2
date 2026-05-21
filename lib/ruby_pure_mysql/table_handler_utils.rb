@@ -3,12 +3,18 @@
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
   module TableHandlerUtils
-    def validate_table_and_where(client, result)
-      columns = @storage_engine.get_columns(result[:table_name])
+    def validate_table(client, table_name)
+      columns = @storage_engine.get_columns(table_name)
       unless columns
-        send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
+        send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146)
         return nil
       end
+      columns
+    end
+
+    def validate_table_and_where(client, result)
+      columns = validate_table(client, result[:table_name])
+      return nil unless columns
 
       unless result[:where]
         send_err_packet(client, 1, 'WHERE clause is required', 1064)
