@@ -25,7 +25,10 @@ module RubyPureMysql
       where_col_idx = get_column_index(client, columns, result[:where][:column])
       return unless where_col_idx
 
-      success = @storage_engine.update(result[:table_name], col_idx, result[:value], where_col_idx, result[:where][:value])
+      success = @storage_engine.update(
+        result[:table_name], col_idx, result[:value],
+        where_col_idx, result[:where][:value]
+      )
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
