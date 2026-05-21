@@ -45,7 +45,7 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         @data[table_name].each do |row|
-          row[col_idx] = new_value if row[where_col_idx] == where_value
+          row[col_idx] = new_value if where_col_idx.nil? || row[where_col_idx] == where_value
         end
         true
       end
@@ -55,7 +55,11 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        @data[table_name].reject! { |row| row[where_col_idx] == where_value }
+        if where_col_idx.nil?
+          @data[table_name].clear
+        else
+          @data[table_name].reject! { |row| row[where_col_idx] == where_value }
+        end
         true
       end
     end
