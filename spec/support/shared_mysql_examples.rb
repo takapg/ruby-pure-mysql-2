@@ -109,4 +109,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
   end
+
+  describe 'Data Manipulation (Storage Engine)' do
+    before do
+      # 現時点ではDROP TABLEは未実装ですが、テストの前提として記述します
+      # 必要に応じて実装側で対応してください
+      begin
+        client.query('DROP TABLE IF EXISTS users;')
+      rescue StandardError
+        # 無視
+      end
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+    end
+
+    it 'inserts and selects data correctly' do
+      # 1. データの挿入
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+
+      # 2. データの取得
+      results = client.query('SELECT * FROM users;')
+
+      expect(results.count).to eq(2)
+      rows = results.to_a
+      expect(rows[0].values).to eq([1, 'alice'])
+      expect(rows[1].values).to eq([2, 'bob'])
+    end
+  end
 end
