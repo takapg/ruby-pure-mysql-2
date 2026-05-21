@@ -8,7 +8,6 @@ module RubyPureMysql
       @tables_mutex = Mutex.new
     end
 
-    # rubocop:disable Naming/PredicateMethod
     def create_table(name, columns)
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
@@ -17,6 +16,5 @@ module RubyPureMysql
         true
       end
     end
-    # rubocop:enable Naming/PredicateMethod
   end
 end
