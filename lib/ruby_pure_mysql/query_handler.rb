@@ -1,34 +1,8 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
-  # クエリのハンドリングを行うモジュール
-  module QueryHandler
-    def handle_query(client, packet_body)
-      sql = packet_body[1..].strip
-      query_type = sql.split(/\s+/, 2).first&.upcase
-      RubyPureMysql.logger.info "Received Query type: #{query_type}"
-
-      result = SqlParser.parse(sql)
-
-      if result[:error]
-        send_err_packet(client, 1, result[:error])
-      else
-        dispatch_query(client, result)
-      end
-    end
-
-    def dispatch_query(client, result)
-      case result[:type]
-      when :create_table then handle_create_table(client, result)
-      when :drop_table   then handle_drop_table(client, result)
-      when :insert       then handle_insert(client, result)
-      when :update       then handle_update(client, result)
-      when :delete       then handle_delete(client, result)
-      when :select_from  then handle_select(client, result)
-      else send_result_set(client, result[:result], result[:columns])
-      end
-    end
-
+  # テーブル操作に関連するハンドラメソッドをまとめたモジュール
+  module TableHandlers
     def handle_insert(client, result)
       columns = @storage_engine.get_columns(result[:table_name])
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
@@ -147,6 +121,37 @@ module RubyPureMysql
         return nil
       end
       idx
+    end
+  end
+
+  # クエリのハンドリングを行うモジュール
+  module QueryHandler
+    include TableHandlers
+
+    def handle_query(client, packet_body)
+      sql = packet_body[1..].strip
+      query_type = sql.split(/\s+/, 2).first&.upcase
+      RubyPureMysql.logger.info "Received Query type: #{query_type}"
+
+      result = SqlParser.parse(sql)
+
+      if result[:error]
+        send_err_packet(client, 1, result[:error])
+      else
+        dispatch_query(client, result)
+      end
+    end
+
+    def dispatch_query(client, result)
+      case result[:type]
+      when :create_table then handle_create_table(client, result)
+      when :drop_table   then handle_drop_table(client, result)
+      when :insert       then handle_insert(client, result)
+      when :update       then handle_update(client, result)
+      when :delete       then handle_delete(client, result)
+      when :select_from  then handle_select(client, result)
+      else send_result_set(client, result[:result], result[:columns])
+      end
     end
   end
 end

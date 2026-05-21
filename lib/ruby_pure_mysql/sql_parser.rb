@@ -81,11 +81,11 @@ module RubyPureMysql
     extend SqlParserUtils
 
     PARSERS = {
-      /\ACREATE\s+TABLE/i => :parse_create_table,
-      /\ADROP\s+TABLE/i   => :parse_drop_table,
-      /\AINSERT\s+INTO/i  => :parse_insert,
-      /\AUPDATE\s+/i      => :parse_update,
-      /\ADELETE\s+/i      => :parse_delete,
+      /\ACREATE\s+TABLE/i      => :parse_create_table,
+      /\ADROP\s+TABLE/i        => :parse_drop_table,
+      /\AINSERT\s+INTO/i       => :parse_insert,
+      /\AUPDATE\s+/i           => :parse_update,
+      /\ADELETE\s+/i           => :parse_delete,
       /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
     }.freeze
 
