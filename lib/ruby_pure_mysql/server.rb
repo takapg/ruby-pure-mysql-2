@@ -83,9 +83,27 @@ module RubyPureMysql
     end
 
     def handle_select(client, result)
+      table_columns = @storage_engine.get_columns(result[:table_name])
+      if table_columns.nil?
+        send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
+        return
+      end
+
       rows = @storage_engine.select(result[:table_name])
-      columns = result[:columns] == ['*'] ? @storage_engine.get_columns(result[:table_name]) : result[:columns]
-      send_result_set(client, rows, columns)
+
+      if result[:columns] == ['*']
+        send_result_set(client, rows, table_columns)
+      else
+        indices = result[:columns].map { |col| table_columns.index(col) }
+
+        if indices.include?(nil)
+          send_err_packet(client, 1, "Unknown column in field list", 1054)
+          return
+        end
+
+        projected_rows = rows.map { |row| indices.map { |i| row[i] } }
+        send_result_set(client, projected_rows, result[:columns])
+      end
     end
 
     def handle_create_table(client, result)
