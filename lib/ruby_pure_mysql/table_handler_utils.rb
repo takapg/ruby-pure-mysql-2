@@ -38,8 +38,11 @@ module RubyPureMysql
       col_idx = get_column_index(client, columns, result[:column])
       return nil unless col_idx
 
-      where_col_idx = get_column_index(client, columns, result[:where][:column])
-      return nil unless where_col_idx
+      where_col_idx = nil
+      if result[:where]
+        where_col_idx = get_column_index(client, columns, result[:where][:column])
+        return nil if where_col_idx.nil?
+      end
 
       [col_idx, where_col_idx]
     end

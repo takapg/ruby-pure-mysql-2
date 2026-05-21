@@ -15,7 +15,9 @@ module RubyPureMysql
         return send_err_packet(client, 1, 'Column count doesn\'t match value count at row 1', 1136)
       end
 
-      @storage_engine.insert(result[:table_name], result[:values])
+      success = @storage_engine.insert(result[:table_name], result[:values])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
+
       send_ok_packet(client, 1)
     end
 
@@ -26,7 +28,8 @@ module RubyPureMysql
       indices = get_update_indices(client, columns, result)
       return unless indices
 
-      success = @storage_engine.update(result[:table_name], *indices, result[:value], result[:where][:value])
+      where_value = result[:where] ? result[:where][:value] : nil
+      success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -36,10 +39,15 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      where_col_idx = get_column_index(client, columns, result[:where][:column])
-      return unless where_col_idx
+      where_col_idx = nil
+      where_value = nil
+      if result[:where]
+        where_col_idx = get_column_index(client, columns, result[:where][:column])
+        return unless where_col_idx
+        where_value = result[:where][:value]
+      end
 
-      success = @storage_engine.delete(result[:table_name], where_col_idx, result[:where][:value])
+      success = @storage_engine.delete(result[:table_name], where_col_idx, where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
