@@ -5,6 +5,7 @@ require_relative 'packet_builder'
 require_relative 'constants'
 require_relative 'sql_parser'
 require_relative 'packet_sender'
+require_relative 'storage_engine'
 
 module RubyPureMysql
   # MySQLサーバーの簡易実装クラス
@@ -15,6 +16,7 @@ module RubyPureMysql
 
     def initialize(host: '127.0.0.1', port: 3307)
       @server = TCPServer.new(host, port)
+      @storage_engine = StorageEngine.new
     end
 
     def run
@@ -57,8 +59,13 @@ module RubyPureMysql
 
       if result[:error]
         send_err_packet(client, 1, result[:error])
+      elsif result[:type] == :create_table
+        if @storage_engine.create_table(result[:table_name], result[:columns])
+          send_ok_packet(client, 1)
+        else
+          send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
+        end
       else
-        # :columns を明示的に渡す
         send_result_set(client, result[:result], result[:columns])
       end
     end
