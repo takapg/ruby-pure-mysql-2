@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples 'a MySQL-compatible server' do |port|
+RSpec.shared_examples 'a MySQL-compatible server' |port|
   let(:client) do
     Mysql2::Client.new(
       host: '127.0.0.1',
@@ -91,6 +91,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT @@version_comment;')
       expect(results.first.values.first).to be_a(String)
       expect(results.fields.first).to eq('@@version_comment')
+    end
+  end
+
+  describe 'Schema Management (Storage Engine)' do
+    it 'executes CREATE TABLE and returns an OK packet' do
+      expect {
+        client.query('CREATE TABLE users (id INT, name VARCHAR);')
+      }.not_to raise_error
+    end
+
+    it 'returns an error when creating a table that already exists' do
+      client.query('CREATE TABLE test_table (id INT);')
+      expect {
+        client.query('CREATE TABLE test_table (id INT);')
+      }.to raise_error(Mysql2::Error, /already exists/)
     end
   end
 end
