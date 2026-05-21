@@ -136,6 +136,7 @@ jobs:
                 --auto-test \
                 --no-attribute-author \
                 --no-attribute-committer \
+                --no-attribute-co-authored-by \
                 --message "$FULL_MESSAGE"
 
       - name: Push changes
