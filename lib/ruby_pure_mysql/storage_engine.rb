@@ -5,14 +5,17 @@ module RubyPureMysql
   class StorageEngine
     def initialize
       @tables = {}
+      @tables_mutex = Mutex.new
     end
 
     # rubocop:disable Naming/PredicateMethod
     def create_table(name, columns)
-      return false if @tables.key?(name)
+      @tables_mutex.synchronize do
+        return false if @tables.key?(name)
 
-      @tables[name] = columns
-      true
+        @tables[name] = columns
+        true
+      end
     end
     # rubocop:enable Naming/PredicateMethod
   end
