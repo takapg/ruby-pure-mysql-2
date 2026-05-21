@@ -25,7 +25,8 @@ module RubyPureMysql
       send_packet(client, sequence, payload)
     end
 
-    def send_err_packet(client, sequence, message, error_code = 0x042A) # 0x042A = 1066 (Default)
+    # 0x042A = 1066 (Default)
+    def send_err_packet(client, sequence, message, error_code = 0x042A)
       # ERR Packet: 0xFF, ErrorCode(2), SQLStateMarker('#'), SQLState(5), Message
       payload = [0xFF, error_code].pack('Cv') + "#HY000#{message}"
       send_packet(client, sequence, payload)

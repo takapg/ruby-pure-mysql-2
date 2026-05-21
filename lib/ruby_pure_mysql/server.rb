@@ -60,13 +60,17 @@ module RubyPureMysql
       if result[:error]
         send_err_packet(client, 1, result[:error])
       elsif result[:type] == :create_table
-        if @storage_engine.create_table(result[:table_name], result[:columns])
-          send_ok_packet(client, 1)
-        else
-          send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
-        end
+        handle_create_table(client, result)
       else
         send_result_set(client, result[:result], result[:columns])
+      end
+    end
+
+    def handle_create_table(client, result)
+      if @storage_engine.create_table(result[:table_name], result[:columns])
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
       end
     end
   end

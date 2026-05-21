@@ -7,11 +7,13 @@ module RubyPureMysql
       @tables = {}
     end
 
+    # rubocop:disable Naming/PredicateMethod
     def create_table(name, columns)
       return false if @tables.key?(name)
 
       @tables[name] = columns
       true
     end
+    # rubocop:enable Naming/PredicateMethod
   end
 end
