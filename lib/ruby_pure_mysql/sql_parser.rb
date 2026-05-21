@@ -1,34 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'sql_parser/evaluator'
+
 module RubyPureMysql
-  # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
-  class SqlParser
-    # 指定されたSQLクエリを解析し、結果を返します。
-    #
-    # @param query [String] 解析対象のSQLクエリ
-    # @return [Hash] 解析結果またはエラー情報を含むハッシュ
-    def self.parse(query)
-      if query.match?(/\ACREATE\s+TABLE/i)
-        parse_create_table(query)
-      else
-        parts = query.split(/\s+UNION\s+/i).map(&:strip)
-        process_parts(parts)
-      end
-    end
+  # SqlParserUtilsは、SQLパースのユーティリティメソッドを提供します。
+  module SqlParserUtils
+    module_function
 
-    def self.parse_create_table(query)
-      match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
-      return { error: 'Invalid CREATE TABLE syntax' } unless match
-
-      {
-        type: :create_table,
-        if_not_exists: !match[1].nil?,
-        table_name: match[2],
-        columns: split_columns(match[3])
-      }
-    end
-
-    def self.split_columns(definition)
+    def split_columns(definition)
       cols = []
       buf = +''
       depth = 0
@@ -37,7 +16,11 @@ module RubyPureMysql
       cols
     end
 
-    def self.process_char(char, depth, buf, cols)
+    def split_insert_values(values_str)
+      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+    end
+
+    def process_char(char, depth, buf, cols)
       depth += 1 if char == '('
       depth -= 1 if char == ')' && depth.positive?
       if char == ',' && depth.zero?
@@ -49,10 +32,10 @@ module RubyPureMysql
       [depth, buf]
     end
 
-    def self.process_parts(parts)
+    def process_parts(parts, evaluator)
       state = { expected: nil, columns: nil }
       rows = parts.map do |part|
-        res = process_single_part(part, state)
+        res = process_single_part(part, state, evaluator)
         return res if res.key?(:error)
 
         res[:result]
@@ -60,8 +43,8 @@ module RubyPureMysql
       { result: rows, columns: state[:columns] }
     end
 
-    def self.process_single_part(part, state)
-      res = validate_part(part, state[:expected])
+    def process_single_part(part, state, evaluator)
+      res = validate_part(part, state[:expected], evaluator)
       return res if res.key?(:error)
 
       state[:expected] ||= res[:size]
@@ -69,8 +52,8 @@ module RubyPureMysql
       res
     end
 
-    def self.validate_part(part, expected_columns)
-      result = parse_part(part)
+    def validate_part(part, expected_columns, evaluator)
+      result = parse_part(part, evaluator)
       return result if result.key?(:error)
 
       if expected_columns && result[:result].size != expected_columns
@@ -80,45 +63,91 @@ module RubyPureMysql
       { result: result[:result], columns: result[:columns], size: result[:result].size }
     end
 
-    def self.parse_part(part)
+    def parse_part(part, evaluator)
       match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
 
       columns = match[1].split(',').map(&:strip)
-      values = columns.map { |col| evaluate_expression(col) }
+      values = columns.map { |col| evaluator.evaluate_expression(col) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
       { result: values, columns: columns }
     end
+  end
 
-    def self.evaluate_expression(col)
-      col = col.strip
-      return nil if col.casecmp?('NULL')
-      return evaluate_system_variable(col) if col.start_with?('@@')
-      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+  # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
+  class SqlParser
+    extend Evaluator
+    extend SqlParserUtils
 
-      :error
-    end
-
-    def self.evaluate_system_variable(col)
-      case col.downcase
-      when '@@version_comment' then 'ruby-pure-mysql-2'
-      when '@@max_allowed_packet' then 67_108_864
-      else :error
+    def self.parse(query)
+      case query
+      when /\ACREATE\s+TABLE/i then parse_create_table(query)
+      when /\ADROP\s+TABLE/i   then parse_drop_table(query)
+      when /\AINSERT\s+INTO/i  then parse_insert(query)
+      when /\ASELECT\s+.+?\s+FROM/i then parse_select_from(query)
+      else
+        parts = query.split(/\s+UNION\s+/i).map(&:strip)
+        process_parts(parts, self)
       end
     end
 
-    def self.evaluate_string_literal(col)
-      col.match(/\A(['"])(.*?)\1\z/)[2]
+    def self.parse_create_table(query)
+      match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid CREATE TABLE syntax' } unless match
+
+      {
+        type: :create_table,
+        if_not_exists: !match[1].nil?,
+        table_name: match[2],
+        columns: split_columns(match[3]).map do |col_def|
+          col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
+        end
+      }
     end
 
-    def self.evaluate_math(col)
-      col.split('+').sum { |x| x.strip.to_i }
+    def self.parse_drop_table(query)
+      match = query.match(/\ADROP\s+TABLE\s+(IF\s+EXISTS\s+)?(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid DROP TABLE syntax' } unless match
+
+      {
+        type: :drop_table,
+        if_exists: !match[1].nil?,
+        table_name: match[2]
+      }
     end
 
-    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
-                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
-                         :process_single_part, :split_columns, :process_char
+    def self.parse_insert(query)
+      match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid INSERT syntax' } unless match
+
+      values = split_insert_values(match[2]).map { |val| convert_insert_value(val) }
+      error = values.find { |v| v.is_a?(Hash) && v[:error] }
+      return error if error
+
+      { type: :insert, table_name: match[1], values: values }
+    end
+
+    def self.convert_insert_value(val)
+      if (m = val.match(/\A(['"])(.*?)\1\z/))
+        m[2]
+      elsif val.casecmp?('NULL')
+        nil
+      elsif val.match?(/\A-?\d+\z/)
+        val.to_i
+      else
+        { error: "Invalid INSERT value: #{val}" }
+      end
+    end
+
+    def self.parse_select_from(query)
+      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid SELECT syntax' } unless match
+
+      { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+    end
+
+    private_class_method :parse_insert, :parse_select_from, :parse_create_table,
+                         :parse_drop_table, :convert_insert_value
   end
 end
