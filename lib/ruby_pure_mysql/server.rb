@@ -67,6 +67,7 @@ module RubyPureMysql
     def dispatch_query(client, result)
       case result[:type]
       when :create_table then handle_create_table(client, result)
+      when :drop_table   then handle_drop_table(client, result)
       when :insert       then handle_insert(client, result)
       when :select_from  then handle_select(client, result)
       else send_result_set(client, result[:result], result[:columns])
@@ -89,6 +90,14 @@ module RubyPureMysql
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
+      end
+    end
+
+    def handle_drop_table(client, result)
+      if @storage_engine.drop_table(result[:table_name]) || result[:if_exists]
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
       end
     end
   end

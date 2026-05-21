@@ -14,6 +14,7 @@ module RubyPureMysql
     def self.parse(query)
       case query
       when /\ACREATE\s+TABLE/i then parse_create_table(query)
+      when /\ADROP\s+TABLE/i   then parse_drop_table(query)
       when /\AINSERT\s+INTO/i  then parse_insert(query)
       when /\ASELECT\s+.+?\s+FROM/i then parse_select_from(query)
       else
@@ -31,6 +32,17 @@ module RubyPureMysql
         if_not_exists: !match[1].nil?,
         table_name: match[2],
         columns: split_columns(match[3])
+      }
+    end
+
+    def self.parse_drop_table(query)
+      match = query.match(/\ADROP\s+TABLE\s+(IF\s+EXISTS\s+)?(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid DROP TABLE syntax' } unless match
+
+      {
+        type: :drop_table,
+        if_exists: !match[1].nil?,
+        table_name: match[2]
       }
     end
 
@@ -117,6 +129,7 @@ module RubyPureMysql
 
     private_class_method :parse_part, :process_parts, :validate_part,
                          :process_single_part, :split_columns, :process_char,
-                         :parse_insert, :parse_select_from, :parse_create_table
+                         :parse_insert, :parse_select_from, :parse_create_table,
+                         :parse_drop_table
   end
 end

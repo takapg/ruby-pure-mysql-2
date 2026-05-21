@@ -19,6 +19,16 @@ module RubyPureMysql
       end
     end
 
+    def drop_table(name)
+      @tables_mutex.synchronize do
+        return false unless @tables.key?(name)
+
+        @tables.delete(name)
+        @data.delete(name)
+        true
+      end
+    end
+
     def insert(table_name, values)
       @tables_mutex.synchronize do
         return false unless @tables.key?(table_name)
