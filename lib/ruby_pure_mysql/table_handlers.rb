@@ -106,12 +106,10 @@ module RubyPureMysql
         send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
         return nil
       end
-
       unless result[:where]
         send_err_packet(client, 1, 'WHERE clause is required', 1064)
         return nil
       end
-
       columns
     end
 
@@ -127,10 +125,8 @@ module RubyPureMysql
     def get_update_indices(client, columns, result)
       col_idx = get_column_index(client, columns, result[:column])
       return nil unless col_idx
-
       where_col_idx = get_column_index(client, columns, result[:where][:column])
       return nil unless where_col_idx
-
       [col_idx, where_col_idx]
     end
   end
