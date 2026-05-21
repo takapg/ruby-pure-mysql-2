@@ -61,6 +61,13 @@ module RubyPureMysql
         send_err_packet(client, 1, result[:error])
       elsif result[:type] == :create_table
         handle_create_table(client, result)
+      elsif result[:type] == :insert
+        @storage_engine.insert(result[:table_name], result[:values])
+        send_ok_packet(client, 1)
+      elsif result[:type] == :select_from
+        rows = @storage_engine.select(result[:table_name])
+        columns = result[:columns] == ['*'] ? @storage_engine.get_columns(result[:table_name]) : result[:columns]
+        send_result_set(client, rows, columns)
       else
         send_result_set(client, result[:result], result[:columns])
       end

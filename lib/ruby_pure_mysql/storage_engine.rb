@@ -5,6 +5,7 @@ module RubyPureMysql
   class StorageEngine
     def initialize
       @tables = {}
+      @data = {}
       @tables_mutex = Mutex.new
     end
 
@@ -13,7 +14,29 @@ module RubyPureMysql
         return false if @tables.key?(name)
 
         @tables[name] = columns
+        @data[name] = []
         true
+      end
+    end
+
+    def insert(table_name, values)
+      @tables_mutex.synchronize do
+        return false unless @tables.key?(table_name)
+
+        @data[table_name] << values
+        true
+      end
+    end
+
+    def select(table_name)
+      @tables_mutex.synchronize do
+        @data[table_name] || []
+      end
+    end
+
+    def get_columns(table_name)
+      @tables_mutex.synchronize do
+        @tables[table_name]
       end
     end
   end

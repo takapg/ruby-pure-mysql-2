@@ -10,6 +10,10 @@ module RubyPureMysql
     def self.parse(query)
       if query.match?(/\ACREATE\s+TABLE/i)
         parse_create_table(query)
+      elsif query.match?(/\AINSERT\s+INTO/i)
+        parse_insert(query)
+      elsif query.match?(/\ASELECT\s+.+?\s+FROM/i)
+        parse_select_from(query)
       else
         parts = query.split(/\s+UNION\s+/i).map(&:strip)
         process_parts(parts)
@@ -26,6 +30,24 @@ module RubyPureMysql
         table_name: match[2],
         columns: split_columns(match[3])
       }
+    end
+
+    def self.parse_insert(query)
+      match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid INSERT syntax' } unless match
+
+      values = match[2].split(',').map(&:strip).map do |val|
+        val.match?(/\A(['"])(.*?)\1\z/) ? val.match(/\A(['"])(.*?)\1\z/)[2] : val.to_i
+      end
+
+      { type: :insert, table_name: match[1], values: values }
+    end
+
+    def self.parse_select_from(query)
+      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid SELECT syntax' } unless match
+
+      { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
     end
 
     def self.split_columns(definition)
@@ -119,6 +141,7 @@ module RubyPureMysql
 
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
                          :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
-                         :process_single_part, :split_columns, :process_char
+                         :process_single_part, :split_columns, :process_char,
+                         :parse_insert, :parse_select_from
   end
 end
