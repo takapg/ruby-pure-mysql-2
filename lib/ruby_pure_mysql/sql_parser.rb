@@ -50,8 +50,16 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = match[2].split(',').map(&:strip).map do |val|
-        val.match?(/\A(['"])(.*?)\1\z/) ? val.match(/\A(['"])(.*?)\1\z/)[2] : val.to_i
+      values = split_insert_values(match[2]).map do |val|
+        if (m = val.match(/\A(['"])(.*?)\1\z/))
+          m[2]
+        elsif val.casecmp?('NULL')
+          nil
+        elsif val.match?(/\A-?\d+\z/)
+          val.to_i
+        else
+          return { error: "Invalid INSERT value: #{val}" }
+        end
       end
 
       { type: :insert, table_name: match[1], values: values }
@@ -71,6 +79,10 @@ module RubyPureMysql
       definition.each_char { |char| depth, buf = process_char(char, depth, buf, cols) }
       cols << buf.strip unless buf.strip.empty?
       cols
+    end
+
+    def self.split_insert_values(values_str)
+      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
     end
 
     def self.process_char(char, depth, buf, cols)
@@ -130,6 +142,6 @@ module RubyPureMysql
     private_class_method :parse_part, :process_parts, :validate_part,
                          :process_single_part, :split_columns, :process_char,
                          :parse_insert, :parse_select_from, :parse_create_table,
-                         :parse_drop_table
+                         :parse_drop_table, :split_insert_values
   end
 end
