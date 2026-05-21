@@ -32,19 +32,19 @@ module RubyPureMysql
       cols = []
       buf = +''
       depth = 0
-      definition.each_char { |ch| depth, buf = process_char(ch, depth, buf, cols) }
+      definition.each_char { |char| depth, buf = process_char(char, depth, buf, cols) }
       cols << buf.strip unless buf.strip.empty?
       cols
     end
 
-    def self.process_char(ch, depth, buf, cols)
-      depth += 1 if ch == '('
-      depth -= 1 if ch == ')' && depth.positive?
-      if ch == ',' && depth.zero?
+    def self.process_char(char, depth, buf, cols)
+      depth += 1 if char == '('
+      depth -= 1 if char == ')' && depth.positive?
+      if char == ',' && depth.zero?
         cols << buf.strip
         buf = +''
       else
-        buf << ch
+        buf << char
       end
       [depth, buf]
     end
