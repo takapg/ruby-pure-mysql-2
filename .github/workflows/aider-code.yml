@@ -1,4 +1,4 @@
-name: Aider CLI
+name: Aider Code
 
 on:
   workflow_dispatch:
@@ -11,13 +11,13 @@ on:
     types: [created]
 
 jobs:
-  aider-cli:
+  aider-code:
     if: |
       github.event_name == 'workflow_dispatch' || 
       (
         github.event_name == 'issue_comment' &&
         (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
-        startsWith(github.event.comment.body, '/aider')
+        startsWith(github.event.comment.body, '/aider-code')
       )
     runs-on: ubuntu-latest
     permissions:
