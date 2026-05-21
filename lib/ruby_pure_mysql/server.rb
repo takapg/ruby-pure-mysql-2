@@ -67,9 +67,7 @@ module RubyPureMysql
     end
 
     def handle_create_table(client, result)
-      if @storage_engine.create_table(result[:table_name], result[:columns])
-        send_ok_packet(client, 1)
-      elsif result[:if_not_exists]
+      if @storage_engine.create_table(result[:table_name], result[:columns]) || result[:if_not_exists]
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
