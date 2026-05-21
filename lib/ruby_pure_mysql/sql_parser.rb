@@ -1,19 +1,21 @@
 # frozen_string_literal: true
 
+require_relative 'sql_parser/evaluator'
+
 module RubyPureMysql
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
   class SqlParser
+    extend Evaluator
+
     # 指定されたSQLクエリを解析し、結果を返します。
     #
     # @param query [String] 解析対象のSQLクエリ
     # @return [Hash] 解析結果またはエラー情報を含むハッシュ
     def self.parse(query)
-      if query.match?(/\ACREATE\s+TABLE/i)
-        parse_create_table(query)
-      elsif query.match?(/\AINSERT\s+INTO/i)
-        parse_insert(query)
-      elsif query.match?(/\ASELECT\s+.+?\s+FROM/i)
-        parse_select_from(query)
+      case query
+      when /\ACREATE\s+TABLE/i then parse_create_table(query)
+      when /\AINSERT\s+INTO/i  then parse_insert(query)
+      when /\ASELECT\s+.+?\s+FROM/i then parse_select_from(query)
       else
         parts = query.split(/\s+UNION\s+/i).map(&:strip)
         process_parts(parts)
@@ -113,35 +115,8 @@ module RubyPureMysql
       { result: values, columns: columns }
     end
 
-    def self.evaluate_expression(col)
-      col = col.strip
-      return nil if col.casecmp?('NULL')
-      return evaluate_system_variable(col) if col.start_with?('@@')
-      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
-
-      :error
-    end
-
-    def self.evaluate_system_variable(col)
-      case col.downcase
-      when '@@version_comment' then 'ruby-pure-mysql-2'
-      when '@@max_allowed_packet' then 67_108_864
-      else :error
-      end
-    end
-
-    def self.evaluate_string_literal(col)
-      col.match(/\A(['"])(.*?)\1\z/)[2]
-    end
-
-    def self.evaluate_math(col)
-      col.split('+').sum { |x| x.strip.to_i }
-    end
-
-    private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
-                         :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
+    private_class_method :parse_part, :process_parts, :validate_part,
                          :process_single_part, :split_columns, :process_char,
-                         :parse_insert, :parse_select_from
+                         :parse_insert, :parse_select_from, :parse_create_table
   end
 end

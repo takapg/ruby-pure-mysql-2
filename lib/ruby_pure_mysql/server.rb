@@ -59,18 +59,29 @@ module RubyPureMysql
 
       if result[:error]
         send_err_packet(client, 1, result[:error])
-      elsif result[:type] == :create_table
-        handle_create_table(client, result)
-      elsif result[:type] == :insert
-        @storage_engine.insert(result[:table_name], result[:values])
-        send_ok_packet(client, 1)
-      elsif result[:type] == :select_from
-        rows = @storage_engine.select(result[:table_name])
-        columns = result[:columns] == ['*'] ? @storage_engine.get_columns(result[:table_name]) : result[:columns]
-        send_result_set(client, rows, columns)
       else
-        send_result_set(client, result[:result], result[:columns])
+        dispatch_query(client, result)
       end
+    end
+
+    def dispatch_query(client, result)
+      case result[:type]
+      when :create_table then handle_create_table(client, result)
+      when :insert       then handle_insert(client, result)
+      when :select_from  then handle_select(client, result)
+      else send_result_set(client, result[:result], result[:columns])
+      end
+    end
+
+    def handle_insert(client, result)
+      @storage_engine.insert(result[:table_name], result[:values])
+      send_ok_packet(client, 1)
+    end
+
+    def handle_select(client, result)
+      rows = @storage_engine.select(result[:table_name])
+      columns = result[:columns] == ['*'] ? @storage_engine.get_columns(result[:table_name]) : result[:columns]
+      send_result_set(client, rows, columns)
     end
 
     def handle_create_table(client, result)
