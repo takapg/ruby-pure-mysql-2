@@ -42,30 +42,25 @@ module RubyPureMysql
     end
 
     def handle_update(client, result)
-      columns = @storage_engine.get_columns(result[:table_name])
-      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
-      
-      # WHERE句がない場合の処理は今回は省略（必要に応じて追加）
-      return send_err_packet(client, 1, 'WHERE clause is required', 1064) unless result[:where]
+      columns = validate_table_and_where(client, result)
+      return unless columns
 
-      col_idx = columns.index(result[:column])
-      return send_err_packet(client, 1, "Unknown column '#{result[:column]}'", 1054) unless col_idx
+      col_idx = get_column_index(client, columns, result[:column])
+      return unless col_idx
 
-      where_col_idx = columns.index(result[:where][:column])
-      return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}'", 1054) unless where_col_idx
+      where_col_idx = get_column_index(client, columns, result[:where][:column])
+      return unless where_col_idx
 
       @storage_engine.update(result[:table_name], col_idx, result[:value], where_col_idx, result[:where][:value])
       send_ok_packet(client, 1)
     end
 
     def handle_delete(client, result)
-      columns = @storage_engine.get_columns(result[:table_name])
-      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
-      
-      return send_err_packet(client, 1, 'WHERE clause is required', 1064) unless result[:where]
+      columns = validate_table_and_where(client, result)
+      return unless columns
 
-      where_col_idx = columns.index(result[:where][:column])
-      return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}'", 1054) unless where_col_idx
+      where_col_idx = get_column_index(client, columns, result[:where][:column])
+      return unless where_col_idx
 
       @storage_engine.delete(result[:table_name], where_col_idx, result[:where][:value])
       send_ok_packet(client, 1)
@@ -126,6 +121,32 @@ module RubyPureMysql
       else
         send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
       end
+    end
+
+    private
+
+    def validate_table_and_where(client, result)
+      columns = @storage_engine.get_columns(result[:table_name])
+      unless columns
+        send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146)
+        return nil
+      end
+
+      unless result[:where]
+        send_err_packet(client, 1, 'WHERE clause is required', 1064)
+        return nil
+      end
+
+      columns
+    end
+
+    def get_column_index(client, columns, column_name)
+      idx = columns.index(column_name)
+      unless idx
+        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
+        return nil
+      end
+      idx
     end
   end
 end

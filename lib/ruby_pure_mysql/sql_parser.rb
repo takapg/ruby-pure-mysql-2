@@ -80,18 +80,21 @@ module RubyPureMysql
     extend Evaluator
     extend SqlParserUtils
 
+    PARSERS = {
+      /\ACREATE\s+TABLE/i => :parse_create_table,
+      /\ADROP\s+TABLE/i   => :parse_drop_table,
+      /\AINSERT\s+INTO/i  => :parse_insert,
+      /\AUPDATE\s+/i      => :parse_update,
+      /\ADELETE\s+/i      => :parse_delete,
+      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
+    }.freeze
+
     def self.parse(query)
-      case query
-      when /\ACREATE\s+TABLE/i then parse_create_table(query)
-      when /\ADROP\s+TABLE/i   then parse_drop_table(query)
-      when /\AINSERT\s+INTO/i  then parse_insert(query)
-      when /\AUPDATE\s+/i      then parse_update(query)
-      when /\ADELETE\s+/i      then parse_delete(query)
-      when /\ASELECT\s+.+?\s+FROM/i then parse_select_from(query)
-      else
-        parts = query.split(/\s+UNION\s+/i).map(&:strip)
-        process_parts(parts, self)
-      end
+      parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
+      return send(parser_method, query) if parser_method
+
+      parts = query.split(/\s+UNION\s+/i).map(&:strip)
+      process_parts(parts, self)
     end
 
     def self.parse_create_table(query)
@@ -138,11 +141,12 @@ module RubyPureMysql
       return value if value.is_a?(Hash) && value[:error]
 
       result = { type: :update, table_name: match[1], column: match[2], value: value }
-      if match[4]
-        where = parse_where_clause(match[4])
-        return where if where.is_a?(Hash) && where[:error]
-        result[:where] = where
-      end
+      return result unless match[4]
+
+      where = parse_where_clause(match[4])
+      return where if where.is_a?(Hash) && where[:error]
+
+      result[:where] = where
       result
     end
 
@@ -151,11 +155,12 @@ module RubyPureMysql
       return { error: 'Invalid DELETE syntax' } unless match
 
       result = { type: :delete, table_name: match[1] }
-      if match[2]
-        where = parse_where_clause(match[2])
-        return where if where.is_a?(Hash) && where[:error]
-        result[:where] = where
-      end
+      return result unless match[2]
+
+      where = parse_where_clause(match[2])
+      return where if where.is_a?(Hash) && where[:error]
+
+      result[:where] = where
       result
     end
 
@@ -176,14 +181,12 @@ module RubyPureMysql
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      return result unless match[3]
 
-      if match[3]
-        where = parse_where_clause(match[3])
-        return where if where.is_a?(Hash) && where[:error]
+      where = parse_where_clause(match[3])
+      return where if where.is_a?(Hash) && where[:error]
 
-        result[:where] = where
-      end
-
+      result[:where] = where
       result
     end
 
