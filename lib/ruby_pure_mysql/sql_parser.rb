@@ -24,8 +24,37 @@ module RubyPureMysql
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: match[3].split(',').map(&:strip)
+        columns: split_columns(match[3])
       }
+    end
+
+    def self.split_columns(definition)
+      cols = []
+      buf = +''
+      depth = 0
+
+      definition.each_char do |ch|
+        case ch
+        when '('
+          depth += 1
+          buf << ch
+        when ')'
+          depth -= 1 if depth > 0
+          buf << ch
+        when ','
+          if depth.zero?
+            cols << buf.strip
+            buf = +''
+          else
+            buf << ch
+          end
+        else
+          buf << ch
+        end
+      end
+
+      cols << buf.strip unless buf.strip.empty?
+      cols
     end
 
     def self.process_parts(parts)
@@ -98,6 +127,6 @@ module RubyPureMysql
     end
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
                          :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
-                         :process_single_part
+                         :process_single_part, :split_columns
   end
 end
