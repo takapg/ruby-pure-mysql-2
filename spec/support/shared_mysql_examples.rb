@@ -98,7 +98,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
   describe 'Schema Management (Storage Engine)' do
     it 'executes CREATE TABLE and returns an OK packet' do
       expect {
-        client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+        client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
       }.not_to raise_error
     end
 
