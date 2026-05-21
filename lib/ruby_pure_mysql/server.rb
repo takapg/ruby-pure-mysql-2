@@ -92,6 +92,14 @@ module RubyPureMysql
 
       rows = @storage_engine.select(result[:table_name])
 
+      # WHERE句によるフィルタリング
+      if result[:where]
+        col_idx = table_columns.index(result[:where][:column])
+        return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}' in WHERE clause", 1054) unless col_idx
+
+        rows = rows.select { |row| row[col_idx] == result[:where][:value] }
+      end
+
       if result[:columns] == ['*']
         send_result_set(client, rows, table_columns)
       else

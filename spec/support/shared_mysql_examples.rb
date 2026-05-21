@@ -135,4 +135,30 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[1].values).to eq([2, 'bob'])
     end
   end
+
+  describe 'Query Filtering (WHERE clause)' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+    end
+
+    it 'filters rows by integer column' do
+      results = client.query('SELECT * FROM users WHERE id = 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by string column' do
+      results = client.query("SELECT name FROM users WHERE name = 'bob';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq(['bob'])
+    end
+
+    it 'returns empty result set when no rows match' do
+      results = client.query('SELECT * FROM users WHERE id = 999;')
+      expect(results.count).to eq(0)
+    end
+  end
 end
