@@ -150,8 +150,8 @@ module RubyPureMysql
         where_match = match[3].match(/\A(\w+)\s*=\s*(.+)\z/)
         return { error: 'Invalid WHERE clause' } unless where_match
 
-        value = evaluate_expression(where_match[2])
-        return { error: 'Unsupported WHERE value' } if value == :error
+        value = convert_insert_value(where_match[2].strip)
+        return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
         result[:where] = { column: where_match[1], value: value }
       end
