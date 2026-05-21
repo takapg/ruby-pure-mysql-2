@@ -98,6 +98,8 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RAW_INSTRUCTION: ${{ github.event.comment.body || github.event.inputs.instruction }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           INSTRUCTION=$(echo "$RAW_INSTRUCTION" | sed -e 's|^\/aider[[:space:]]*||')
 
