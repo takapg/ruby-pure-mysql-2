@@ -92,12 +92,9 @@ module RubyPureMysql
 
       rows = @storage_engine.select(result[:table_name])
 
-      # WHERE句によるフィルタリング
       if result[:where]
-        col_idx = table_columns.index(result[:where][:column])
-        return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}' in WHERE clause", 1054) unless col_idx
-
-        rows = rows.select { |row| row[col_idx] == result[:where][:value] }
+        rows = apply_where_filter(client, result[:where], table_columns, rows)
+        return unless rows
       end
 
       if result[:columns] == ['*']
@@ -105,6 +102,16 @@ module RubyPureMysql
       else
         handle_projection(client, result, rows, table_columns)
       end
+    end
+
+    def apply_where_filter(client, where_clause, table_columns, rows)
+      col_idx = table_columns.index(where_clause[:column])
+      unless col_idx
+        send_err_packet(client, 1, "Unknown column '#{where_clause[:column]}' in WHERE clause", 1054)
+        return nil
+      end
+
+      rows.select { |row| row[col_idx] == where_clause[:value] }
     end
 
     def handle_projection(client, result, rows, table_columns)

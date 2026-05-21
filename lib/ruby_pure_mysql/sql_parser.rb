@@ -147,21 +147,28 @@ module RubyPureMysql
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
 
       if match[3]
-        where_match = match[3].match(/\A(\w+)\s*=\s*(.+)\z/)
-        return { error: 'Invalid WHERE clause' } unless where_match
+        where = parse_where_clause(match[3])
+        return where if where.is_a?(Hash) && where[:error]
 
-        # 値からセミコロンを除去
-        value_str = where_match[2].strip.delete_suffix(';')
-        value = convert_insert_value(value_str)
-        return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
-
-        result[:where] = { column: where_match[1], value: value }
+        result[:where] = where
       end
 
       result
     end
 
+    def self.parse_where_clause(clause)
+      where_match = clause.match(/\A(\w+)\s*=\s*(.+)\z/)
+      return { error: 'Invalid WHERE clause' } unless where_match
+
+      # 値からセミコロンを除去
+      value_str = where_match[2].strip.delete_suffix(';')
+      value = convert_insert_value(value_str)
+      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+
+      { column: where_match[1], value: value }
+    end
+
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
-                         :parse_drop_table, :convert_insert_value
+                         :parse_drop_table, :convert_insert_value, :parse_where_clause
   end
 end
