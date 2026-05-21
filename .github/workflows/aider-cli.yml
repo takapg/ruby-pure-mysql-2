@@ -12,6 +12,13 @@ on:
 
 jobs:
   aider-cli:
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (
+        github.event_name == 'issue_comment' &&
+        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
+        startsWith(github.event.comment.body, '/aider')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,7 +43,15 @@ jobs:
         if: github.event_name == 'issue_comment'
         run: |
           BRANCH_NAME="aider/issue-${{ github.event.issue.number }}"
-          git checkout -b "$BRANCH_NAME" || git checkout "$BRANCH_NAME"
+          git fetch origin
+
+          if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+            git checkout "$BRANCH_NAME"
+          elif git show-ref --verify --quiet "refs/remotes/origin/$BRANCH_NAME"; then
+            git checkout -b "$BRANCH_NAME" "origin/$BRANCH_NAME"
+          else
+            git checkout -b "$BRANCH_NAME"
+          fi
 
       - name: Start MySQL in background
         run: docker compose up -d > /dev/null 2>&1 &
@@ -87,8 +102,12 @@ jobs:
           INSTRUCTION=$(echo "$RAW_INSTRUCTION" | sed -e 's|^\/aider[[:space:]]*||')
 
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            if [ -z "$(echo "$INSTRUCTION" | tr -d '[:space:]')" ]; then
+              INSTRUCTION="提示されたIssueのタイトルと本文を解析し、発生している問題の修正や要望の割り当て、テストの追加などを自律的に行ってください。"
+            fi
+
             FULL_MESSAGE=$(cat <<EOF
-          以下のIssue内容と人間からの指示を元に、コードを修正してください。
+          以下のIssue内容と人間からの指示を元に、コードを編集してください。
           
           【人間からの指示】
           $INSTRUCTION
@@ -117,4 +136,4 @@ jobs:
 
       - name: Push changes
         run: |
-          git push origin HEAD
+          git push -u origin HEAD
