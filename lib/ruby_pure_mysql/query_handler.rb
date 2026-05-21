@@ -22,6 +22,8 @@ module RubyPureMysql
       when :create_table then handle_create_table(client, result)
       when :drop_table   then handle_drop_table(client, result)
       when :insert       then handle_insert(client, result)
+      when :update       then handle_update(client, result)
+      when :delete       then handle_delete(client, result)
       when :select_from  then handle_select(client, result)
       else send_result_set(client, result[:result], result[:columns])
       end
@@ -36,6 +38,36 @@ module RubyPureMysql
       end
 
       @storage_engine.insert(result[:table_name], result[:values])
+      send_ok_packet(client, 1)
+    end
+
+    def handle_update(client, result)
+      columns = @storage_engine.get_columns(result[:table_name])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
+      
+      # WHERE句がない場合の処理は今回は省略（必要に応じて追加）
+      return send_err_packet(client, 1, 'WHERE clause is required', 1064) unless result[:where]
+
+      col_idx = columns.index(result[:column])
+      return send_err_packet(client, 1, "Unknown column '#{result[:column]}'", 1054) unless col_idx
+
+      where_col_idx = columns.index(result[:where][:column])
+      return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}'", 1054) unless where_col_idx
+
+      @storage_engine.update(result[:table_name], col_idx, result[:value], where_col_idx, result[:where][:value])
+      send_ok_packet(client, 1)
+    end
+
+    def handle_delete(client, result)
+      columns = @storage_engine.get_columns(result[:table_name])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
+      
+      return send_err_packet(client, 1, 'WHERE clause is required', 1064) unless result[:where]
+
+      where_col_idx = columns.index(result[:where][:column])
+      return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}'", 1054) unless where_col_idx
+
+      @storage_engine.delete(result[:table_name], where_col_idx, result[:where][:value])
       send_ok_packet(client, 1)
     end
 

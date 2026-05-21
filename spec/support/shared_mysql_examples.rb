@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples 'a MySQL-compatible server' do |port|
+RSpec.shared_examples 'a MySQL-compatible server' |port|
   let(:client) do
     Mysql2::Client.new(
       host: '127.0.0.1',
@@ -159,6 +159,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns empty result set when no rows match' do
       results = client.query('SELECT * FROM users WHERE id = 999;')
       expect(results.count).to eq(0)
+    end
+  end
+
+  describe 'Data Modification (UPDATE & DELETE)' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+    end
+
+    it 'updates existing data matching a WHERE clause' do
+      client.query("UPDATE users SET name = 'charlie' WHERE id = 1;")
+      results = client.query('SELECT name FROM users WHERE id = 1;')
+      expect(results.first.values.first).to eq('charlie')
+    end
+
+    it 'deletes specific rows matching a WHERE clause' do
+      client.query('DELETE FROM users WHERE id = 2;')
+      results = client.query('SELECT * FROM users;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
     end
   end
 end
