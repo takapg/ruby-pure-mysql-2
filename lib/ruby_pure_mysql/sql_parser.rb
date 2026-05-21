@@ -141,7 +141,7 @@ module RubyPureMysql
     end
 
     def self.parse_select_from(query)
-      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?\s*;?\s*\z/i)
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
@@ -150,7 +150,9 @@ module RubyPureMysql
         where_match = match[3].match(/\A(\w+)\s*=\s*(.+)\z/)
         return { error: 'Invalid WHERE clause' } unless where_match
 
-        value = convert_insert_value(where_match[2].strip)
+        # 値からセミコロンを除去
+        value_str = where_match[2].strip.delete_suffix(';')
+        value = convert_insert_value(value_str)
         return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
         result[:where] = { column: where_match[1], value: value }
