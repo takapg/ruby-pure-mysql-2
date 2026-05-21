@@ -7,12 +7,22 @@ on:
         description: 'AIに指示したい内容'
         required: true
         default: ''
+  issue_comment:
+    types: [created]
 
 jobs:
   aider-cli:
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (
+        github.event_name == 'issue_comment' &&
+        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
+        startsWith(github.event.comment.body, '/aider')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: read
 
     steps:
       - name: Create GitHub App token
@@ -28,6 +38,20 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Create or Switch to Issue Branch
+        if: github.event_name == 'issue_comment'
+        run: |
+          BRANCH_NAME="aider/issue-${{ github.event.issue.number }}"
+          git fetch origin
+
+          if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+            git checkout "$BRANCH_NAME"
+          elif git show-ref --verify --quiet "refs/remotes/origin/$BRANCH_NAME"; then
+            git checkout -b "$BRANCH_NAME" "origin/$BRANCH_NAME"
+          else
+            git checkout -b "$BRANCH_NAME"
+          fi
 
       - name: Start MySQL in background
         run: docker compose up -d > /dev/null 2>&1 &
@@ -73,9 +97,32 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          INSTRUCTION: ${{ github.event.inputs.instruction }}
+          RAW_INSTRUCTION: ${{ github.event.comment.body || github.event.inputs.instruction }}
         run: |
-          echo "Executing instruction: $INSTRUCTION"
+          INSTRUCTION=$(echo "$RAW_INSTRUCTION" | sed -e 's|^\/aider[[:space:]]*||')
+
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            if [ -z "$(echo "$INSTRUCTION" | tr -d '[:space:]')" ]; then
+              INSTRUCTION="提示されたIssueのタイトルと本文を解析し、発生している問題の修正や要望の割り当て、テストの追加などを自律的に行ってください。"
+            fi
+
+            FULL_MESSAGE=$(cat <<EOF
+          以下のIssue内容と人間からの指示を元に、コードを編集してください。
+          
+          【人間からの指示】
+          $INSTRUCTION
+          
+          【背景にあるIssue内容】
+          タイトル: $ISSUE_TITLE
+          本文:
+          $ISSUE_BODY
+          EOF
+          )
+          else
+            FULL_MESSAGE="$INSTRUCTION"
+          fi
+
+          echo "Executing: $FULL_MESSAGE"
 
           aider --model gemini/gemini-3.1-flash-lite \
                 --editor-model gemini/gemini-3.1-flash-lite \
@@ -85,8 +132,8 @@ jobs:
                 --architect \
                 --test-cmd "bundle exec rspec && bundle exec rubocop" \
                 --auto-test \
-                --message "$INSTRUCTION"
+                --message "$FULL_MESSAGE"
 
       - name: Push changes
         run: |
-          git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          git push -u origin HEAD
