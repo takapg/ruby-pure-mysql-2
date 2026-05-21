@@ -40,6 +40,30 @@ module RubyPureMysql
       end
     end
 
+    def update(table_name, col_idx, where_col_idx, new_value, where_value)
+      @tables_mutex.synchronize do
+        return false unless @data.key?(table_name)
+
+        @data[table_name].each do |row|
+          row[col_idx] = new_value if where_col_idx.nil? || row[where_col_idx] == where_value
+        end
+        true
+      end
+    end
+
+    def delete(table_name, where_col_idx, where_value)
+      @tables_mutex.synchronize do
+        return false unless @data.key?(table_name)
+
+        if where_col_idx.nil?
+          @data[table_name].clear
+        else
+          @data[table_name].reject! { |row| row[where_col_idx] == where_value }
+        end
+        true
+      end
+    end
+
     def select(table_name)
       @tables_mutex.synchronize do
         @data[table_name] || []

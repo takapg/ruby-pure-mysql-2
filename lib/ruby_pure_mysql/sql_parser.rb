@@ -80,16 +80,21 @@ module RubyPureMysql
     extend Evaluator
     extend SqlParserUtils
 
+    PARSERS = {
+      /\ACREATE\s+TABLE/i => :parse_create_table,
+      /\ADROP\s+TABLE/i => :parse_drop_table,
+      /\AINSERT\s+INTO/i => :parse_insert,
+      /\AUPDATE\s+/i => :parse_update,
+      /\ADELETE\s+/i => :parse_delete,
+      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
+    }.freeze
+
     def self.parse(query)
-      case query
-      when /\ACREATE\s+TABLE/i then parse_create_table(query)
-      when /\ADROP\s+TABLE/i   then parse_drop_table(query)
-      when /\AINSERT\s+INTO/i  then parse_insert(query)
-      when /\ASELECT\s+.+?\s+FROM/i then parse_select_from(query)
-      else
-        parts = query.split(/\s+UNION\s+/i).map(&:strip)
-        process_parts(parts, self)
-      end
+      parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
+      return send(parser_method, query) if parser_method
+
+      parts = query.split(/\s+UNION\s+/i).map(&:strip)
+      process_parts(parts, self)
     end
 
     def self.parse_create_table(query)
@@ -121,14 +126,45 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = split_insert_values(match[2]).map { |val| convert_insert_value(val) }
+      values = split_insert_values(match[2]).map { |val| convert_value(val) }
       error = values.find { |v| v.is_a?(Hash) && v[:error] }
       return error if error
 
       { type: :insert, table_name: match[1], values: values }
     end
 
-    def self.convert_insert_value(val)
+    def self.parse_update(query)
+      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      return { error: 'Invalid UPDATE syntax' } unless match
+
+      value = convert_value(match[3].strip)
+      return value if value.is_a?(Hash) && value[:error]
+
+      result = { type: :update, table_name: match[1], column: match[2], value: value }
+      return result unless match[4]
+
+      where = parse_where_clause(match[4])
+      return where if where.is_a?(Hash) && where[:error]
+
+      result[:where] = where
+      result
+    end
+
+    def self.parse_delete(query)
+      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      return { error: 'Invalid DELETE syntax' } unless match
+
+      result = { type: :delete, table_name: match[1] }
+      return result unless match[2]
+
+      where = parse_where_clause(match[2])
+      return where if where.is_a?(Hash) && where[:error]
+
+      result[:where] = where
+      result
+    end
+
+    def self.convert_value(val)
       if (m = val.match(/\A(['"])(.*?)\1\z/))
         m[2]
       elsif val.casecmp?('NULL')
@@ -145,14 +181,12 @@ module RubyPureMysql
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      return result unless match[3]
 
-      if match[3]
-        where = parse_where_clause(match[3])
-        return where if where.is_a?(Hash) && where[:error]
+      where = parse_where_clause(match[3])
+      return where if where.is_a?(Hash) && where[:error]
 
-        result[:where] = where
-      end
-
+      result[:where] = where
       result
     end
 
@@ -162,13 +196,14 @@ module RubyPureMysql
 
       # 値からセミコロンを除去
       value_str = where_match[2].strip.delete_suffix(';')
-      value = convert_insert_value(value_str)
+      value = convert_value(value_str)
       return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
       { column: where_match[1], value: value }
     end
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
-                         :parse_drop_table, :convert_insert_value, :parse_where_clause
+                         :parse_drop_table, :convert_value, :parse_where_clause,
+                         :parse_update, :parse_delete
   end
 end
