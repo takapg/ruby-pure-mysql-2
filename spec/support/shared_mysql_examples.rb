@@ -112,8 +112,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
   describe 'Data Manipulation (Storage Engine)' do
     before do
-      # 現時点ではDROP TABLEは未実装ですが、テストの前提として記述します
-      # 必要に応じて実装側で対応してください
+      # テーブルが既に存在する場合に備えてDROP TABLEを実行
       begin
         client.query('DROP TABLE IF EXISTS users;')
       rescue StandardError
