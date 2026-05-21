@@ -134,6 +134,8 @@ jobs:
                 --architect \
                 --test-cmd "bundle exec rspec && bundle exec rubocop" \
                 --auto-test \
+                --no-attribute-author \
+                --no-attribute-committer \
                 --message "$FULL_MESSAGE"
 
       - name: Push changes
