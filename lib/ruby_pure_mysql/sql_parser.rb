@@ -8,8 +8,45 @@ module RubyPureMysql
     # @param query [String] 解析対象のSQLクエリ
     # @return [Hash] 解析結果またはエラー情報を含むハッシュ
     def self.parse(query)
-      parts = query.split(/\s+UNION\s+/i).map(&:strip)
-      process_parts(parts)
+      if query.match?(/\ACREATE\s+TABLE/i)
+        parse_create_table(query)
+      else
+        parts = query.split(/\s+UNION\s+/i).map(&:strip)
+        process_parts(parts)
+      end
+    end
+
+    def self.parse_create_table(query)
+      match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid CREATE TABLE syntax' } unless match
+
+      {
+        type: :create_table,
+        if_not_exists: !match[1].nil?,
+        table_name: match[2],
+        columns: split_columns(match[3])
+      }
+    end
+
+    def self.split_columns(definition)
+      cols = []
+      buf = +''
+      depth = 0
+      definition.each_char { |char| depth, buf = process_char(char, depth, buf, cols) }
+      cols << buf.strip unless buf.strip.empty?
+      cols
+    end
+
+    def self.process_char(char, depth, buf, cols)
+      depth += 1 if char == '('
+      depth -= 1 if char == ')' && depth.positive?
+      if char == ',' && depth.zero?
+        cols << buf.strip
+        buf = +''
+      else
+        buf << char
+      end
+      [depth, buf]
     end
 
     def self.process_parts(parts)
@@ -49,7 +86,6 @@ module RubyPureMysql
 
       columns = match[1].split(',').map(&:strip)
       values = columns.map { |col| evaluate_expression(col) }
-
       return { error: 'Unsupported expression' } if values.include?(:error)
 
       { result: values, columns: columns }
@@ -80,8 +116,9 @@ module RubyPureMysql
     def self.evaluate_math(col)
       col.split('+').sum { |x| x.strip.to_i }
     end
+
     private_class_method :parse_part, :evaluate_expression, :process_parts, :validate_part,
                          :evaluate_system_variable, :evaluate_string_literal, :evaluate_math,
-                         :process_single_part
+                         :process_single_part, :split_columns, :process_char
   end
 end

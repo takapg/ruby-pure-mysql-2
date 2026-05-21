@@ -6,7 +6,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       host: '127.0.0.1',
       username: 'root',
       port: port,
-      connect_timeout: 2
+      connect_timeout: 2,
+      database: 'mysql'
     )
   end
 
@@ -91,6 +92,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT @@version_comment;')
       expect(results.first.values.first).to be_a(String)
       expect(results.fields.first).to eq('@@version_comment')
+    end
+  end
+
+  describe 'Schema Management (Storage Engine)' do
+    it 'executes CREATE TABLE and returns an OK packet' do
+      expect do
+        client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
+      end.not_to raise_error
+    end
+
+    it 'returns an error when creating a table that already exists' do
+      client.query('CREATE TABLE IF NOT EXISTS test_table (id INT);')
+      expect do
+        client.query('CREATE TABLE test_table (id INT);')
+      end.to raise_error(Mysql2::Error)
     end
   end
 end
