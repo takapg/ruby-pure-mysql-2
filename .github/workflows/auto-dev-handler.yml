@@ -8,6 +8,7 @@ on:
 
 jobs:
   init-auto-dev:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     permissions:
       issues: write
