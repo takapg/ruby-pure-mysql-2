@@ -85,7 +85,7 @@ module RubyPureMysql
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: SqlParser.split_columns(match[3]).map do |col_def|
+        columns: split_columns(match[3]).map do |col_def|
           col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
         end
       }
@@ -106,7 +106,7 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = SqlParser.split_insert_values(match[2]).map { |val| SqlParser.convert_value(val) }
+      values = split_insert_values(match[2]).map { |val| convert_value(val) }
       error = values.find { |v| v.is_a?(Hash) && v[:error] }
       return error if error
 
@@ -117,13 +117,13 @@ module RubyPureMysql
       match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid UPDATE syntax' } unless match
 
-      value = SqlParser.convert_value(match[3].strip)
+      value = convert_value(match[3].strip)
       return value if value.is_a?(Hash) && value[:error]
 
       result = { type: :update, table_name: match[1], column: match[2], value: value }
       return result unless match[4]
 
-      where = SqlParser.parse_where_clause(match[4])
+      where = parse_where_clause(match[4])
       return where if where.is_a?(Hash) && where[:error]
 
       result[:where] = where
@@ -137,7 +137,7 @@ module RubyPureMysql
       result = { type: :delete, table_name: match[1] }
       return result unless match[2]
 
-      where = SqlParser.parse_where_clause(match[2])
+      where = parse_where_clause(match[2])
       return where if where.is_a?(Hash) && where[:error]
 
       result[:where] = where
@@ -151,7 +151,7 @@ module RubyPureMysql
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
       return result unless match[3]
 
-      where = SqlParser.parse_where_clause(match[3])
+      where = parse_where_clause(match[3])
       return where if where.is_a?(Hash) && where[:error]
 
       result[:where] = where
