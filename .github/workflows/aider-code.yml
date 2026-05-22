@@ -89,6 +89,7 @@ jobs:
                 --no-attribute-author \
                 --no-attribute-committer \
                 --no-attribute-co-authored-by \
+                --disable-playwright \
                 --message "$INSTRUCTION"
 
       - name: Push changes
