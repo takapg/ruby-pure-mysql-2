@@ -11,7 +11,7 @@ module RubyPureMysql
       header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF].pack('C3')
       packet = header + [seq].pack('C') + payload
 
-      RubyPureMysql.logger.debug "Sending packet [seq: #{seq}, len: #{len}]"
+      RubyPureMysql.logger.trace "Sending packet [seq: #{seq}, len: #{len}]"
       client.write(packet)
     end
 
@@ -23,7 +23,7 @@ module RubyPureMysql
       payload = read_exactly(client, len)
       return nil unless payload
 
-      RubyPureMysql.logger.debug "Received packet [seq: #{seq}, len: #{len}]"
+      RubyPureMysql.logger.trace "Received packet [seq: #{seq}, len: #{len}]"
       [seq, payload]
     end
 
