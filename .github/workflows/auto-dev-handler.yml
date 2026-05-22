@@ -159,9 +159,16 @@ jobs:
       pull-requests: write
       actions: read
     steps:
+      - name: Create GitHub App token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v1.11.6
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+
       - name: Relay CI failure to Aider
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
