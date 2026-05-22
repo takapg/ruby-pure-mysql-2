@@ -156,6 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      actions: read
     steps:
       - name: Relay CI failure to Aider
         env:
