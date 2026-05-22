@@ -160,19 +160,33 @@ jobs:
       - name: Relay CI failure to Aider
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.workflow_run.pull_requests.number }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
+          PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
+            --jq '.pull_requests[0].number // empty')
+
           if [ -z "$PR_NUMBER" ]; then
             echo "No PR associated with this workflow run."
             exit 0
           fi
+
+          FAILED_JOBS=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | {name: .name, id: .id}')
           
+          ERROR_LOGS=""
+          while IFS= read -r job; do
+            JOB_NAME=$(echo "$job" | jq -r '.name')
+            JOB_ID=$(echo "$job" | jq -r '.id')
+            LOG=$(gh api "/repos/${{ github.repository }}/actions/jobs/${JOB_ID}/logs" 2>&1 | tail -n 50)
+            ERROR_LOGS="${ERROR_LOGS}\n### ${JOB_NAME}\n\`\`\`\n${LOG}\n\`\`\`\n"
+          done < <(echo "$FAILED_JOBS" | jq -c .)
           # Aider に修正を依頼するコメントを投稿
           gh pr comment $PR_NUMBER --body "
           /aider-code
           ❌ CI (RSpec/RuboCop) が失敗しました。
           エラー内容を確認し、修正を行ってください。
           <details>
-          ここにエラーログを記載したい
+          <summary>エラーログ</summary>
+          ${ERROR_LOGS}
           </details>
           "
