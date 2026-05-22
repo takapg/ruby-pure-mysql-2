@@ -108,6 +108,15 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('CREATE TABLE test_table (id INT);')
       end.to raise_error(Mysql2::Error)
     end
+
+    it 'executes SHOW TABLES and returns the list of tables' do
+      client.query('DROP TABLE IF EXISTS test_show_tables;')
+      client.query('CREATE TABLE test_show_tables (id INT);')
+
+      results = client.query('SHOW TABLES;')
+      table_names = results.map { |row| row.values.first }
+      expect(table_names).to include('test_show_tables')
+    end
   end
 
   describe 'Data Manipulation (Storage Engine)' do
