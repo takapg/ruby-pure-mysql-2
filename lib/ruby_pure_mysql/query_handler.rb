@@ -9,7 +9,7 @@ module RubyPureMysql
 
     def handle_query(client, packet_body)
       sql = packet_body[1..].strip
-      query_type = sql.split(/\s+/, 2).first&.upcase
+      # query_type = sql.split(/\s+/, 2).first&.upcase
       # TODO: semantic_logger を導入後、trace に変更する
       # RubyPureMysql.logger.info "Received Query type: #{query_type}"
 
