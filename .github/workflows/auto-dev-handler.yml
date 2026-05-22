@@ -110,13 +110,13 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            ${{ github.event.repository.name }}
-          permission-actions: write
-          permission-pull-requests: read
-          permission-issues: read
-          permission-contents: read
+          # owner: ${{ github.repository_owner }}
+          # repositories: |
+          #   ${{ github.event.repository.name }}
+          # permission-actions: write
+          # permission-pull-requests: read
+          # permission-issues: read
+          # permission-contents: read
 
       - name: Fetch PR and Issue Context via API
         env:
