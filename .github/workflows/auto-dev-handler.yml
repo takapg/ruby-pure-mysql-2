@@ -228,8 +228,7 @@ jobs:
 
           if [ "$IS_DRAFT" = "true" ]; then
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
-            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI (RSpec/RuboCop) がすべて成功しました！
-            Draft を解除してレビュー可能状態に移行します。"
+            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI (RSpec/RuboCop) がすべて成功しました！<br>Draft を解除してレビュー可能状態に移行します。"
           else
             echo "PR #$PR_NUMBER is already open. Skipping promotion."
           fi
