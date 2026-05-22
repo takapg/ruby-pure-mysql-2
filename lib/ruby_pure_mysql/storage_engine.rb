@@ -70,6 +70,12 @@ module RubyPureMysql
       end
     end
 
+    def list_tables
+      @tables_mutex.synchronize do
+        @tables.keys
+      end
+    end
+
     def get_columns(table_name)
       @tables_mutex.synchronize do
         @tables[table_name]
