@@ -3,9 +3,12 @@ name: Auto Dev Handler
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created, edited]
 
 jobs:
   init-auto-dev:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -22,3 +25,65 @@ jobs:
 
           この Issue の実装を開始するには、上記のチェックボックスをオンにしてください。
           "
+
+  launch-auto-dev:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '- [x] launch auto-dev') &&
+      contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Create GitHub App token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v1.11.6
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and Draft PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          BRANCH_NAME="aider/issue-$ISSUE_NUMBER"
+          
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null; then
+            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+          else
+            git checkout -b "$BRANCH_NAME"
+            git commit --allow-empty -m "chore: start auto-dev for #$ISSUE_NUMBER"
+            git push origin "$BRANCH_NAME"
+          fi
+
+          PR_URL=$(gh pr list --head "$BRANCH_NAME" --base main --json url --jq '.[0].url')
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
+            --draft \
+            --title "auto-dev: $ISSUE_TITLE" \
+            --body "Closes: #$ISSUE_NUMBER" \
+            --base main \
+            --head "$BRANCH_NAME")
+          fi
+
+          gh pr comment $PR_URL --body "/aider-code"
