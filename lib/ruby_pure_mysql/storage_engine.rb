@@ -29,6 +29,12 @@ module RubyPureMysql
       end
     end
 
+    def list_tables
+      @tables_mutex.synchronize do
+        @tables.keys
+      end
+    end
+
     def insert(table_name, values)
       @tables_mutex.synchronize do
         columns = @tables[table_name]
