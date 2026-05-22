@@ -108,6 +108,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('CREATE TABLE test_table (id INT);')
       end.to raise_error(Mysql2::Error)
     end
+
+    it 'executes SHOW TABLES and returns the list of tables' do
+      client.query('CREATE TABLE IF NOT EXISTS test_show_tables (id INT);')
+      results = client.query('SHOW TABLES;')
+      expect(results.map(&:values).flatten).to include('test_show_tables')
+    end
   end
 
   describe 'Data Manipulation (Storage Engine)' do
@@ -179,8 +185,4 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'deletes specific rows matching a WHERE clause' do
       client.query('DELETE FROM users WHERE id = 2;')
       results = client.query('SELECT * FROM users;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(1)
-    end
-  end
-end
+      expect(results
