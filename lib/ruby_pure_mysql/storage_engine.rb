@@ -75,5 +75,11 @@ module RubyPureMysql
         @tables[table_name]
       end
     end
+
+    def list_tables
+      @tables_mutex.synchronize do
+        @tables.keys
+      end
+    end
   end
 end

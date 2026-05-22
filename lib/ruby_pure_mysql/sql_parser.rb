@@ -86,7 +86,8 @@ module RubyPureMysql
       /\AINSERT\s+INTO/i => :parse_insert,
       /\AUPDATE\s+/i => :parse_update,
       /\ADELETE\s+/i => :parse_delete,
-      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
+      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from,
+      /\ASHOW\s+TABLES\z/i => :parse_show_tables
     }.freeze
 
     def self.parse(query)
@@ -202,8 +203,12 @@ module RubyPureMysql
       { column: where_match[1], value: value }
     end
 
+    def self.parse_show_tables(_query)
+      { type: :show_tables }
+    end
+
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :convert_value, :parse_where_clause,
-                         :parse_update, :parse_delete
+                         :parse_update, :parse_delete, :parse_show_tables
   end
 end
