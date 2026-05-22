@@ -20,14 +20,7 @@ module RubyPureMysql
     def handle_query(client, packet_body)
       sql = packet_body[1..].strip
 
-      # SHOW TABLES の特別対応
-      if sql.upcase.start_with?('SHOW TABLES')
-        dispatch_query(client, { type: :show_tables })
-        return
-      end
-
-      # TODO: semantic_logger を導入後、trace に変更する
-      # RubyPureMysql.logger.info "Received Query type: #{query_type}"
+      return handle_show_tables_query(client) if sql.upcase.start_with?('SHOW TABLES')
 
       result = SqlParser.parse(sql)
 
@@ -36,6 +29,10 @@ module RubyPureMysql
       else
         dispatch_query(client, result)
       end
+    end
+
+    def handle_show_tables_query(client)
+      dispatch_query(client, { type: :show_tables })
     end
 
     def dispatch_query(client, result)
