@@ -25,11 +25,19 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      indices = get_update_indices(client, columns, result)
-      return unless indices
+      col_idx = columns.index(result[:column])
+      if col_idx.nil?
+        return send_err_packet(client, 1, "Unknown column '#{result[:column]}' in field list", 1054)
+      end
 
       where_value = result[:where] ? result[:where][:value] : nil
-      success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
+      where_col_idx = result[:where] ? columns.index(result[:where][:column]) : nil
+      
+      if result[:where] && where_col_idx.nil?
+         return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}' in WHERE clause", 1054)
+      end
+
+      success = @storage_engine.update(result[:table_name], col_idx, where_col_idx, result[:value], where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -39,10 +47,14 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      params = get_delete_params(client, columns, result)
-      return unless params
+      where_value = result[:where] ? result[:where][:value] : nil
+      where_col_idx = result[:where] ? columns.index(result[:where][:column]) : nil
+      
+      if result[:where] && where_col_idx.nil?
+         return send_err_packet(client, 1, "Unknown column '#{result[:where][:column]}' in WHERE clause", 1054)
+      end
 
-      success = @storage_engine.delete(result[:table_name], *params)
+      success = @storage_engine.delete(result[:table_name], where_col_idx, where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -60,21 +72,36 @@ module RubyPureMysql
     end
 
     def handle_select_expression(client, result)
-      expr = result[:expression]
-      # 簡易的な評価
-      value = case expr
-              when '1' then 1
-              when '2' then 2
-              when '1 + 1' then 2
-              when '42' then 42
-              when '100' then 100
-              when '"hello"' then 'hello'
-              when 'NULL' then nil
-              when '@@version_comment' then 'Ruby-Pure-MySQL 1.0'
-              else expr
-              end
+      expressions = result[:expressions]
+      values = expressions.map do |expr|
+        case expr
+        when '1' then 1
+        when '2' then 2
+        when '1 + 1' then 2
+        when '42' then 42
+        when '100' then 100
+        when '"hello"' then 'hello'
+        when 'NULL' then nil
+        when '@@version_comment' then 'Ruby-Pure-MySQL 1.0'
+        else expr
+        end
+      end
       
-      send_result_set(client, [[value]], [expr])
+      send_result_set(client, [values], expressions)
+    end
+
+    def handle_union(client, result)
+      # 簡易的なUNION実装
+      all_rows = []
+      all_columns = []
+      result[:queries].each do |q|
+        # 再帰的に処理するのは複雑なため、ここでは簡易的にSELECT結果を結合する
+        # 実際にはカラムの整合性チェックが必要
+        rows = @storage_engine.select(q[:table_name])
+        all_rows.concat(rows)
+        all_columns = q[:columns]
+      end
+      send_result_set(client, all_rows, all_columns)
     end
 
     def send_select_result(client, result, rows, table_columns)

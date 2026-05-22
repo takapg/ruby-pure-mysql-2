@@ -37,9 +37,16 @@ module RubyPureMysql
         else
           { error: 'Invalid SELECT FROM syntax' }
         end
+      elsif query =~ /UNION/i
+        # UNION の簡易対応
+        parts = query.split(/UNION/i).map(&:strip)
+        { type: :union, queries: parts.map { |p| parse_select(p) } }
       else
-        # SELECT 1, SELECT 1+1, SELECT @@version_comment など
-        { type: :select_expression, expression: query.sub(/\ASELECT\s+/i, '').gsub(/;\z/, '').strip }
+        # SELECT 1, 2, SELECT 1+1, SELECT @@version_comment など
+        # カンマ区切りの式をサポート
+        expr_part = query.sub(/\ASELECT\s+/i, '').gsub(/;\z/, '').strip
+        expressions = expr_part.split(',').map(&:strip)
+        { type: :select_expression, expressions: expressions }
       end
     end
 

@@ -31,6 +31,7 @@ module RubyPureMysql
       when :delete       then handle_delete(client, result)
       when :select_from  then handle_select(client, result)
       when :select_expression then handle_select_expression(client, result)
+      when :union        then handle_union(client, result)
       when :show_tables  then handle_show_tables(client)
       else send_result_set(client, result[:result], result[:columns])
       end
