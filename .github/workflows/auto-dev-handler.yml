@@ -266,6 +266,7 @@ jobs:
           )
 
   resume-review-on-success:
+    needs: promote-pr-on-success
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success'
@@ -279,7 +280,7 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
-            --jq '.pull_requests.number // empty')
+            --jq '.pull_requests[0].number // empty')
 
           if [ -z "$PR_NUMBER" ]; then
             echo "No PR associated with this workflow run."
