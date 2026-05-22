@@ -7,6 +7,16 @@ module RubyPureMysql
   module QueryHandler
     include TableHandlers
 
+    HANDLER_MAP = {
+      create_table: :handle_create_table,
+      drop_table:   :handle_drop_table,
+      insert:       :handle_insert,
+      update:       :handle_update,
+      delete:       :handle_delete,
+      select_from:  :handle_select,
+      show_tables:  :handle_show_tables
+    }.freeze
+
     def handle_query(client, packet_body)
       sql = packet_body[1..].strip
       # query_type = sql.split(/\s+/, 2).first&.upcase
@@ -23,15 +33,7 @@ module RubyPureMysql
     end
 
     def dispatch_query(client, result)
-      handler = {
-        create_table: :handle_create_table,
-        drop_table:   :handle_drop_table,
-        insert:       :handle_insert,
-        update:       :handle_update,
-        delete:       :handle_delete,
-        select_from:  :handle_select,
-        show_tables:  :handle_show_tables
-      }[result[:type]]
+      handler = HANDLER_MAP[result[:type]]
 
       if handler
         send(handler, client, result)

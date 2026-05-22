@@ -108,7 +108,7 @@ module RubyPureMysql
     def handle_show_tables(client, _result)
       tables = @storage_engine.list_tables
       columns = ['Tables_in_mysql']
-      rows = tables.map { |t| [t] }
+      rows = tables.zip
       send_result_set(client, rows, columns)
     end
   end
