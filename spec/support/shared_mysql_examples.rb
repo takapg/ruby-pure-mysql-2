@@ -116,6 +116,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'executes DESCRIBE and returns column information' do
+      client.query('DROP TABLE IF EXISTS users;')
       client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
       results = client.query('DESCRIBE users;')
       
