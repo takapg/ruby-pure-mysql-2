@@ -96,7 +96,11 @@ jobs:
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '/aider-code') &&
-      contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      (
+        contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+        contains(fromJson('["github-actions[bot]","takapg-app[bot]"]'), github.event.comment.user.login)
+      )
+      
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub App token
@@ -129,7 +133,7 @@ jobs:
             ISSUE_CONTEXT="【元の Issue #$ISSUE_NUM】\nタイトル: $(echo "$ISSUE_DATA" | jq -r .title)\n本文: $(echo "$ISSUE_DATA" | jq -r .body)"
           fi
 
-          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed 's#^/aider-code##' | xargs)
+          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed '1s#^/aider-code##')
 
           FULL_MESSAGE=$(cat <<EOF
           以下の文脈を理解して、コードを編集してください。
@@ -232,3 +236,31 @@ jobs:
           else
             echo "PR #$PR_NUMBER is already open. Skipping promotion."
           fi
+
+  review-dispatch:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'coderabbitai[bot]' &&
+      !contains(github.event.comment.body, 'No actionable comments')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Relay Review to Aider
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REVIEW_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -e
+          gh pr comment $PR_NUMBER --body "@coderabbitai pause"
+          gh pr comment $PR_NUMBER --body "$(cat <<COMMENT_EOF
+          /aider-code
+          🐰 CodeRabbit からのレビュー指摘を反映してください。
+
+          ---
+          $REVIEW_BODY
+          COMMENT_EOF
+          )
