@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'sql_parser/evaluator'
-require_relative 'sql_parser/parsers'
 
 module RubyPureMysql
   # SqlParserUtilsは、SQLパースのユーティリティメソッドを提供します。
@@ -80,7 +79,6 @@ module RubyPureMysql
   class SqlParser
     extend Evaluator
     extend SqlParserUtils
-    extend Parsers
 
     PARSERS = {
       /\ACREATE\s+TABLE/i => :parse_create_table,
