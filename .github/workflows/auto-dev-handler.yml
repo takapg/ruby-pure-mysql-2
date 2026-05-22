@@ -243,12 +243,13 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
+          set -e
           gh pr comment $PR_NUMBER --body "@coderabbitai pause"
-
-          gh pr comment $PR_NUMBER --body "
+          gh pr comment $PR_NUMBER --body "$(cat <<'COMMENT_EOF'
           /aider-code
           🐰 CodeRabbit からのレビュー指摘を反映してください。
 
           ---
           $REVIEW_BODY
-          "
+          COMMENT_EOF
+          )
