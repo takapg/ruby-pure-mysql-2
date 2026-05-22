@@ -90,11 +90,17 @@ module RubyPureMysql
     }.freeze
 
     def self.parse(query)
+      return parse_show_tables(query) if query.match?(/\ASHOW\s+TABLES\s*;?\s*\z/i)
+
       parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
       return send(parser_method, query) if parser_method
 
       parts = query.split(/\s+UNION\s+/i).map(&:strip)
       process_parts(parts, self)
+    end
+
+    def self.parse_show_tables(_query)
+      { type: :show_tables }
     end
 
     def self.parse_create_table(query)
@@ -204,6 +210,6 @@ module RubyPureMysql
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :convert_value, :parse_where_clause,
-                         :parse_update, :parse_delete
+                         :parse_update, :parse_delete, :parse_show_tables
   end
 end
