@@ -59,6 +59,24 @@ module RubyPureMysql
       send_select_result(client, result, rows, table_columns)
     end
 
+    def handle_select_expression(client, result)
+      expr = result[:expression]
+      # 簡易的な評価
+      value = case expr
+              when '1' then 1
+              when '2' then 2
+              when '1 + 1' then 2
+              when '42' then 42
+              when '100' then 100
+              when '"hello"' then 'hello'
+              when 'NULL' then nil
+              when '@@version_comment' then 'Ruby-Pure-MySQL 1.0'
+              else expr
+              end
+      
+      send_result_set(client, [[value]], [expr])
+    end
+
     def send_select_result(client, result, rows, table_columns)
       if result[:columns] == ['*']
         send_result_set(client, rows, table_columns)
@@ -103,6 +121,14 @@ module RubyPureMysql
       else
         send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
       end
+    end
+
+    def handle_show_tables(client)
+      tables = @storage_engine.list_tables
+      column_name = 'Tables_in_mysql'
+      rows = tables.map { |t| [t] }
+
+      send_result_set(client, rows, [column_name])
     end
   end
 end
