@@ -118,7 +118,7 @@ module RubyPureMysql
       return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless columns
 
       # MySQL DESCRIBE output format: Field, Type, Null, Key, Default, Extra
-      column_names = ['Field', 'Type', 'Null', 'Key', 'Default', 'Extra']
+      column_names = %w[Field Type Null Key Default Extra]
       rows = columns.map do |col|
         [col, 'text', 'YES', '', nil, '']
       end
