@@ -14,7 +14,8 @@ module RubyPureMysql
       update: :handle_update,
       delete: :handle_delete,
       select_from: :handle_select,
-      show_tables: :handle_show_tables
+      show_tables: :handle_show_tables,
+      describe: :handle_describe
     }.freeze
 
     def handle_query(client, packet_body)
