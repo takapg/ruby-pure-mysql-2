@@ -191,3 +191,33 @@ jobs:
           ${ERROR_LOGS}
           </details>
           "
+
+  promote-pr-on-success:
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Promote Draft PR to Ready for Review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
+            --jq '.pull_requests.number // empty')
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR associated with this workflow run."
+            exit 0
+          fi
+
+          IS_DRAFT=$(gh pr view $PR_NUMBER --json isDraft --jq '.isDraft')
+
+          if [ "$IS_DRAFT" = "true" ]; then
+            gh pr ready $PR_NUMBER
+            gh pr comment $PR_NUMBER --body "✅ CI (RSpec/RuboCop) がすべて成功しました！\nDraft を解除してレビュー可能状態に移行します。"
+          else
+            echo "PR #$PR_NUMBER is already open. Skipping promotion."
+          fi
