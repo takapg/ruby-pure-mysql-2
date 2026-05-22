@@ -5,6 +5,8 @@ on:
     types: [opened]
   issue_comment:
     types: [created, edited]
+  pull_request_review_comment:
+    types: [created]
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -243,8 +245,8 @@ jobs:
 
   review-dispatch:
     if: |
-      startsWith(github.event.issue.title, 'auto-dev:') &&
-      github.event_name == 'issue_comment' &&
+      startsWith(github.event.pull_request.title, 'auto-dev:') &&
+      github.event_name == 'pull_request_review_comment' &&
       github.event.action == 'created' &&
       github.event.issue.pull_request != null &&
       github.event.comment.user.login == 'coderabbitai[bot]' &&
@@ -253,9 +255,16 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Create GitHub App token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v1.11.6
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+
       - name: Relay Review to Aider
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
