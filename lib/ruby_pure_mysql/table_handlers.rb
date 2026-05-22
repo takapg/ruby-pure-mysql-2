@@ -111,5 +111,16 @@ module RubyPureMysql
       rows = tables.zip
       send_result_set(client, rows, columns)
     end
+
+    def handle_describe(client, result)
+      columns = @storage_engine.get_columns(result[:table_name])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
+
+      # MySQL DESCRIBE output format: Field, Type, Null, Key, Default, Extra
+      rows = columns.map { |col| [col, 'text', 'YES', '', nil, ''] }
+      column_definitions = ['Field', 'Type', 'Null', 'Key', 'Default', 'Extra']
+
+      send_result_set(client, rows, column_definitions)
+    end
   end
 end

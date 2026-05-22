@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples 'a MySQL-compatible server' do |port|
+RSpec.shared_examples 'a MySQL-compatible server' |port|
   let(:client) do
     Mysql2::Client.new(
       host: '127.0.0.1',
@@ -113,6 +113,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
       results = client.query('SHOW TABLES;')
       expect(results.map(&:values).flatten).to include('users')
+    end
+
+    it 'executes DESCRIBE and returns column definitions' do
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      results = client.query('DESCRIBE users;')
+      
+      fields = results.map { |row| row['Field'] }
+      expect(fields).to include('id', 'name')
     end
   end
 
