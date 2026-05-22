@@ -81,6 +81,7 @@ module RubyPureMysql
     extend SqlParserUtils
 
     PARSERS = {
+      /\ASHOW\s+TABLES\s*;?\s*\z/i => :parse_show_tables,
       /\ACREATE\s+TABLE/i => :parse_create_table,
       /\ADROP\s+TABLE/i => :parse_drop_table,
       /\AINSERT\s+INTO/i => :parse_insert,
@@ -164,6 +165,10 @@ module RubyPureMysql
       result
     end
 
+    def self.parse_show_tables(_query)
+      { type: :show_tables }
+    end
+
     def self.convert_value(val)
       if (m = val.match(/\A(['"])(.*?)\1\z/))
         m[2]
@@ -204,6 +209,6 @@ module RubyPureMysql
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :convert_value, :parse_where_clause,
-                         :parse_update, :parse_delete
+                         :parse_update, :parse_delete, :parse_show_tables
   end
 end
