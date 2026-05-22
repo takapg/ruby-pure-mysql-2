@@ -108,6 +108,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('CREATE TABLE test_table (id INT);')
       end.to raise_error(Mysql2::Error)
     end
+
+    it 'executes SHOW TABLES and returns table names' do
+      client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
+      results = client.query('SHOW TABLES;')
+      expect(results.map(&:values).flatten).to include('users')
+    end
   end
 
   describe 'Data Manipulation (Storage Engine)' do

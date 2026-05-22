@@ -75,29 +75,9 @@ module RubyPureMysql
     end
   end
 
-  # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
-  class SqlParser
-    extend Evaluator
-    extend SqlParserUtils
-
-    PARSERS = {
-      /\ACREATE\s+TABLE/i => :parse_create_table,
-      /\ADROP\s+TABLE/i => :parse_drop_table,
-      /\AINSERT\s+INTO/i => :parse_insert,
-      /\AUPDATE\s+/i => :parse_update,
-      /\ADELETE\s+/i => :parse_delete,
-      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
-    }.freeze
-
-    def self.parse(query)
-      parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
-      return send(parser_method, query) if parser_method
-
-      parts = query.split(/\s+UNION\s+/i).map(&:strip)
-      process_parts(parts, self)
-    end
-
-    def self.parse_create_table(query)
+  # パースロジックを分離
+  module SqlParserParsers
+    def parse_create_table(query)
       match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid CREATE TABLE syntax' } unless match
 
@@ -105,13 +85,13 @@ module RubyPureMysql
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: split_columns(match[3]).map do |col_def|
+        columns: SqlParserUtils.split_columns(match[3]).map do |col_def|
           col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
         end
       }
     end
 
-    def self.parse_drop_table(query)
+    def parse_drop_table(query)
       match = query.match(/\ADROP\s+TABLE\s+(IF\s+EXISTS\s+)?(\w+)\s*;?\s*\z/i)
       return { error: 'Invalid DROP TABLE syntax' } unless match
 
@@ -122,18 +102,18 @@ module RubyPureMysql
       }
     end
 
-    def self.parse_insert(query)
+    def parse_insert(query)
       match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = split_insert_values(match[2]).map { |val| convert_value(val) }
+      values = SqlParserUtils.split_insert_values(match[2]).map { |val| convert_value(val) }
       error = values.find { |v| v.is_a?(Hash) && v[:error] }
       return error if error
 
       { type: :insert, table_name: match[1], values: values }
     end
 
-    def self.parse_update(query)
+    def parse_update(query)
       match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid UPDATE syntax' } unless match
 
@@ -150,7 +130,7 @@ module RubyPureMysql
       result
     end
 
-    def self.parse_delete(query)
+    def parse_delete(query)
       match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid DELETE syntax' } unless match
 
@@ -164,19 +144,7 @@ module RubyPureMysql
       result
     end
 
-    def self.convert_value(val)
-      if (m = val.match(/\A(['"])(.*?)\1\z/))
-        m[2]
-      elsif val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
-      end
-    end
-
-    def self.parse_select_from(query)
+    def parse_select_from(query)
       match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?\s*;?\s*\z/i)
       return { error: 'Invalid SELECT syntax' } unless match
 
@@ -190,7 +158,23 @@ module RubyPureMysql
       result
     end
 
-    def self.parse_where_clause(clause)
+    def parse_show_tables(_query)
+      { type: :show_tables }
+    end
+
+    def convert_value(val)
+      if (m = val.match(/\A(['"])(.*?)\1\z/))
+        m[2]
+      elsif val.casecmp?('NULL')
+        nil
+      elsif val.match?(/\A-?\d+\z/)
+        val.to_i
+      else
+        { error: "Invalid INSERT value: #{val}" }
+      end
+    end
+
+    def parse_where_clause(clause)
       where_match = clause.match(/\A(\w+)\s*=\s*(.+)\z/)
       return { error: 'Invalid WHERE clause' } unless where_match
 
@@ -201,9 +185,35 @@ module RubyPureMysql
 
       { column: where_match[1], value: value }
     end
+  end
+
+  # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
+  class SqlParser
+    extend Evaluator
+    extend SqlParserUtils
+    extend SqlParserParsers
+
+    PARSERS = {
+      /\ACREATE\s+TABLE/i => :parse_create_table,
+      /\ADROP\s+TABLE/i => :parse_drop_table,
+      /\AINSERT\s+INTO/i => :parse_insert,
+      /\AUPDATE\s+/i => :parse_update,
+      /\ADELETE\s+/i => :parse_delete,
+      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
+    }.freeze
+
+    def self.parse(query)
+      return parse_show_tables(query) if query.match?(/\ASHOW\s+TABLES\s*;?\s*\z/i)
+
+      parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
+      return send(parser_method, query) if parser_method
+
+      parts = query.split(/\s+UNION\s+/i).map(&:strip)
+      process_parts(parts, self)
+    end
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :convert_value, :parse_where_clause,
-                         :parse_update, :parse_delete
+                         :parse_update, :parse_delete, :parse_show_tables
   end
 end

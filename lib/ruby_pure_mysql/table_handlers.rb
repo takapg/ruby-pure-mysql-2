@@ -104,5 +104,12 @@ module RubyPureMysql
         send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
       end
     end
+
+    def handle_show_tables(client, _result)
+      tables = @storage_engine.list_tables
+      columns = ['Tables_in_mysql']
+      rows = tables.zip
+      send_result_set(client, rows, columns)
+    end
   end
 end
