@@ -9,12 +9,12 @@ module RubyPureMysql
 
     HANDLER_MAP = {
       create_table: :handle_create_table,
-      drop_table:   :handle_drop_table,
-      insert:       :handle_insert,
-      update:       :handle_update,
-      delete:       :handle_delete,
-      select_from:  :handle_select,
-      show_tables:  :handle_show_tables
+      drop_table: :handle_drop_table,
+      insert: :handle_insert,
+      update: :handle_update,
+      delete: :handle_delete,
+      select_from: :handle_select,
+      show_tables: :handle_show_tables
     }.freeze
 
     def handle_query(client, packet_body)
