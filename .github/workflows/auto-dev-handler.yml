@@ -79,7 +79,7 @@ jobs:
             git push origin "$BRANCH_NAME"
           fi
 
-          PR_URL=$(gh pr list --head "$BRANCH_NAME" --base main --json url --jq '.[0].url')
+          PR_URL=$(gh pr list --repo ${{ github.repository }} --head "$BRANCH_NAME" --base main --json url --jq '.[0].url')
           if [ -z "$PR_URL" ]; then
             PR_URL=$(gh pr create \
             --draft \
@@ -89,7 +89,7 @@ jobs:
             --head "$BRANCH_NAME")
           fi
 
-          gh pr comment $PR_URL --body "/aider-code"
+          gh pr comment $PR_URL --repo ${{ github.repository }} --body "/aider-code"
 
   dispatch-aider-code:
     if: |
@@ -118,14 +118,14 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          PR_DATA=$(gh pr view $PR_NUMBER --json title,body,headRefName)
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json title,body,headRefName)
           PR_TITLE=$(echo "$PR_DATA" | jq -r .title)
           PR_BODY=$(echo "$PR_DATA" | jq -r .body)
           BRANCH_NAME=$(echo "$PR_DATA" | jq -r .headRefName)
 
           if [[ "$BRANCH_NAME" =~ ^aider/issue-([0-9]+)$ ]]; then
             ISSUE_NUM="${BASH_REMATCH[1]}"
-            ISSUE_DATA=$(gh issue view $ISSUE_NUM --json title,body)
+            ISSUE_DATA=$(gh issue view $ISSUE_NUM --repo ${{ github.repository }} --json title,body)
             ISSUE_CONTEXT="【元の Issue #$ISSUE_NUM】\nタイトル: $(echo "$ISSUE_DATA" | jq -r .title)\n本文: $(echo "$ISSUE_DATA" | jq -r .body)"
           fi
 
@@ -182,7 +182,7 @@ jobs:
             ERROR_LOGS="${ERROR_LOGS}\n### ${JOB_NAME}\n\`\`\`\n${LOG}\n\`\`\`\n"
           done < <(echo "$FAILED_JOBS" | jq -c .)
           # Aider に修正を依頼するコメントを投稿
-          gh pr comment $PR_NUMBER --body "
+          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "
           /aider-code
           ❌ CI (RSpec/RuboCop) が失敗しました。
           エラー内容を確認し、修正を行ってください。
@@ -213,7 +213,7 @@ jobs:
             exit 0
           fi
 
-          IS_DRAFT=$(gh pr view $PR_NUMBER --json isDraft --jq '.isDraft')
+          IS_DRAFT=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json isDraft --jq '.isDraft')
 
           if [ "$IS_DRAFT" = "true" ]; then
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
