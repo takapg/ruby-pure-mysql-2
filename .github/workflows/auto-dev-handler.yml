@@ -221,3 +221,29 @@ jobs:
           else
             echo "PR #$PR_NUMBER is already open. Skipping promotion."
           fi
+
+  review-dispatch:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'coderabbitai[bot]' &&
+      !contains(github.event.comment.body, 'No actionable comments')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Relay Review to Aider
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REVIEW_BODY: ${{ github.event.comment.body }}
+        run: |
+          gh pr comment $PR_NUMBER --body "@coderabbitai pause"
+
+          gh pr comment $PR_NUMBER --body "
+          /aider-code
+          🐰 CodeRabbit からのレビュー指摘を反映してください。
+
+          ---
+          $REVIEW_BODY
+          "
