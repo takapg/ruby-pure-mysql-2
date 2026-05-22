@@ -133,7 +133,7 @@ jobs:
             ISSUE_CONTEXT="【元の Issue #$ISSUE_NUM】\nタイトル: $(echo "$ISSUE_DATA" | jq -r .title)\n本文: $(echo "$ISSUE_DATA" | jq -r .body)"
           fi
 
-          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed 's#^/aider-code##' | xargs)
+          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed '1s#^/aider-code##')
 
           FULL_MESSAGE=$(cat <<EOF
           以下の文脈を理解して、コードを編集してください。
