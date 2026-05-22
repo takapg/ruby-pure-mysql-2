@@ -185,4 +185,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'deletes specific rows matching a WHERE clause' do
       client.query('DELETE FROM users WHERE id = 2;')
       results = client.query('SELECT * FROM users;')
-      expect(results
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+  end
+end
