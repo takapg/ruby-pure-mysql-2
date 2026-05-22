@@ -245,7 +245,7 @@ jobs:
         run: |
           set -e
           gh pr comment $PR_NUMBER --body "@coderabbitai pause"
-          gh pr comment $PR_NUMBER --body "$(cat <<'COMMENT_EOF'
+          gh pr comment $PR_NUMBER --body "$(cat <<COMMENT_EOF
           /aider-code
           🐰 CodeRabbit からのレビュー指摘を反映してください。
 
