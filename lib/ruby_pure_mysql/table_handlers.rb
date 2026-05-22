@@ -8,12 +8,12 @@ module RubyPureMysql
     include TableHandlerUtils
 
     def handle_create_table(client, result)
-      @storage_engine.create_table(result[:table_name], result[:columns], result[:if_not_exists])
+      @storage_engine.create_table(result[:table_name], result[:columns])
       send_ok_packet(client, 1, 0, 0)
     end
 
     def handle_drop_table(client, result)
-      @storage_engine.drop_table(result[:table_name], result[:if_exists])
+      @storage_engine.drop_table(result[:table_name])
       send_ok_packet(client, 1, 0, 0)
     end
 
