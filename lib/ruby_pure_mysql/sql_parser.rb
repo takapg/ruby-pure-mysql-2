@@ -162,6 +162,13 @@ module RubyPureMysql
       { type: :show_tables }
     end
 
+    def parse_describe(query)
+      match = query.match(/\A(DESCRIBE|DESC)\s+(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid DESCRIBE syntax' } unless match
+
+      { type: :describe, table_name: match[2] }
+    end
+
     def convert_value(val)
       if (m = val.match(/\A(['"])(.*?)\1\z/))
         m[2]
@@ -204,6 +211,7 @@ module RubyPureMysql
 
     def self.parse(query)
       return parse_show_tables(query) if query.match?(/\ASHOW\s+TABLES\s*;?\s*\z/i)
+      return parse_describe(query) if query.match?(/\A(DESCRIBE|DESC)\s+/i)
 
       parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
       return send(parser_method, query) if parser_method
@@ -214,6 +222,6 @@ module RubyPureMysql
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :convert_value, :parse_where_clause,
-                         :parse_update, :parse_delete, :parse_show_tables
+                         :parse_update, :parse_delete, :parse_show_tables, :parse_describe
   end
 end

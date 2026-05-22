@@ -114,6 +114,15 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SHOW TABLES;')
       expect(results.map(&:values).flatten).to include('users')
     end
+
+    it 'executes DESCRIBE and returns column information' do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      results = client.query('DESCRIBE users;')
+
+      fields = results.map { |row| row['Field'] }
+      expect(fields).to include('id', 'name')
+    end
   end
 
   describe 'Data Manipulation (Storage Engine)' do
