@@ -3,6 +3,8 @@ name: Auto Dev Handler
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created, edited]
 
 jobs:
   init-auto-dev:
@@ -39,6 +41,8 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,18 +62,22 @@ jobs:
         run: |
           BRANCH_NAME="aider/issue-$ISSUE_NUMBER"
           
-          # ブランチ作成と空コミット
-          git checkout -b "$BRANCH_NAME"
-          git commit --allow-empty -m "chore: start auto-dev for #$ISSUE_NUMBER"
-          git push origin "$BRANCH_NAME"
-          
-          # Draft PR の作成
-          PR_URL=$(gh pr create \
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null; then
+            git checkout "$BRANCH_NAME"
+          else
+            git checkout -b "$BRANCH_NAME"
+            git commit --allow-empty -m "chore: start auto-dev for #$ISSUE_NUMBER"
+            git push origin "$BRANCH_NAME"
+          fi
+
+          PR_URL=$(gh pr list --head "$BRANCH_NAME" --base main --json url --jq '.[0].url')
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
             --draft \
             --title "auto-dev: $ISSUE_TITLE" \
             --body "Closes: #$ISSUE_NUMBER" \
             --base main \
             --head "$BRANCH_NAME")
-            
-          # PRへの初回指示コメント (これで Aider が動き出す)
+          fi
+
           gh pr comment $PR_URL --body "/aider-code"
