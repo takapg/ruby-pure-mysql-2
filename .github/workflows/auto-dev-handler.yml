@@ -1,0 +1,24 @@
+name: Auto Dev Handler
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  init-auto-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Post launch checkbox
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment $ISSUE_NUMBER --repo ${{ github.repository }} --body "
+          ## 🤖 Auto-Dev Launcher
+
+          - [ ] launch auto-dev
+
+          この Issue の実装を開始するには、上記のチェックボックスをオンにしてください。
+          "
