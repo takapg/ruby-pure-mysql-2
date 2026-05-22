@@ -93,6 +93,7 @@ jobs:
 
   dispatch-aider-code:
     if: |
+      startsWith(github.event.issue.title, 'auto-dev:') &&
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '/aider-code') &&
@@ -100,7 +101,7 @@ jobs:
         contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
         contains(fromJson('["github-actions[bot]","takapg-app[bot]"]'), github.event.comment.user.login)
       )
-      
+
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub App token
@@ -155,6 +156,7 @@ jobs:
 
   ci-failure-dispatch:
     if: |
+      startsWith(github.event.workflow_run.pull_requests[0].title, 'auto-dev:') &&
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
@@ -198,6 +200,7 @@ jobs:
 
   promote-pr-on-success:
     if: |
+      startsWith(github.event.workflow_run.pull_requests[0].title, 'auto-dev:') &&
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -239,6 +242,7 @@ jobs:
 
   review-dispatch:
     if: |
+      startsWith(github.event.issue.title, 'auto-dev:') &&
       github.event_name == 'issue_comment' &&
       github.event.action == 'created' &&
       github.event.issue.pull_request != null &&
@@ -268,6 +272,7 @@ jobs:
   resume-review-on-success:
     needs: promote-pr-on-success
     if: |
+      startsWith(github.event.workflow_run.pull_requests[0].title, 'auto-dev:') &&
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -295,6 +300,7 @@ jobs:
 
   finish-auto-dev:
     if: |
+      startsWith(github.event.issue.title, 'auto-dev:') &&
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != null &&
       github.event.comment.user.login == 'coderabbitai[bot]' &&
