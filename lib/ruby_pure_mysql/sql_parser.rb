@@ -145,8 +145,8 @@ module RubyPureMysql
     end
 
     def parse_select_from(query)
-      # 正規表現を更新: WHEREとLIMITをオプションでキャプチャ
-      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      # 正規表現を更新: WHERE, ORDER BY, LIMITをオプションでキャプチャ
+      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
@@ -159,8 +159,13 @@ module RubyPureMysql
         result[:where] = where
       end
 
+      # ORDER BY句の処理
+      if match[4]
+        result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym }
+      end
+
       # LIMIT句の処理
-      result[:limit] = match[4].to_i if match[4]
+      result[:limit] = match[6].to_i if match[6]
 
       result
     end
