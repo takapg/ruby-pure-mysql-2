@@ -167,6 +167,9 @@ module RubyPureMysql
       indices = get_update_indices(client, columns, result)
       return unless indices
 
+      # indices が配列の場合、最初の要素をインデックスとして使用する
+      col_idx = indices.is_a?(Array) ? indices.first : indices
+
       # 複数条件対応: StorageEngineが単一条件のみ対応している場合を考慮
       where_clauses = result[:where_clauses]
       if where_clauses && where_clauses.size > 1
@@ -179,7 +182,7 @@ module RubyPureMysql
 
       success = @storage_engine.update(
         result[:table_name],
-        indices,
+        col_idx,
         where_col_idx,
         result[:value],
         where_clause&.fetch(:value, nil)
