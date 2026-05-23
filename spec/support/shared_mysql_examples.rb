@@ -260,6 +260,22 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Query Filtering (WHERE clause with AND)' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'alice');")
+    end
+
+    it 'filters rows by multiple conditions with AND' do
+      results = client.query("SELECT * FROM users WHERE id > 1 AND name = 'alice';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([3, 'alice'])
+    end
+  end
+
   describe 'Query Sorting (ORDER BY clause)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')

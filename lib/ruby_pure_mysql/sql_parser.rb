@@ -87,6 +87,10 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
+      clause.split(/\s+AND\s+/i).map { |c| parse_single_where_condition(c) }
+    end
+
+    def parse_single_where_condition(clause)
       # 演算子の正規表現に LIKE を追加し、大文字小文字を区別しないように修正
       where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
@@ -156,10 +160,10 @@ module RubyPureMysql
       result = { type: :update, table_name: match[1], column: match[2], value: value }
       return result unless match[4]
 
-      where = SqlParserUtils.parse_where_clause(match[4])
-      return where if where.is_a?(Hash) && where[:error]
+      where_clauses = SqlParserUtils.parse_where_clause(match[4])
+      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
 
-      result[:where] = where
+      result[:where_clauses] = where_clauses
       result
     end
 
@@ -170,10 +174,10 @@ module RubyPureMysql
       result = { type: :delete, table_name: match[1] }
       return result unless match[2]
 
-      where = SqlParserUtils.parse_where_clause(match[2])
-      return where if where.is_a?(Hash) && where[:error]
+      where_clauses = SqlParserUtils.parse_where_clause(match[2])
+      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
 
-      result[:where] = where
+      result[:where_clauses] = where_clauses
       result
     end
   end
@@ -215,10 +219,10 @@ module RubyPureMysql
     end
 
     def parse_where_clause_into(result, clause)
-      where = SqlParserUtils.parse_where_clause(clause)
-      return where if where.is_a?(Hash) && where[:error]
+      where_clauses = SqlParserUtils.parse_where_clause(clause)
+      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
 
-      result[:where] = where
+      result[:where_clauses] = where_clauses
     end
 
     def parse_show_tables(_query)
