@@ -87,19 +87,21 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      clause.split(/\s+AND\s+/i).map do |c|
-        where_match = c.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
-        return { error: 'Invalid WHERE clause' } unless where_match
+      clause.split(/\s+AND\s+/i).map { |c| parse_single_where_condition(c) }
+    end
 
-        column = where_match[1]
-        operator = where_match[2].upcase
-        operator = '!=' if operator == '<>'
-        value_str = where_match[3].strip.delete_suffix(';')
-        value = convert_value(value_str)
-        return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+    def parse_single_where_condition(condition)
+      where_match = condition.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      return { error: 'Invalid WHERE clause' } unless where_match
 
-        { column: column, operator: operator, value: value }
-      end
+      column = where_match[1]
+      operator = where_match[2].upcase
+      operator = '!=' if operator == '<>'
+      value_str = where_match[3].strip.delete_suffix(';')
+      value = convert_value(value_str)
+      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+
+      { column: column, operator: operator, value: value }
     end
   end
 
