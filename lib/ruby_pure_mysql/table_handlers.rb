@@ -134,7 +134,12 @@ module RubyPureMysql
       # 演算子をRubyのメソッド名に変換
       method = operator == '=' ? :== : operator.to_sym
 
-      rows.select { |row| row[col_idx].public_send(method, target_value) }
+      rows.select do |row|
+        val = row[col_idx]
+        next false if val.nil?
+
+        val.public_send(method, target_value)
+      end
     end
 
     def handle_projection(client, result, rows, table_columns)
