@@ -77,7 +77,12 @@ module RubyPureMysql
 
   # パースロジックを分離
   module SqlParserParsers
-    SELECT_REGEX = /\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i
+    SELECT_REGEX = Regexp.new(
+      '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
+      '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
+      '(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z',
+      Regexp::IGNORECASE
+    )
 
     def parse_create_table(query)
       match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)

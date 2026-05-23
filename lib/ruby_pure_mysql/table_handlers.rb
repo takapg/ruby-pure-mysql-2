@@ -3,9 +3,50 @@
 require_relative 'table_handler_utils'
 
 module RubyPureMysql
+  # スキーマ操作に関連するハンドラメソッドをまとめたモジュール
+  module SchemaHandlers
+    def handle_create_table(client, result)
+      if @storage_engine.create_table(result[:table_name], result[:columns]) || result[:if_not_exists]
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
+      end
+    end
+
+    def handle_drop_table(client, result)
+      if @storage_engine.drop_table(result[:table_name]) || result[:if_exists]
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
+      end
+    end
+
+    def handle_show_tables(client, _result)
+      tables = @storage_engine.list_tables
+      columns = ['Tables_in_mysql']
+      rows = tables.zip
+      send_result_set(client, rows, columns)
+    end
+
+    def handle_describe(client, result)
+      table_name = result[:table_name]
+      columns = @storage_engine.get_columns(table_name)
+      return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless columns
+
+      # MySQL DESCRIBE output format: Field, Type, Null, Key, Default, Extra
+      column_names = %w[Field Type Null Key Default Extra]
+      rows = columns.map do |col|
+        [col, 'text', 'YES', '', nil, '']
+      end
+
+      send_result_set(client, rows, column_names)
+    end
+  end
+
   # テーブル操作に関連するハンドラメソッドをまとめたモジュール
   module TableHandlers
     include TableHandlerUtils
+    include SchemaHandlers
 
     def handle_insert(client, result)
       columns = @storage_engine.get_columns(result[:table_name])
@@ -100,43 +141,6 @@ module RubyPureMysql
 
       projected_rows = rows.map { |row| indices.map { |i| row[i] } }
       send_result_set(client, projected_rows, result[:columns])
-    end
-
-    def handle_create_table(client, result)
-      if @storage_engine.create_table(result[:table_name], result[:columns]) || result[:if_not_exists]
-        send_ok_packet(client, 1)
-      else
-        send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)
-      end
-    end
-
-    def handle_drop_table(client, result)
-      if @storage_engine.drop_table(result[:table_name]) || result[:if_exists]
-        send_ok_packet(client, 1)
-      else
-        send_err_packet(client, 1, "Unknown table '#{result[:table_name]}'", 1051)
-      end
-    end
-
-    def handle_show_tables(client, _result)
-      tables = @storage_engine.list_tables
-      columns = ['Tables_in_mysql']
-      rows = tables.zip
-      send_result_set(client, rows, columns)
-    end
-
-    def handle_describe(client, result)
-      table_name = result[:table_name]
-      columns = @storage_engine.get_columns(table_name)
-      return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless columns
-
-      # MySQL DESCRIBE output format: Field, Type, Null, Key, Default, Extra
-      column_names = %w[Field Type Null Key Default Extra]
-      rows = columns.map do |col|
-        [col, 'text', 'YES', '', nil, '']
-      end
-
-      send_result_set(client, rows, column_names)
     end
   end
 end
