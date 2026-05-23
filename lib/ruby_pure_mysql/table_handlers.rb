@@ -174,14 +174,16 @@ module RubyPureMysql
       end
 
       where_clause = where_clauses&.first
-      col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
-      return if where_clause && !col_idx
+      where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
+      return if where_clause && !where_col_idx
 
-      success = if where_clause
-                  @storage_engine.update(result[:table_name], col_idx, where_clause[:value], result[:value])
-                else
-                  @storage_engine.update(result[:table_name], nil, nil, result[:value])
-                end
+      success = @storage_engine.update(
+        result[:table_name],
+        indices,
+        where_col_idx,
+        result[:value],
+        where_clause&.fetch(:value, nil)
+      )
 
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
@@ -198,10 +200,10 @@ module RubyPureMysql
       end
 
       where_clause = where_clauses&.first
-      col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
-      return if where_clause && !col_idx
+      where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
+      return if where_clause && !where_col_idx
 
-      execute_delete(client, result[:table_name], col_idx, where_clause&.fetch(:value, nil))
+      execute_delete(client, result[:table_name], where_col_idx, where_clause&.fetch(:value, nil))
     end
 
     def execute_delete(client, table_name, col_idx, value)
