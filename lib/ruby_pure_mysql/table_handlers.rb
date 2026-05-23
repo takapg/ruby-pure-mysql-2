@@ -19,9 +19,6 @@ module RubyPureMysql
       # stripを追加して余分な空白を除去
       direction = order[:direction].to_s.upcase.strip
 
-      # デバッグ出力: directionがDESCと判定されない場合、何が入っているか確認する
-      # puts "DEBUG: direction=#{direction}, order=#{order.inspect}"
-
       direction == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
@@ -78,27 +75,25 @@ module RubyPureMysql
       return unless columns
 
       rows = @storage_engine.select(result[:table_name])
+      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
+      rows = rows.first(result[:limit]) if result[:limit]
 
-      if result[:where]
-        where_clauses = prepare_where_clauses(client, columns, result[:where])
-        return unless where_clauses
-        rows = rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
-      end
+      send_selected_columns(client, rows, columns, result[:columns])
+    end
 
-      if result[:order]
-        rows = apply_order_by(client, result[:order], columns, rows)
-      end
+    def filter_rows(client, columns, rows, where)
+      where_clauses = prepare_where_clauses(client, columns, where)
+      return rows unless where_clauses
 
-      # RuboCopの指摘を回避しつつ、可読性を保つ
-      if result[:limit]
-        rows = rows.first(result[:limit])
-      end
+      rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
+    end
 
-      # SELECT句で指定されたカラムのみを抽出
-      if result[:columns] && !result[:columns].include?('*')
-        selected_indices = result[:columns].map { |col| columns.index(col) }
+    def send_selected_columns(client, rows, columns, selected_columns)
+      if selected_columns && !selected_columns.include?('*')
+        selected_indices = selected_columns.map { |col| columns.index(col) }
         rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        send_result_set(client, rows, result[:columns])
+        send_result_set(client, rows, selected_columns)
       else
         send_result_set(client, rows, columns)
       end
