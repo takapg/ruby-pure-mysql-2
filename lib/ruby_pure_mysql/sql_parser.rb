@@ -183,7 +183,7 @@ module RubyPureMysql
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
       '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
-      '(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z',
+      '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
     )
 
@@ -200,9 +200,18 @@ module RubyPureMysql
         where_res = parse_where_clause_into(result, match[3])
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
-      result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym } if match[4]
-      result[:limit] = match[6].to_i if match[6]
+      parse_order_by_clause(result, match[4], match[5]) if match[4]
+      parse_limit_offset_clause(result, match[6], match[7])
       result
+    end
+
+    def parse_order_by_clause(result, column, direction)
+      result[:order_by] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
+    end
+
+    def parse_limit_offset_clause(result, limit, offset)
+      result[:limit] = limit.to_i if limit
+      result[:offset] = offset.to_i if offset
     end
 
     def parse_where_clause_into(result, clause)

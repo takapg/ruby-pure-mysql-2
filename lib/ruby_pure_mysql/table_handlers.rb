@@ -109,6 +109,7 @@ module RubyPureMysql
         return nil unless rows
       end
 
+      rows = rows.drop(result[:offset]) if result[:offset]
       rows = rows.take(result[:limit]) if result[:limit]
       rows
     end
