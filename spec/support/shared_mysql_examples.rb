@@ -374,7 +374,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'returns the count of rows matching a WHERE clause' do
-      results = client.query("SELECT COUNT(*) FROM users WHERE id > 1;")
+      results = client.query('SELECT COUNT(*) FROM users WHERE id > 1;')
       expect(results.first.values.first).to eq(1)
     end
 

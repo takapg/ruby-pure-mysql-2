@@ -94,13 +94,7 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      # COUNT(*) の検出とフラグ設定
-      if match[1].strip.upcase == 'COUNT(*)'
-        result[:aggregate] = :count
-        result[:columns] = ['COUNT(*)']
-      else
-        result[:columns] = match[1].split(',').map(&:strip)
-      end
+      set_select_columns(result, match[1])
 
       if match[3]
         where_res = parse_where_clause_into(result, match[3])
@@ -109,6 +103,15 @@ module RubyPureMysql
       parse_order_by_clause(result, match[4], match[5]) if match[4]
       parse_limit_offset_clause(result, match[6], match[7])
       result
+    end
+
+    def set_select_columns(result, columns_str)
+      if columns_str.strip.upcase == 'COUNT(*)'
+        result[:aggregate] = :count
+        result[:columns] = ['COUNT(*)']
+      else
+        result[:columns] = columns_str.split(',').map(&:strip)
+      end
     end
 
     def parse_order_by_clause(result, column, direction)
