@@ -85,10 +85,17 @@ module RubyPureMysql
 
       # 複数条件対応（簡易的に最初の条件のみを使用）
       where_clause = result[:where_clauses]&.first
-      where_column = where_clause ? where_clause[:column] : nil
-      where_value = where_clause ? where_clause[:value] : nil
+      
+      if where_clause
+        col_idx = find_column_index(client, where_clause[:column], columns)
+        return unless col_idx
+        
+        success = @storage_engine.delete(result[:table_name], col_idx, where_clause[:value])
+      else
+        # WHERE句がない場合の挙動は要件次第だが、今回はWHERE句がある前提で修正
+        success = @storage_engine.delete(result[:table_name], nil, nil)
+      end
 
-      success = @storage_engine.delete(result[:table_name], where_column, where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
