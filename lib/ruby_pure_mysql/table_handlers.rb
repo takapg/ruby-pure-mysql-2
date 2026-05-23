@@ -7,6 +7,19 @@ module RubyPureMysql
   module TableHandlers
     include TableHandlerUtils
 
+    # 共通のソートロジックを確実に動作させるためにオーバーライド
+    def apply_order_by(_client, order, columns, rows)
+      col_idx = columns.index(order[:column])
+      return rows unless col_idx
+
+      # 破壊的変更を避けるために sort_by を使用
+      sorted_rows = rows.sort_by { |row| row[col_idx] }
+      
+      # directionがシンボルや文字列で渡される可能性があるため、明示的に文字列化して比較
+      direction = order[:direction].to_s.upcase
+      direction == 'DESC' ? sorted_rows.reverse : sorted_rows
+    end
+
     def handle_create_table(client, result)
       if @storage_engine.create_table(result[:table_name], result[:columns]) || result[:if_not_exists]
         send_ok_packet(client, 1)
