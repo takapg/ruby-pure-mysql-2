@@ -40,26 +40,24 @@ module RubyPureMysql
       end
     end
 
-    def update(table_name, col_idx, where_col_idx, new_value, where_value)
+    def update_rows_with_where(table_name, where_clauses, col_idx, new_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
+        columns = @tables[table_name]
         @data[table_name].each do |row|
-          row[col_idx] = new_value if where_col_idx.nil? || row[where_col_idx] == where_value
+          row[col_idx] = new_value if match_row?(row, columns, where_clauses)
         end
         true
       end
     end
 
-    def delete(table_name, where_col_idx, where_value)
+    def delete_rows_with_where(table_name, where_clauses)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        if where_col_idx.nil?
-          @data[table_name].clear
-        else
-          @data[table_name].reject! { |row| row[where_col_idx] == where_value }
-        end
+        columns = @tables[table_name]
+        @data[table_name].reject! { |row| match_row?(row, columns, where_clauses) }
         true
       end
     end
@@ -80,6 +78,42 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         @tables.keys
       end
+    end
+
+    private
+
+    def match_row?(row, columns, where_clauses)
+      return true if where_clauses.nil? || where_clauses.empty?
+
+      where_clauses.all? { |clause| match_clause?(row, columns, clause) }
+    end
+
+    def match_clause?(row, columns, clause)
+      c_idx = clause[:col_idx] || columns.index(clause[:column])
+      return false unless c_idx
+
+      val = row[c_idx]
+      return false if val.nil?
+
+      compare_values?(val, clause)
+    end
+
+    def compare_values?(val, clause)
+      if clause[:operator] == 'LIKE'
+        clause[:regex] ? clause[:regex].match?(val.to_s) : match_like?(val, clause[:value])
+      else
+        match_standard?(val, clause[:operator], clause[:value])
+      end
+    end
+
+    def match_like?(val, pattern_value)
+      pattern = Regexp.escape(pattern_value.to_s).gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+    end
+
+    def match_standard?(val, operator, target_value)
+      method = operator == '=' ? :== : operator.to_sym
+      val.public_send(method, target_value)
     end
   end
 end

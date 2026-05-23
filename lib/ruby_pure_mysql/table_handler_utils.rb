@@ -12,48 +12,47 @@ module RubyPureMysql
       columns
     end
 
-    def validate_table_and_where(client, result)
-      columns = validate_table(client, result[:table_name])
-      return nil unless columns
-
-      unless result[:where]
-        send_err_packet(client, 1, 'WHERE clause is required', 1064)
-        return nil
-      end
-
-      columns
-    end
-
     def get_column_index(client, columns, column_name)
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
         return nil
       end
-
       idx
     end
 
-    def get_update_indices(client, columns, result)
-      col_idx = get_column_index(client, columns, result[:column])
-      return nil unless col_idx
+    def find_matching_indices(client, rows, table_columns, where_clauses)
+      return (0...rows.size).to_a unless where_clauses
 
-      where_col_idx = nil
-      if result[:where]
-        where_col_idx = get_column_index(client, columns, result[:where][:column])
-        return nil if where_col_idx.nil?
-      end
+      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses)
+      return nil unless compiled_clauses
 
-      [col_idx, where_col_idx]
+      rows.each_with_index.select do |row, _idx|
+        compiled_clauses.all? do |c|
+          target = c[:regex] || c[:value]
+          apply_filter(row[c[:col_idx]], c[:operator], target)
+        end
+      end.map(&:last)
     end
 
-    def get_delete_params(client, columns, result)
-      return [nil, nil] unless result[:where]
+    def apply_filter(val, operator, target_value)
+      return false if val.nil?
 
-      col_idx = get_column_index(client, columns, result[:where][:column])
-      return nil unless col_idx
+      if operator == 'LIKE'
+        # target_value が正規表現オブジェクトならそのまま使う
+        compiled_regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
+        compiled_regex.match?(val.to_s)
+      else
+        # 既存の比較演算子
+        method = operator == '=' ? :== : operator.to_sym
+        val.public_send(method, target_value)
+      end
+    end
 
-      [col_idx, result[:where][:value]]
+    def build_like_regex(target_value)
+      escaped = Regexp.escape(target_value.to_s)
+      pattern = escaped.gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
@@ -65,6 +64,20 @@ module RubyPureMysql
       sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
       sorted_rows.reverse! if order_by[:direction] == :DESC
       sorted_rows
+    end
+
+    private
+
+    def compile_where_clauses(client, table_columns, where_clauses)
+      where_clauses.map do |clause|
+        col_idx = table_columns.index(clause[:column])
+        unless col_idx
+          send_err_packet(client, 1, "Unknown column '#{clause[:column]}'", 1054)
+          return nil
+        end
+        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
+        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
+      end
     end
   end
 end
