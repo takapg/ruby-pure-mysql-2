@@ -169,9 +169,7 @@ module RubyPureMysql
       parts = []
       buffer = { current: +'', in_quote: nil, index: 0 }
 
-      while buffer[:index] < clause.length
-        handle_where_char(clause, buffer, parts)
-      end
+      handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
       parts << buffer[:current].strip
     end
 
@@ -179,13 +177,21 @@ module RubyPureMysql
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
 
       if buffer[:in_quote].nil? && (match = clause[buffer[:index]..].match(/\A\s+AND\s+/i))
-        parts << buffer[:current].strip
-        buffer[:current] = +''
-        buffer[:index] += match[0].length
+        process_and_operator(match, buffer, parts)
       else
-        buffer[:current] << clause[buffer[:index]]
-        buffer[:index] += 1
+        process_normal_char(clause, buffer)
       end
+    end
+
+    def process_and_operator(match, buffer, parts)
+      parts << buffer[:current].strip
+      buffer[:current] = +''
+      buffer[:index] += match[0].length
+    end
+
+    def process_normal_char(clause, buffer)
+      buffer[:current] << clause[buffer[:index]]
+      buffer[:index] += 1
     end
 
     def update_quote_state(char, index, clause, in_quote)
