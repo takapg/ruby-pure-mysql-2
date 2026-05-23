@@ -18,6 +18,10 @@ module RubyPureMysql
       # directionがシンボルや文字列で渡される可能性があるため、明示的に文字列化して比較
       # stripを追加して余分な空白を除去
       direction = order[:direction].to_s.upcase.strip
+
+      # デバッグ出力: directionがDESCと判定されない場合、何が入っているか確認する
+      # puts "DEBUG: direction=#{direction}, order=#{order.inspect}"
+
       direction == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
