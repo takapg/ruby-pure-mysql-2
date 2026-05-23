@@ -14,6 +14,8 @@ module RubyPureMysql
     def handle_drop_table(client, result)
       if @storage_engine.drop_table(result[:table_name])
         send_ok_packet(client, 1)
+      elsif result[:if_exists]
+        send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1051)
       end

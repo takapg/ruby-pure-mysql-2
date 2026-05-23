@@ -42,9 +42,11 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      return unless @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
-
-      send_ok_packet(client, 1)
+      if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, 'Delete failed', 1000)
+      end
     end
   end
 end
