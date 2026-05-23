@@ -5,6 +5,8 @@ require_relative 'table_handler_utils'
 module RubyPureMysql
   # テーブル操作に関連するハンドラメソッドをまとめたモジュール
   module TableHandlers
+    include TableHandlerUtils
+
     def handle_create_table(client, result)
       if @storage_engine.create_table(result[:table_name], result[:columns]) || result[:if_not_exists]
         send_ok_packet(client, 1)
