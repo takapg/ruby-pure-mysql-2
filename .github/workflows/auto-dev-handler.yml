@@ -31,18 +31,19 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           gh issue comment $ISSUE_NUMBER --repo ${{ github.repository }} --body "
-          ## 🤖 Auto-Dev Launcher
+          この Issue の実装を開始するには、下記のコマンドをコメントにしてください。
 
-          - [ ] launch auto-dev
-
-          この Issue の実装を開始するには、上記のチェックボックスをオンにしてください。
+          ```
+          /auto-dev launch
+          ```
           "
 
   launch-auto-dev:
     if: |
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request == null &&
-      contains(github.event.comment.body, '- [x] launch auto-dev') &&
+      github.event.action == 'created' &&
+      startsWith(github.event.comment.body, '/auto-dev launch') &&
       (
         contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
         contains(fromJson('["github-actions[bot]","takapg-app[bot]"]'), github.event.comment.user.login)
@@ -101,14 +102,15 @@ jobs:
             --head "$BRANCH_NAME")
           fi
 
-          gh pr comment $PR_URL --repo ${{ github.repository }} --body "/aider-code"
+          gh pr comment $PR_URL --repo ${{ github.repository }} --body "/auto-dev code"
 
   dispatch-aider-code:
     if: |
       startsWith(github.event.issue.title, 'auto-dev:') &&
       github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
       github.event.issue.pull_request != null &&
-      startsWith(github.event.comment.body, '/aider-code') &&
+      startsWith(github.event.comment.body, '/auto-dev code') &&
       (
         contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
         contains(fromJson('["github-actions[bot]","takapg-app[bot]"]'), github.event.comment.user.login)
@@ -140,7 +142,7 @@ jobs:
             ISSUE_CONTEXT="【元の Issue #$ISSUE_NUM】\nタイトル: $(echo "$ISSUE_DATA" | jq -r .title)\n本文: $(echo "$ISSUE_DATA" | jq -r .body)"
           fi
 
-          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed '1s#^/aider-code##')
+          RAW_INSTRUCTION=$(printf '%s' "$COMMENT_BODY" | sed '1s#^/auto-dev code##')
 
           FULL_MESSAGE=$(cat <<EOF
           以下の文脈を理解して、コードを編集してください。
@@ -202,7 +204,7 @@ jobs:
             ERROR_LOGS="${ERROR_LOGS}\n### ${JOB_NAME}\n\`\`\`\n${LOG}\n\`\`\`\n"
           done < <(echo "$FAILED_JOBS" | jq -c .)
           # Aider に修正を依頼するコメントを投稿
-          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "/aider-code
+          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "/auto-dev code
           ❌ CI が失敗しました。
           エラー内容を確認し、修正を行ってください。
           <details>
@@ -281,7 +283,7 @@ jobs:
           set -e
           gh pr comment $PR_NUMBER --body "@coderabbitai pause"
           gh pr comment $PR_NUMBER --body "$(cat <<COMMENT_EOF
-          /aider-code
+          /auto-dev code
           🐰 CodeRabbit からのレビュー指摘を反映してください。
 
           ---
