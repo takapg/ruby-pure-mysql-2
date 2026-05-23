@@ -167,10 +167,22 @@ module RubyPureMysql
       indices = get_update_indices(client, columns, result)
       return unless indices
 
-      # 複数条件対応
+      # 複数条件対応: StorageEngineが単一条件のみ対応している場合を考慮
       where_clauses = result[:where_clauses]
+      if where_clauses && where_clauses.size > 1
+        return send_err_packet(client, 1, 'Multiple conditions in UPDATE are not supported yet', 1235)
+      end
 
-      success = @storage_engine.update(result[:table_name], *indices, result[:value], where_clauses)
+      where_clause = where_clauses&.first
+      col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
+      return if where_clause && !col_idx
+
+      success = if where_clause
+                  @storage_engine.update(result[:table_name], col_idx, where_clause[:value], result[:value])
+                else
+                  @storage_engine.update(result[:table_name], nil, nil, result[:value])
+                end
+
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -181,11 +193,19 @@ module RubyPureMysql
       return unless columns
 
       where_clauses = result[:where_clauses]
-      execute_delete(client, result[:table_name], where_clauses)
+      if where_clauses && where_clauses.size > 1
+        return send_err_packet(client, 1, 'Multiple conditions in DELETE are not supported yet', 1235)
+      end
+
+      where_clause = where_clauses&.first
+      col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
+      return if where_clause && !col_idx
+
+      execute_delete(client, result[:table_name], col_idx, where_clause&.fetch(:value, nil))
     end
 
-    def execute_delete(client, table_name, where_clauses)
-      success = @storage_engine.delete(table_name, where_clauses)
+    def execute_delete(client, table_name, col_idx, value)
+      success = @storage_engine.delete(table_name, col_idx, value)
       return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
