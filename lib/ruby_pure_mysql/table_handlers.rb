@@ -56,16 +56,20 @@ module RubyPureMysql
       rows = apply_where_filter(client, result[:where], table_columns, rows) if result[:where]
       return unless rows
 
-      # ORDER BY句の適用
-      if result[:order_by]
-        rows = apply_order_by(client, result[:order_by], table_columns, rows)
-        return unless rows
-      end
-
-      # LIMIT句の適用
-      rows = rows.take(result[:limit]) if result[:limit]
+      rows = apply_optional_clauses(client, result, table_columns, rows)
+      return unless rows
 
       send_select_result(client, result, rows, table_columns)
+    end
+
+    def apply_optional_clauses(client, result, table_columns, rows)
+      if result[:order_by]
+        rows = apply_order_by(client, result[:order_by], table_columns, rows)
+        return nil unless rows
+      end
+
+      rows = rows.take(result[:limit]) if result[:limit]
+      rows
     end
 
     def send_select_result(client, result, rows, table_columns)

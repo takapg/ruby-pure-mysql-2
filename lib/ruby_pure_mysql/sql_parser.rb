@@ -77,6 +77,8 @@ module RubyPureMysql
 
   # パースロジックを分離
   module SqlParserParsers
+    SELECT_REGEX = /\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i
+
     def parse_create_table(query)
       match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid CREATE TABLE syntax' } unless match
@@ -145,29 +147,25 @@ module RubyPureMysql
     end
 
     def parse_select_from(query)
-      # 正規表現を更新: WHERE, ORDER BY, LIMITをオプションでキャプチャ
-      match = query.match(/\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      parse_select_clauses(result, match)
+    end
 
-      # WHERE句の処理
-      if match[3]
-        where = parse_where_clause(match[3])
-        return where if where.is_a?(Hash) && where[:error]
-
-        result[:where] = where
-      end
-
-      # ORDER BY句の処理
-      if match[4]
-        result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym }
-      end
-
-      # LIMIT句の処理
+    def parse_select_clauses(result, match)
+      parse_where_clause_into(result, match[3]) if match[3]
+      result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym } if match[4]
       result[:limit] = match[6].to_i if match[6]
-
       result
+    end
+
+    def parse_where_clause_into(result, clause)
+      where = parse_where_clause(clause)
+      return where if where.is_a?(Hash) && where[:error]
+
+      result[:where] = where
     end
 
     def parse_show_tables(_query)
