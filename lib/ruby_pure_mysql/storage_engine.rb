@@ -97,14 +97,20 @@ module RubyPureMysql
     end
 
     def match_clause?(row, columns, clause)
-      c_idx = columns.index(clause[:column])
+      # clause[:col_idx] があればそれを使う（正規化済み）、なければ従来通り column 名から探す
+      c_idx = clause[:col_idx] || columns.index(clause[:column])
       return false unless c_idx
 
       val = row[c_idx]
       return false if val.nil?
 
       if clause[:operator] == 'LIKE'
-        match_like?(val, clause[:value])
+        # 正規化されたwhere_clausesには:regexが含まれている可能性がある
+        if clause[:regex]
+          clause[:regex].match?(val.to_s)
+        else
+          match_like?(val, clause[:value])
+        end
       else
         match_standard?(val, clause[:operator], clause[:value])
       end

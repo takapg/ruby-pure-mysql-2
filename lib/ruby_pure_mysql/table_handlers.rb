@@ -145,10 +145,14 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
+      # WHERE句の検証と正規化
+      where_clauses = result[:where] ? compile_where_clauses(client, columns, result[:where]) : []
+      return if result[:where] && where_clauses.nil?
+
       col_idx = get_column_index(client, columns, result[:column])
       return unless col_idx
 
-      if @storage_engine.update_rows_with_where(result[:table_name], result[:where] || [], col_idx, result[:value])
+      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, col_idx, result[:value])
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Update failed', 1000)
@@ -159,7 +163,11 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if @storage_engine.delete_rows_with_where(result[:table_name], result[:where] || [])
+      # WHERE句の検証と正規化
+      where_clauses = result[:where] ? compile_where_clauses(client, columns, result[:where]) : []
+      return if result[:where] && where_clauses.nil?
+
+      if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Delete failed', 1000)
