@@ -33,7 +33,7 @@ module RubyPureMysql
 
     def send_selected_columns(client, rows, columns, selected_columns)
       if selected_columns && !selected_columns.include?('*')
-        return unless validate_selected_columns(client, columns, selected_columns)
+        return unless validate_selected_columns?(client, columns, selected_columns)
 
         selected_indices = selected_columns.map { |col| columns.index(col) }
         rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
@@ -43,7 +43,7 @@ module RubyPureMysql
       end
     end
 
-    def validate_selected_columns(client, columns, selected_columns)
+    def validate_selected_columns?(client, columns, selected_columns)
       selected_columns.each do |col|
         unless columns.include?(col)
           send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
