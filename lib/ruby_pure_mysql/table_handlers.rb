@@ -137,13 +137,30 @@ module RubyPureMysql
     end
 
     def filter_rows(rows, col_idx, where_clause)
-      method = where_clause[:operator] == '=' ? :== : where_clause[:operator].to_sym
+      operator = where_clause[:operator]
       target_value = where_clause[:value]
+      regex = operator == 'LIKE' ? build_like_regex(target_value) : nil
 
       rows.select do |row|
         val = row[col_idx]
         next false if val.nil?
 
+        apply_filter(val, operator, target_value, regex)
+      end
+    end
+
+    def build_like_regex(target_value)
+      escaped = Regexp.escape(target_value.to_s)
+      pattern = escaped.gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
+    end
+
+    def apply_filter(val, operator, target_value, compiled_regex = nil)
+      if operator == 'LIKE'
+        compiled_regex.match?(val.to_s)
+      else
+        # 既存の比較演算子
+        method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
     end

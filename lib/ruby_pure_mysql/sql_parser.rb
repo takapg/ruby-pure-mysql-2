@@ -87,12 +87,12 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      # 演算子の順序を修正: 長い演算子を先にマッチさせる
-      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<)\s*(.+)\z/)
+      # 演算子の正規表現に LIKE を追加し、大文字小文字を区別しないように修正
+      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
-      operator = where_match[2]
+      operator = where_match[2].upcase # LIKE を大文字に統一
       # <> を != に正規化
       operator = '!=' if operator == '<>'
 

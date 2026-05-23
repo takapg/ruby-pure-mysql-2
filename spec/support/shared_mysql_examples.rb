@@ -157,6 +157,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
       client.query("INSERT INTO users VALUES (1, 'alice');")
       client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'cory');")
     end
 
     it 'filters rows by integer column' do
@@ -178,14 +179,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by > operator' do
       results = client.query('SELECT * FROM users WHERE id > 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by != operator' do
       results = client.query('SELECT * FROM users WHERE id != 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by <= operator' do
@@ -196,8 +197,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by >= operator' do
       results = client.query('SELECT * FROM users WHERE id >= 2;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by < operator' do
@@ -208,18 +209,19 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by <> operator (alias for !=)' do
       results = client.query('SELECT * FROM users WHERE id <> 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by >= operator (boundary)' do
       results = client.query('SELECT * FROM users WHERE id >= 1;')
-      expect(results.count).to eq(2)
+      expect(results.count).to eq(3)
     end
 
     it 'filters rows by > operator (boundary)' do
       results = client.query('SELECT * FROM users WHERE id > 2;')
-      expect(results.count).to eq(0)
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(3)
     end
 
     it 'filters rows by <= operator (boundary)' do
@@ -230,6 +232,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'filters rows by < operator (boundary)' do
       results = client.query('SELECT * FROM users WHERE id < 1;')
       expect(results.count).to eq(0)
+    end
+
+    it 'filters rows by LIKE operator (prefix)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE 'a%';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by LIKE operator (contains)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE '%o%';")
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['name'] }).to include('bob', 'cory')
+    end
+
+    it 'filters rows by LIKE operator (suffix)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE '%e';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by LIKE operator (single character wildcard)' do
+      # 'bob' を 'b_b' でマッチさせる
+      results = client.query("SELECT * FROM users WHERE name LIKE 'b_b';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([2, 'bob'])
     end
   end
 
