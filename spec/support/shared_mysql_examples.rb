@@ -11,6 +11,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     )
   end
 
+  before do
+    # テストに必要なテーブルとデータをセットアップ
+    client.query("CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));")
+    client.query("DELETE FROM users;")
+    client.query("INSERT INTO users VALUES (1, 'alice');")
+    client.query("INSERT INTO users VALUES (2, 'bob');")
+  end
+
   after do
     client&.close
   rescue StandardError

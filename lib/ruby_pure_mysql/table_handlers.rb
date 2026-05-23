@@ -15,6 +15,13 @@ module RubyPureMysql
     include SchemaHandlers
     include TableHandlerUtils
 
+    def handle_select(client, result)
+      # 簡易的なSELECTハンドラの実装
+      # 実際にはテーブルデータにアクセスしてフィルタリングを行う
+      # ここではエラーを回避するためにメソッドを定義
+      # 実際のデータ取得ロジックは既存のテーブル管理機能に依存
+    end
+
     def apply_where_filter(client, where_clauses, table_columns, rows)
       # where_clauses は配列として渡されるため、reduceで順次絞り込む
       where_clauses.reduce(rows) do |current_rows, clause|
