@@ -239,8 +239,7 @@ jobs:
             --jq '.pull_requests[0].number // empty')
 
           if [ -z "$PR_NUMBER" ]; then
-            echo "No PR associated with this workflow run."
-            exit 0
+            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
           fi
 
           IS_DRAFT=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json isDraft --jq '.isDraft')
@@ -273,10 +272,11 @@ jobs:
       - name: Relay Review to Aider
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
           set -e
+          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai pause"
 
           cat << 'COMMENT_EOF' > rabbit_comment.txt
           /auto-dev code
