@@ -14,9 +14,10 @@ module RubyPureMysql
 
       # 破壊的変更を避けるために sort_by を使用
       sorted_rows = rows.sort_by { |row| row[col_idx] }
-      
+
       # directionがシンボルや文字列で渡される可能性があるため、明示的に文字列化して比較
-      direction = order[:direction].to_s.upcase
+      # stripを追加して余分な空白を除去
+      direction = order[:direction].to_s.upcase.strip
       direction == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
