@@ -167,21 +167,25 @@ module RubyPureMysql
 
     def split_where_clause(clause)
       parts = []
-      current = +''
-      in_quote = nil
-      index = 0
-      while index < clause.length
-        in_quote = update_quote_state(clause[index], index, clause, in_quote)
-        if in_quote.nil? && (match = clause[index..].match(/\A\s+AND\s+/i))
-          parts << current.strip
-          current = +''
-          index += match[0].length
-        else
-          current << clause[index]
-          index += 1
-        end
+      buffer = { current: +'', in_quote: nil, index: 0 }
+
+      while buffer[:index] < clause.length
+        handle_where_char(clause, buffer, parts)
       end
-      parts << current.strip
+      parts << buffer[:current].strip
+    end
+
+    def handle_where_char(clause, buffer, parts)
+      buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+
+      if buffer[:in_quote].nil? && (match = clause[buffer[:index]..].match(/\A\s+AND\s+/i))
+        parts << buffer[:current].strip
+        buffer[:current] = +''
+        buffer[:index] += match[0].length
+      else
+        buffer[:current] << clause[buffer[:index]]
+        buffer[:index] += 1
+      end
     end
 
     def update_quote_state(char, index, clause, in_quote)
