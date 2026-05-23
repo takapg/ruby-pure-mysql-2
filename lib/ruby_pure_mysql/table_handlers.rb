@@ -73,7 +73,9 @@ module RubyPureMysql
           # 破壊的変更を避けるために sort_by を使用
           rows = rows.sort_by { |row| row[col_idx] }
           # 大文字小文字を区別しない比較にする
-          if result[:order][:direction] && result[:order][:direction].to_s.upcase == 'DESC'
+          # directionがシンボルや文字列で渡される可能性があるため、明示的に文字列化して比較
+          direction = result[:order][:direction].to_s.upcase
+          if direction == 'DESC'
             rows.reverse!
           end
         end
