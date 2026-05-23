@@ -55,6 +55,33 @@ module RubyPureMysql
       end
     end
 
+    def handle_select(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      rows = @storage_engine.select(result[:table_name])
+
+      if result[:where]
+        where_clauses = prepare_where_clauses(client, columns, result[:where])
+        return unless where_clauses
+        rows = rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
+      end
+
+      if result[:order]
+        col_idx = columns.index(result[:order][:column])
+        if col_idx
+          rows.sort_by! { |row| row[col_idx] }
+          rows.reverse! if result[:order][:direction] == 'DESC'
+        end
+      end
+
+      if result[:limit]
+        rows = rows.first(result[:limit])
+      end
+
+      send_result_set(client, rows, columns)
+    end
+
     def handle_update(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
