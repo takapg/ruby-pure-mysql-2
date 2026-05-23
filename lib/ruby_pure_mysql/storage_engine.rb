@@ -104,12 +104,20 @@ module RubyPureMysql
       return false if val.nil?
 
       if clause[:operator] == 'LIKE'
-        pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
-        Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+        match_like?(val, clause[:value])
       else
-        method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
-        val.public_send(method, clause[:value])
+        match_standard?(val, clause[:operator], clause[:value])
       end
+    end
+
+    def match_like?(val, pattern_value)
+      pattern = Regexp.escape(pattern_value.to_s).gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+    end
+
+    def match_standard?(val, operator, target_value)
+      method = operator == '=' ? :== : operator.to_sym
+      val.public_send(method, target_value)
     end
   end
 end
