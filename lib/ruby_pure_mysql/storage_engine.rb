@@ -40,26 +40,19 @@ module RubyPureMysql
       end
     end
 
-    def update(table_name, col_idx, where_col_idx, new_value, where_value)
+    def update_rows(table_name, indices, col_idx, new_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
-
-        @data[table_name].each do |row|
-          row[col_idx] = new_value if where_col_idx.nil? || row[where_col_idx] == where_value
-        end
+        indices.each { |idx| @data[table_name][idx][col_idx] = new_value }
         true
       end
     end
 
-    def delete(table_name, where_col_idx, where_value)
+    def delete_rows(table_name, indices)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
-
-        if where_col_idx.nil?
-          @data[table_name].clear
-        else
-          @data[table_name].reject! { |row| row[where_col_idx] == where_value }
-        end
+        # インデックスの大きい順に削除しないとインデックスがずれるため reverse_each
+        indices.sort.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
     end

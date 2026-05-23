@@ -99,29 +99,12 @@ module RubyPureMysql
     def filter_rows(rows, col_idx, where_clause)
       operator = where_clause[:operator]
       target_value = where_clause[:value]
-      regex = operator == 'LIKE' ? build_like_regex(target_value) : nil
 
       rows.select do |row|
         val = row[col_idx]
         next false if val.nil?
 
-        apply_filter(val, operator, target_value, regex)
-      end
-    end
-
-    def build_like_regex(target_value)
-      escaped = Regexp.escape(target_value.to_s)
-      pattern = escaped.gsub('%', '.*').tr('_', '.')
-      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
-    end
-
-    def apply_filter(val, operator, target_value, compiled_regex = nil)
-      if operator == 'LIKE'
-        compiled_regex.match?(val.to_s)
-      else
-        # 既存の比較演算子
-        method = operator == '=' ? :== : operator.to_sym
-        val.public_send(method, target_value)
+        apply_filter(val, operator, target_value)
       end
     end
 
@@ -162,45 +145,5 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      return unless with_single_where(client, result) do
-        indices = get_update_indices(client, columns, result)
-        return unless indices
-
-        where_value = result[:where] ? result[:where][:value] : nil
-        success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
-        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
-      end
-
-      send_ok_packet(client, 1)
-    end
-
-    def handle_delete(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
-      return unless with_single_where(client, result) do
-        params = get_delete_params(client, columns, result)
-        return unless params
-
-        success = @storage_engine.delete(result[:table_name], *params)
-        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
-      end
-
-      send_ok_packet(client, 1)
-    end
-
-    def with_single_where(client, result)
-      if result[:where] && result[:where].size > 1
-        send_err_packet(client, 1, 'Multiple conditions in WHERE clause not supported for UPDATE/DELETE', 1000)
-        return false
-      end
-
-      original_where = result[:where]
-      result[:where] = original_where&.first
-      yield
-      true
-    ensure
-      result[:where] = original_where
-    end
-  end
-end
+      rows = @storage_engine.select(result[:table_name])
+      indices = find_

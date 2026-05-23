@@ -12,48 +12,42 @@ module RubyPureMysql
       columns
     end
 
-    def validate_table_and_where(client, result)
-      columns = validate_table(client, result[:table_name])
-      return nil unless columns
-
-      unless result[:where]
-        send_err_packet(client, 1, 'WHERE clause is required', 1064)
-        return nil
-      end
-
-      columns
-    end
-
     def get_column_index(client, columns, column_name)
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
         return nil
       end
-
       idx
     end
 
-    def get_update_indices(client, columns, result)
-      col_idx = get_column_index(client, columns, result[:column])
-      return nil unless col_idx
+    def find_matching_indices(client, rows, table_columns, where_clauses)
+      return (0...rows.size).to_a unless where_clauses
 
-      where_col_idx = nil
-      if result[:where]
-        where_col_idx = get_column_index(client, columns, result[:where][:column])
-        return nil if where_col_idx.nil?
-      end
-
-      [col_idx, where_col_idx]
+      rows.each_with_index.select do |row, _idx|
+        where_clauses.all? do |clause|
+          col_idx = get_column_index(client, table_columns, clause[:column])
+          return nil unless col_idx
+          apply_filter(row[col_idx], clause[:operator], clause[:value])
+        end
+      end.map(&:last)
     end
 
-    def get_delete_params(client, columns, result)
-      return [nil, nil] unless result[:where]
+    def apply_filter(val, operator, target_value, compiled_regex = nil)
+      if operator == 'LIKE'
+        compiled_regex ||= build_like_regex(target_value)
+        compiled_regex.match?(val.to_s)
+      else
+        # 既存の比較演算子
+        method = operator == '=' ? :== : operator.to_sym
+        val.public_send(method, target_value)
+      end
+    end
 
-      col_idx = get_column_index(client, columns, result[:where][:column])
-      return nil unless col_idx
-
-      [col_idx, result[:where][:value]]
+    def build_like_regex(target_value)
+      escaped = Regexp.escape(target_value.to_s)
+      pattern = escaped.gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
