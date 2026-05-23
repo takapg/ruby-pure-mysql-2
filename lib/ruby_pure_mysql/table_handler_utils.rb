@@ -61,7 +61,8 @@ module RubyPureMysql
       return nil unless col_idx
 
       # ソート実行
-      sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 1 : 0, row[col_idx]] }
+      # MySQL 8.0 の挙動に合わせる: ASC は NULLS FIRST, DESC は NULLS LAST
+      sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
       sorted_rows.reverse! if order_by[:direction] == :DESC
       sorted_rows
     end
