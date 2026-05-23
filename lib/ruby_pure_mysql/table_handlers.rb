@@ -25,7 +25,7 @@ module RubyPureMysql
 
     def handle_show_tables(client, _result)
       tables = @storage_engine.list_tables
-      rows = tables.map { |t| [t] }
+      rows = tables.zip
       send_result_set(client, rows, ['Tables_in_mysql'])
     end
 
@@ -62,10 +62,17 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      # 複数カラム更新を想定し、StorageEngineへ渡す
-      return unless @storage_engine.update_rows_with_where(result[:table_name], where_clauses, result[:set])
+      col_idx = columns.index(result[:column])
+      if col_idx.nil?
+        send_err_packet(client, 1, "Unknown column '#{result[:column]}'", 1054)
+        return
+      end
 
-      send_ok_packet(client, 1)
+      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, col_idx, result[:value])
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Update failed", 1000)
+      end
     end
 
     def handle_delete(client, result)
