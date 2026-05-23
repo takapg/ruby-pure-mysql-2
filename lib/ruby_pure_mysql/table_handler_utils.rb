@@ -24,16 +24,8 @@ module RubyPureMysql
     def find_matching_indices(client, rows, table_columns, where_clauses)
       return (0...rows.size).to_a unless where_clauses
 
-      # 事前解決
-      compiled_clauses = where_clauses.map do |clause|
-        col_idx = table_columns.index(clause[:column])
-        unless col_idx
-          send_err_packet(client, 1, "Unknown column '#{clause[:column]}'", 1054)
-          return nil
-        end
-        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
-        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
-      end
+      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses)
+      return nil unless compiled_clauses
 
       rows.each_with_index.select do |row, _idx|
         compiled_clauses.all? do |c|
@@ -72,6 +64,20 @@ module RubyPureMysql
       sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
       sorted_rows.reverse! if order_by[:direction] == :DESC
       sorted_rows
+    end
+
+    private
+
+    def compile_where_clauses(client, table_columns, where_clauses)
+      where_clauses.map do |clause|
+        col_idx = table_columns.index(clause[:column])
+        unless col_idx
+          send_err_packet(client, 1, "Unknown column '#{clause[:column]}'", 1054)
+          return nil
+        end
+        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
+        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
+      end
     end
   end
 end

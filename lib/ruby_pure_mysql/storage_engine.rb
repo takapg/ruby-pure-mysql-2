@@ -43,23 +43,12 @@ module RubyPureMysql
     def update_rows_with_where(table_name, where_clauses, col_idx, new_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+
         columns = @tables[table_name]
         rows = @data[table_name]
 
         indices = rows.each_with_index.select do |row, _idx|
-          where_clauses.all? do |clause|
-            c_idx = columns.index(clause[:column])
-            return false unless c_idx
-            val = row[c_idx]
-            next false if val.nil?
-            if clause[:operator] == 'LIKE'
-              pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
-              Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
-            else
-              method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
-              val.public_send(method, clause[:value])
-            end
-          end
+          match_row?(row, columns, where_clauses)
         end.map(&:last)
 
         indices.each { |idx| rows[idx][col_idx] = new_value }
@@ -70,23 +59,12 @@ module RubyPureMysql
     def delete_rows_with_where(table_name, where_clauses)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+
         columns = @tables[table_name]
         rows = @data[table_name]
 
         indices = rows.each_with_index.select do |row, _idx|
-          where_clauses.all? do |clause|
-            c_idx = columns.index(clause[:column])
-            return false unless c_idx
-            val = row[c_idx]
-            next false if val.nil?
-            if clause[:operator] == 'LIKE'
-              pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
-              Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
-            else
-              method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
-              val.public_send(method, clause[:value])
-            end
-          end
+          match_row?(row, columns, where_clauses)
         end.map(&:last)
 
         indices.sort.reverse_each { |idx| rows.delete_at(idx) }
@@ -109,6 +87,26 @@ module RubyPureMysql
     def list_tables
       @tables_mutex.synchronize do
         @tables.keys
+      end
+    end
+
+    private
+
+    def match_row?(row, columns, where_clauses)
+      where_clauses.all? do |clause|
+        c_idx = columns.index(clause[:column])
+        return false unless c_idx
+
+        val = row[c_idx]
+        next false if val.nil?
+
+        if clause[:operator] == 'LIKE'
+          pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
+          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+        else
+          method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
+          val.public_send(method, clause[:value])
+        end
       end
     end
   end
