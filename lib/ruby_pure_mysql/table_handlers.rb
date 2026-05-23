@@ -122,13 +122,30 @@ module RubyPureMysql
     end
 
     def apply_where_filter(client, where_clause, table_columns, rows)
-      col_idx = table_columns.index(where_clause[:column])
-      unless col_idx
-        send_err_packet(client, 1, "Unknown column '#{where_clause[:column]}' in WHERE clause", 1054)
-        return nil
-      end
+      col_idx = find_column_index(client, where_clause[:column], table_columns)
+      return nil unless col_idx
 
-      rows.select { |row| row[col_idx] == where_clause[:value] }
+      filter_rows(rows, col_idx, where_clause)
+    end
+
+    def find_column_index(client, column_name, table_columns)
+      col_idx = table_columns.index(column_name)
+      return col_idx if col_idx
+
+      send_err_packet(client, 1, "Unknown column '#{column_name}' in WHERE clause", 1054)
+      nil
+    end
+
+    def filter_rows(rows, col_idx, where_clause)
+      method = where_clause[:operator] == '=' ? :== : where_clause[:operator].to_sym
+      target_value = where_clause[:value]
+
+      rows.select do |row|
+        val = row[col_idx]
+        next false if val.nil?
+
+        val.public_send(method, target_value)
+      end
     end
 
     def handle_projection(client, result, rows, table_columns)

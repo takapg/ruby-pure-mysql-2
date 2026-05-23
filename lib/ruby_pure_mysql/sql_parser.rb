@@ -87,15 +87,21 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      where_match = clause.match(/\A(\w+)\s*=\s*(.+)\z/)
+      # 演算子の順序を修正: 長い演算子を先にマッチさせる
+      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<)\s*(.+)\z/)
       return { error: 'Invalid WHERE clause' } unless where_match
 
+      column = where_match[1]
+      operator = where_match[2]
+      # <> を != に正規化
+      operator = '!=' if operator == '<>'
+
       # 値からセミコロンを除去
-      value_str = where_match[2].strip.delete_suffix(';')
+      value_str = where_match[3].strip.delete_suffix(';')
       value = convert_value(value_str)
       return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
-      { column: where_match[1], value: value }
+      { column: column, operator: operator, value: value }
     end
   end
 

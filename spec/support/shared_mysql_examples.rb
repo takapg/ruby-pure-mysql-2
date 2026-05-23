@@ -175,6 +175,62 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM users WHERE id = 999;')
       expect(results.count).to eq(0)
     end
+
+    it 'filters rows by > operator' do
+      results = client.query('SELECT * FROM users WHERE id > 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'filters rows by != operator' do
+      results = client.query('SELECT * FROM users WHERE id != 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'filters rows by <= operator' do
+      results = client.query('SELECT * FROM users WHERE id <= 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'filters rows by >= operator' do
+      results = client.query('SELECT * FROM users WHERE id >= 2;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'filters rows by < operator' do
+      results = client.query('SELECT * FROM users WHERE id < 2;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'filters rows by <> operator (alias for !=)' do
+      results = client.query('SELECT * FROM users WHERE id <> 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'filters rows by >= operator (boundary)' do
+      results = client.query('SELECT * FROM users WHERE id >= 1;')
+      expect(results.count).to eq(2)
+    end
+
+    it 'filters rows by > operator (boundary)' do
+      results = client.query('SELECT * FROM users WHERE id > 2;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'filters rows by <= operator (boundary)' do
+      results = client.query('SELECT * FROM users WHERE id <= 2;')
+      expect(results.count).to eq(2)
+    end
+
+    it 'filters rows by < operator (boundary)' do
+      results = client.query('SELECT * FROM users WHERE id < 1;')
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'Query Sorting (ORDER BY clause)' do
