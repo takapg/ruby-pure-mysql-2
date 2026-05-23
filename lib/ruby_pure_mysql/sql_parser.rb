@@ -190,7 +190,10 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      parse_where_clause_into(result, match[3]) if match[3]
+      if match[3]
+        where_res = parse_where_clause_into(result, match[3])
+        return where_res if where_res.is_a?(Hash) && where_res[:error]
+      end
       result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym } if match[4]
       result[:limit] = match[6].to_i if match[6]
       result

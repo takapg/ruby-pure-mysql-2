@@ -191,6 +191,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.map { |r| r['id'] }).to eq([1, 2, 3])
     end
 
+    it 'defaults to ascending order when direction is omitted' do
+      results = client.query('SELECT * FROM users ORDER BY id;')
+      expect(results.map { |r| r['id'] }).to eq([1, 2, 3])
+    end
+
     it 'sorts rows in descending order' do
       results = client.query('SELECT * FROM users ORDER BY id DESC;')
       expect(results.map { |r| r['id'] }).to eq([3, 2, 1])
