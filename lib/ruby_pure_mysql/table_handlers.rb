@@ -145,13 +145,23 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      # WHERE句の検証と正規化
-      where_clauses = result[:where] ? compile_where_clauses(client, columns, result[:where]) : []
-      return if result[:where] && where_clauses.nil?
+      where_clauses = prepare_where_clauses(client, columns, result[:where])
+      return unless where_clauses
 
       col_idx = get_column_index(client, columns, result[:column])
       return unless col_idx
 
+      perform_update(client, result, where_clauses, col_idx)
+    end
+
+    def prepare_where_clauses(client, columns, where)
+      return [] unless where
+
+      clauses = compile_where_clauses(client, columns, where)
+      clauses.nil? ? nil : clauses
+    end
+
+    def perform_update(client, result, where_clauses, col_idx)
       if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, col_idx, result[:value])
         send_ok_packet(client, 1)
       else
