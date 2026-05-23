@@ -163,11 +163,19 @@ module RubyPureMysql
     def handle_update(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
+      perform_update(client, result, columns)
+    end
 
+    def handle_delete(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+      perform_delete(client, result, columns)
+    end
+
+    def perform_update(client, result, columns)
       indices = get_update_indices(client, columns, result)
       return unless indices
 
-      # indices が配列の場合、最初の要素をインデックスとして使用する
       col_idx = indices.is_a?(Array) ? indices.first : indices
 
       # 複数条件対応: StorageEngineが単一条件のみ対応している場合を考慮
@@ -193,10 +201,7 @@ module RubyPureMysql
       send_ok_packet(client, 1)
     end
 
-    def handle_delete(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
+    def perform_delete(client, result, columns)
       where_clauses = result[:where_clauses]
       if where_clauses && where_clauses.size > 1
         return send_err_packet(client, 1, 'Multiple conditions in DELETE are not supported yet', 1235)
