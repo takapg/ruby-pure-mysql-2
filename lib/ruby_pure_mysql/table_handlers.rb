@@ -128,11 +128,11 @@ module RubyPureMysql
         return nil
       end
 
-      operator = where_clause[:operator].to_sym
+      operator = where_clause[:operator]
       target_value = where_clause[:value]
 
       # 演算子をRubyのメソッド名に変換
-      method = (operator == :=) ? :== : operator
+      method = (operator == '=') ? :== : operator.to_sym
 
       rows.select { |row| row[col_idx].public_send(method, target_value) }
     end
