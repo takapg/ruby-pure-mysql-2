@@ -87,7 +87,42 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      clause.split(/\s+AND\s+/i).map { |c| parse_single_where_condition(c) }
+      parts = []
+      current = +''
+      in_quote = nil
+
+      i = 0
+      while i < clause.length
+        # 引用符のトグル
+        if (clause[i] == "'" || clause[i] == '"') && (i == 0 || clause[i - 1] != '\\')
+          if in_quote == clause[i]
+            in_quote = nil
+          elsif in_quote.nil?
+            in_quote = clause[i]
+          end
+        end
+
+        # AND のチェック（引用符外のみ）
+        if in_quote.nil?
+          match = clause[i..].match(/\A\s+AND\s+/i)
+          if match
+            parts << current.strip
+            current = +''
+            i += match[0].length
+            next
+          end
+        end
+
+        current << clause[i]
+        i += 1
+      end
+      parts << current.strip
+
+      results = parts.map { |p| parse_single_where_condition(p) }
+      error = results.find { |r| r.is_a?(Hash) && r[:error] }
+      return error if error
+
+      results
     end
 
     def parse_single_where_condition(condition)

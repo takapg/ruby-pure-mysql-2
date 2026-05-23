@@ -162,7 +162,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      with_single_where(result) do
+      return unless with_single_where(client, result) do
         indices = get_update_indices(client, columns, result)
         return unless indices
 
@@ -178,7 +178,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      with_single_where(result) do
+      return unless with_single_where(client, result) do
         params = get_delete_params(client, columns, result)
         return unless params
 
@@ -189,10 +189,16 @@ module RubyPureMysql
       send_ok_packet(client, 1)
     end
 
-    def with_single_where(result)
+    def with_single_where(client, result)
+      if result[:where] && result[:where].size > 1
+        send_err_packet(client, 1, 'Multiple conditions in WHERE clause not supported for UPDATE/DELETE', 1000)
+        return false
+      end
+
       original_where = result[:where]
       result[:where] = original_where&.first
       yield
+      true
     ensure
       result[:where] = original_where
     end
