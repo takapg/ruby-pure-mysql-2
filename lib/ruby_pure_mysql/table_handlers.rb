@@ -29,4 +29,30 @@ module RubyPureMysql
     end
 
     def handle_describe(client, result)
-      table_name
+      table_name = result[:table_name]
+      columns = @storage_engine.get_columns(table_name)
+      return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless columns
+
+      rows = columns.map { |col| [col, 'VARCHAR(255)'] }
+      send_result_set(client, rows, ['Field', 'Type'])
+    end
+
+    def prepare_where_clauses(client, columns, where)
+      return [] unless where
+
+      compile_where_clauses(client, columns, where)
+    end
+
+    def handle_delete(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      where_clauses = prepare_where_clauses(client, columns, result[:where])
+      return unless where_clauses
+
+      if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
+        send_ok_packet(client, 1)
+      end
+    end
+  end
+end
