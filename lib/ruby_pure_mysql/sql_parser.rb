@@ -104,7 +104,8 @@ module RubyPureMysql
     end
 
     def parse_order_by_clause(result, column, direction)
-      result[:order_by] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
+      # 修正: table_handlers.rb が期待するキー :order に合わせる
+      result[:order] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
     end
 
     def parse_limit_offset_clause(result, limit, offset)
