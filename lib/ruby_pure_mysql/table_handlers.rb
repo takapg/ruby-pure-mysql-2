@@ -139,22 +139,25 @@ module RubyPureMysql
     def filter_rows(rows, col_idx, where_clause)
       operator = where_clause[:operator]
       target_value = where_clause[:value]
+      compiled_regex = nil
+
+      if operator == 'LIKE'
+        escaped = Regexp.escape(target_value.to_s)
+        pattern = escaped.gsub('%', '.*').tr('_', '.')
+        compiled_regex = Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
+      end
 
       rows.select do |row|
         val = row[col_idx]
         next false if val.nil?
 
-        apply_filter(val, operator, target_value)
+        apply_filter(val, operator, target_value, compiled_regex)
       end
     end
 
-    def apply_filter(val, operator, target_value)
+    def apply_filter(val, operator, target_value, compiled_regex = nil)
       if operator == 'LIKE'
-        # SQLのワイルドカードを正規表現に変換する前に、他のメタ文字をエスケープする
-        # Regexp.escapeは % や _ をエスケープしないため、安全に置換可能
-        escaped = Regexp.escape(target_value.to_s)
-        pattern = escaped.gsub('%', '.*').tr('_', '.')
-        val.to_s.match?(/\A#{pattern}\z/i)
+        compiled_regex.match?(val.to_s)
       else
         # 既存の比較演算子
         method = operator == '=' ? :== : operator.to_sym
