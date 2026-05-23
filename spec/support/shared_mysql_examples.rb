@@ -231,6 +231,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM users WHERE id < 1;')
       expect(results.count).to eq(0)
     end
+
+    it 'filters rows by LIKE operator (prefix)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE 'a%';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by LIKE operator (contains)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE '%o%';")
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['name'] }).to include('alice', 'bob')
+    end
   end
 
   describe 'Query Sorting (ORDER BY clause)' do

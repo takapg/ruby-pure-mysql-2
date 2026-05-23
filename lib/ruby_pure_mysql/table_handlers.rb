@@ -137,14 +137,24 @@ module RubyPureMysql
     end
 
     def filter_rows(rows, col_idx, where_clause)
-      method = where_clause[:operator] == '=' ? :== : where_clause[:operator].to_sym
+      operator = where_clause[:operator]
       target_value = where_clause[:value]
 
       rows.select do |row|
         val = row[col_idx]
         next false if val.nil?
 
-        val.public_send(method, target_value)
+        case operator
+        when 'LIKE'
+          # SQLの % を正規表現の .* に、_ を . に変換
+          pattern = target_value.to_s.gsub('%', '.*').gsub('_', '.')
+          # 大文字小文字を区別しないマッチング
+          val.to_s.match?(/\A#{pattern}\z/i)
+        else
+          # 既存の比較演算子
+          method = operator == '=' ? :== : operator.to_sym
+          val.public_send(method, target_value)
+        end
       end
     end
 
