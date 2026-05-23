@@ -72,6 +72,7 @@ module RubyPureMysql
       # 複数条件対応（簡易的に最初の条件のみを使用）
       where_clause = result[:where_clauses]&.first
       where_value = where_clause ? where_clause[:value] : nil
+      
       success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
@@ -82,10 +83,12 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      params = get_delete_params(client, columns, result)
-      return unless params
+      # 複数条件対応（簡易的に最初の条件のみを使用）
+      where_clause = result[:where_clauses]&.first
+      where_column = where_clause ? where_clause[:column] : nil
+      where_value = where_clause ? where_clause[:value] : nil
 
-      success = @storage_engine.delete(result[:table_name], *params)
+      success = @storage_engine.delete(result[:table_name], where_column, where_value)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
