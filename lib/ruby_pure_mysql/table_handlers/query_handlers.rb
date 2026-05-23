@@ -11,7 +11,6 @@ module RubyPureMysql
       return if rows.nil?
 
       if result[:aggregate] == :count
-        # COUNT(*) の場合、フィルタリング後の行数を返す
         send_result_set(client, [[rows.size]], ['COUNT(*)'])
       else
         send_selected_columns(client, rows, columns, result[:columns])
@@ -26,15 +25,12 @@ module RubyPureMysql
       rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
       return nil if rows.nil?
 
-      rows = rows.drop(result[:offset]) if result[:offset]
-      result[:limit] ? rows.first(result[:limit]) : rows
+      apply_limit_offset(rows, result[:limit], result[:offset])
     end
 
-    def filter_rows(client, columns, rows, where)
-      where_clauses = prepare_where_clauses(client, columns, where)
-      return nil if where_clauses.nil?
-
-      rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
+    def apply_limit_offset(rows, limit, offset)
+      rows = rows.drop(offset) if offset
+      limit ? rows.first(limit) : rows
     end
 
     def send_selected_columns(client, rows, columns, selected_columns)
