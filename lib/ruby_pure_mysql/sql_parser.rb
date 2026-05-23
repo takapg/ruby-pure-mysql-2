@@ -155,6 +155,7 @@ module RubyPureMysql
       if match[3]
         where = parse_where_clause(match[3])
         return where if where.is_a?(Hash) && where[:error]
+
         result[:where] = where
       end
 
