@@ -150,9 +150,10 @@ module RubyPureMysql
 
     def apply_filter(val, operator, target_value)
       if operator == 'LIKE'
-        # SQLの % を正規表現の .* に、_ を . に変換
-        pattern = target_value.to_s.gsub('%', '.*').tr('_', '.')
-        # 大文字小文字を区別しないマッチング
+        # SQLのワイルドカードを正規表現に変換する前に、他のメタ文字をエスケープする
+        # Regexp.escapeは % や _ をエスケープしないため、安全に置換可能
+        escaped = Regexp.escape(target_value.to_s)
+        pattern = escaped.gsub('%', '.*').gsub('_', '.')
         val.to_s.match?(/\A#{pattern}\z/i)
       else
         # 既存の比較演算子

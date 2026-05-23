@@ -245,6 +245,19 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(2)
       expect(results.map { |r| r['name'] }).to include('bob', 'cory')
     end
+
+    it 'filters rows by LIKE operator (suffix)' do
+      results = client.query("SELECT * FROM users WHERE name LIKE '%e';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by LIKE operator (single character wildcard)' do
+      # 'bob' を 'b_b' でマッチさせる
+      results = client.query("SELECT * FROM users WHERE name LIKE 'b_b';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([2, 'bob'])
+    end
   end
 
   describe 'Query Sorting (ORDER BY clause)' do
