@@ -63,10 +63,9 @@ module RubyPureMysql
       return unless where_clauses
 
       # 複数カラム更新を想定し、StorageEngineへ渡す
-      # ※StorageEngine側の実装に合わせて調整が必要な場合があります
-      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, result[:set])
-        send_ok_packet(client, 1)
-      end
+      return unless @storage_engine.update_rows_with_where(result[:table_name], where_clauses, result[:set])
+
+      send_ok_packet(client, 1)
     end
 
     def handle_delete(client, result)
@@ -77,8 +76,3 @@ module RubyPureMysql
       return unless where_clauses
 
       return unless @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
-
-      send_ok_packet(client, 1)
-    end
-  end
-end
