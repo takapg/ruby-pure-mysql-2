@@ -160,7 +160,11 @@ module RubyPureMysql
       result = { type: :update, table_name: match[1], column: match[2], value: value }
       return result unless match[4]
 
-      where_clauses = SqlParserUtils.parse_where_clause(match[4])
+      parse_update_where(result, match[4])
+    end
+
+    def parse_update_where(result, clause)
+      where_clauses = SqlParserUtils.parse_where_clause(clause)
       return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
 
       result[:where_clauses] = where_clauses
