@@ -70,8 +70,12 @@ module RubyPureMysql
       if result[:order]
         col_idx = columns.index(result[:order][:column])
         if col_idx
-          rows.sort_by! { |row| row[col_idx] }
-          rows.reverse! if result[:order][:direction] == 'DESC'
+          # 破壊的変更を避けるために sort_by を使用
+          rows = rows.sort_by { |row| row[col_idx] }
+          # 大文字小文字を区別しない比較にする
+          if result[:order][:direction] && result[:order][:direction].to_s.upcase == 'DESC'
+            rows.reverse!
+          end
         end
       end
 
@@ -80,7 +84,7 @@ module RubyPureMysql
       end
 
       # SELECT句で指定されたカラムのみを抽出
-      if result[:columns] && result[:columns] != ['*']
+      if result[:columns] && !result[:columns].include?('*')
         selected_indices = result[:columns].map { |col| columns.index(col) }
         rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
         send_result_set(client, rows, result[:columns])
