@@ -131,12 +131,89 @@ module RubyPureMysql
     end
   end
 
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
+    def split_columns(definition)
+      cols = []
+      buf = +''
+      depth = 0
+      definition.each_char { |char| depth, buf = SqlParser.process_char(char, depth, buf, cols) }
+      cols << buf.strip unless buf.strip.empty?
+      cols
+    end
+
+    def split_insert_values(values_str)
+      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+    end
+
+    def convert_value(val)
+      if (m = val.match(/\A(['"])(.*?)\1\z/))
+        m[2]
+      elsif val.casecmp?('NULL')
+        nil
+      elsif val.match?(/\A-?\d+\z/)
+        val.to_i
+      else
+        { error: "Invalid INSERT value: #{val}" }
+      end
+    end
+
+    def parse_where_clause(clause)
+      parts = split_where_clause(clause)
+      results = parts.map { |p| parse_single_where_condition(p) }
+      error = results.find { |r| r.is_a?(Hash) && r[:error] }
+      error || results
+    end
+
+    def split_where_clause(clause)
+      parts = []
+      current = +''
+      in_quote = nil
+      index = 0
+      while index < clause.length
+        in_quote = update_quote_state(clause[index], index, clause, in_quote)
+        if in_quote.nil? && (match = clause[index..].match(/\A\s+AND\s+/i))
+          parts << current.strip
+          current = +''
+          index += match[0].length
+        else
+          current << clause[index]
+          index += 1
+        end
+      end
+      parts << current.strip
+    end
+
+    def update_quote_state(char, index, clause, in_quote)
+      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
+        return in_quote == char ? nil : char
+      end
+
+      in_quote
+    end
+
+    def parse_single_where_condition(condition)
+      where_match = condition.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      return { error: 'Invalid WHERE clause' } unless where_match
+
+      column = where_match[1]
+      operator = where_match[2].upcase
+      operator = '!=' if operator == '<>'
+      value_str = where_match[3].strip.delete_suffix(';')
+      value = convert_value(value_str)
+      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+
+      { column: column, operator: operator, value: value }
+    end
+  end
+
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
   class SqlParser
     extend Evaluator
     extend SqlParserDdlParsers
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
+    extend SqlParserUtils
 
     PARSERS = {
       /\ACREATE\s+TABLE/i => :parse_create_table,
@@ -159,19 +236,6 @@ module RubyPureMysql
     end
 
     # --- ユーティリティメソッド ---
-
-    def self.split_columns(definition)
-      cols = []
-      buf = +''
-      depth = 0
-      definition.each_char { |char| depth, buf = process_char(char, depth, buf, cols) }
-      cols << buf.strip unless buf.strip.empty?
-      cols
-    end
-
-    def self.split_insert_values(values_str)
-      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
-    end
 
     def self.process_char(char, depth, buf, cols)
       depth += 1 if char == '('
@@ -227,72 +291,10 @@ module RubyPureMysql
       { result: values, columns: columns }
     end
 
-    def self.convert_value(val)
-      if (m = val.match(/\A(['"])(.*?)\1\z/))
-        m[2]
-      elsif val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
-      end
-    end
-
-    def self.parse_where_clause(clause)
-      parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p) }
-      error = results.find { |r| r.is_a?(Hash) && r[:error] }
-      error || results
-    end
-
-    def self.split_where_clause(clause)
-      parts = []
-      current = +''
-      in_quote = nil
-      index = 0
-      while index < clause.length
-        in_quote = update_quote_state(clause[index], index, clause, in_quote)
-        if in_quote.nil? && (match = clause[index..].match(/\A\s+AND\s+/i))
-          parts << current.strip
-          current = +''
-          index += match[0].length
-          next
-        end
-        current << clause[index]
-        index += 1
-      end
-      parts << current.strip
-    end
-
-    def self.update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
-        return in_quote == char ? nil : char
-      end
-      in_quote
-    end
-
-    def self.parse_single_where_condition(condition)
-      where_match = condition.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
-      return { error: 'Invalid WHERE clause' } unless where_match
-
-      column = where_match[1]
-      operator = where_match[2].upcase
-      operator = '!=' if operator == '<>'
-      value_str = where_match[3].strip.delete_suffix(';')
-      value = convert_value(value_str)
-      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
-
-      { column: column, operator: operator, value: value }
-    end
-
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
-                         :split_columns, :split_insert_values, :process_char,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part, :convert_value, :parse_where_clause,
-                         :split_where_clause, :update_quote_state,
-                         :parse_single_where_condition
+                         :parse_part
   end
 end
