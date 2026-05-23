@@ -45,13 +45,9 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         columns = @tables[table_name]
-        rows = @data[table_name]
-
-        indices = rows.each_with_index.select do |row, _idx|
-          match_row?(row, columns, where_clauses)
-        end.map(&:last)
-
-        indices.each { |idx| rows[idx][col_idx] = new_value }
+        @data[table_name].each do |row|
+          row[col_idx] = new_value if match_row?(row, columns, where_clauses)
+        end
         true
       end
     end
@@ -61,13 +57,7 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         columns = @tables[table_name]
-        rows = @data[table_name]
-
-        indices = rows.each_with_index.select do |row, _idx|
-          match_row?(row, columns, where_clauses)
-        end.map(&:last)
-
-        indices.sort.reverse_each { |idx| rows.delete_at(idx) }
+        @data[table_name].reject! { |row| match_row?(row, columns, where_clauses) }
         true
       end
     end
@@ -93,6 +83,8 @@ module RubyPureMysql
     private
 
     def match_row?(row, columns, where_clauses)
+      return true if where_clauses.nil? || where_clauses.empty?
+
       where_clauses.all? { |clause| match_clause?(row, columns, clause) }
     end
 

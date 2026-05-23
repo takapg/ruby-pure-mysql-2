@@ -62,17 +62,27 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      col_idx = columns.index(result[:column])
-      if col_idx.nil?
-        send_err_packet(client, 1, "Unknown column '#{result[:column]}'", 1054)
-        return
-      end
+      col_idx = get_column_index(client, columns, result[:column])
+      return unless col_idx
 
+      perform_update(client, result, where_clauses, col_idx)
+    end
+
+    def perform_update(client, result, where_clauses, col_idx)
       if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, col_idx, result[:value])
         send_ok_packet(client, 1)
       else
-        send_err_packet(client, 1, "Update failed", 1000)
+        send_err_packet(client, 1, 'Update failed', 1000)
       end
+    end
+
+    def get_column_index(client, columns, column_name)
+      col_idx = columns.index(column_name)
+      if col_idx.nil?
+        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
+        return nil
+      end
+      col_idx
     end
 
     def handle_delete(client, result)
