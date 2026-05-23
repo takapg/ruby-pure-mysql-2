@@ -139,20 +139,20 @@ module RubyPureMysql
     def filter_rows(rows, col_idx, where_clause)
       operator = where_clause[:operator]
       target_value = where_clause[:value]
-      compiled_regex = nil
-
-      if operator == 'LIKE'
-        escaped = Regexp.escape(target_value.to_s)
-        pattern = escaped.gsub('%', '.*').tr('_', '.')
-        compiled_regex = Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
-      end
+      regex = operator == 'LIKE' ? build_like_regex(target_value) : nil
 
       rows.select do |row|
         val = row[col_idx]
         next false if val.nil?
 
-        apply_filter(val, operator, target_value, compiled_regex)
+        apply_filter(val, operator, target_value, regex)
       end
+    end
+
+    def build_like_regex(target_value)
+      escaped = Regexp.escape(target_value.to_s)
+      pattern = escaped.gsub('%', '.*').tr('_', '.')
+      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
     end
 
     def apply_filter(val, operator, target_value, compiled_regex = nil)
