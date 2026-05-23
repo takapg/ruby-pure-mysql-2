@@ -42,6 +42,17 @@ module RubyPureMysql
       compile_where_clauses(client, columns, where)
     end
 
+    def handle_insert(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      if @storage_engine.insert_row(result[:table_name], result[:values])
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
+      end
+    end
+
     def handle_update(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
