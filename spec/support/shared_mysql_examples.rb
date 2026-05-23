@@ -300,7 +300,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('DROP TABLE IF EXISTS users;')
       client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
       client.query("INSERT INTO users VALUES (1, 'alice');")
-      client.query("INSERT INTO Yusers VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
     end
 
     it 'updates existing data matching a WHERE clause' do
