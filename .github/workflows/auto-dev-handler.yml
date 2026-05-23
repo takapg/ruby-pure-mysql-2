@@ -273,7 +273,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REVIEW_BODY: ${{ github.event.comment.body }}
+          REVIEW_BODY: ${{ github.event.review.body }}
         run: |
           set -e
           gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai pause"
