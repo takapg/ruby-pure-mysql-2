@@ -116,4 +116,194 @@ module RubyPureMysql
     end
 
     def update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) &&
+      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\')
+        return in_quote == char ? nil : char
+      end
+      in_quote
+    end
+
+    def parse_single_where_condition(clause)
+      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      return { error: 'Invalid WHERE clause' } unless where_match
+
+      column = where_match[1]
+      operator = where_match[2].upcase
+      operator = '!=' if operator == '<>'
+
+      value_str = where_match[3].strip.delete_suffix(';')
+      value = convert_value(value_str)
+      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+
+      { column: column, operator: operator, value: value }
+    end
+  end
+
+  # DDLパースロジック
+  module SqlParserDdlParsers
+    def parse_create_table(query)
+      match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid CREATE TABLE syntax' } unless match
+
+      {
+        type: :create_table,
+        if_not_exists: !match[1].nil?,
+        table_name: match[2],
+        columns: SqlParserUtils.split_columns(match[3]).map do |col_def|
+          col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
+        end
+      }
+    end
+
+    def parse_drop_table(query)
+      match = query.match(/\ADROP\s+TABLE\s+(IF\s+EXISTS\s+)?(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid DROP TABLE syntax' } unless match
+
+      {
+        type: :drop_table,
+        if_exists: !match[1].nil?,
+        table_name: match[2]
+      }
+    end
+  end
+
+  # DMLパースロジック
+  module SqlParserDmlParsers
+    def parse_insert(query)
+      match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      return { error: 'Invalid INSERT syntax' } unless match
+
+      values = SqlParserUtils.split_insert_values(match[2]).map { |val| convert_value(val) }
+      error = values.find { |v| v.is_a?(Hash) && v[:error] }
+      return error if error
+
+      { type: :insert, table_name: match[1], values: values }
+    end
+
+    def parse_update(query)
+      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      return { error: 'Invalid UPDATE syntax' } unless match
+
+      value = convert_value(match[3].strip)
+      return value if value.is_a?(Hash) && value[:error]
+
+      result = { type: :update, table_name: match[1], column: match[2], value: value }
+      return result unless match[4]
+
+      parse_update_where(result, match[4])
+    end
+
+    def parse_update_where(result, clause)
+      where_clauses = parse_where_clause(clause)
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
+
+      result[:where_clauses] = where_clauses
+      result
+    end
+
+    def parse_delete(query)
+      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      return { error: 'Invalid DELETE syntax' } unless match
+
+      result = { type: :delete, table_name: match[1] }
+      return result unless match[2]
+
+      where_clauses = parse_where_clause(match[2])
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
+
+      result[:where_clauses] = where_clauses
+      result
+    end
+  end
+
+  # クエリパースロジック
+  module SqlParserQueryParsers
+    SELECT_REGEX = Regexp.new(
+      '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
+      '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
+      '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
+      Regexp::IGNORECASE
+    )
+
+    def parse_select_from(query)
+      match = query.match(SELECT_REGEX)
+      return { error: 'Invalid SELECT syntax' } unless match
+
+      result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      parse_select_clauses(result, match)
+    end
+
+    def parse_select_clauses(result, match)
+      if match[3]
+        where_res = parse_where_clause_into(result, match[3])
+        return where_res if where_res.is_a?(Hash) && where_res[:error]
+      end
+      parse_order_by_clause(result, match[4], match[5]) if match[4]
+      parse_limit_offset_clause(result, match[6], match[7])
+      result
+    end
+
+    def parse_order_by_clause(result, column, direction)
+      result[:order_by] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
+    end
+
+    def parse_limit_offset_clause(result, limit, offset)
+      result[:limit] = limit.to_i if limit
+      result[:offset] = offset.to_i if offset
+    end
+
+    def parse_where_clause_into(result, clause)
+      where_clauses = parse_where_clause(clause)
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
+
+      result[:where_clauses] = where_clauses
+    end
+
+    def parse_show_tables(_query)
+      { type: :show_tables }
+    end
+
+    def parse_describe(query)
+      match = query.match(/\A(DESCRIBE|DESC)\s+(\w+)\s*;?\s*\z/i)
+      return { error: 'Invalid DESCRIBE syntax' } unless match
+
+      { type: :describe, table_name: match[2] }
+    end
+  end
+
+  # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
+  class SqlParser
+    extend Evaluator
+    extend SqlParserUtils
+    extend SqlParserConditionParsers
+    extend SqlParserDdlParsers
+    extend SqlParserDmlParsers
+    extend SqlParserQueryParsers
+
+    PARSERS = {
+      /\ACREATE\s+TABLE/i => :parse_create_table,
+      /\ADROP\s+TABLE/i => :parse_drop_table,
+      /\AINSERT\s+INTO/i => :parse_insert,
+      /\AUPDATE\s+/i => :parse_update,
+      /\ADELETE\s+/i => :parse_delete,
+      /\ASELECT\s+.+?\s+FROM/i => :parse_select_from
+    }.freeze
+
+    def self.parse(query)
+      return parse_show_tables(query) if query.match?(/\ASHOW\s+TABLES\s*;?\s*\z/i)
+      return parse_describe(query) if query.match?(/\A(DESCRIBE|DESC)\s+/i)
+
+      parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
+      return send(parser_method, query) if parser_method
+
+      parts = query.split(/\s+UNION\s+/i).map(&:strip)
+      process_parts(parts, self)
+    end
+
+    private_class_method :parse_insert, :parse_select_from, :parse_create_table,
+                         :parse_drop_table, :parse_update, :parse_delete,
+                         :parse_show_tables, :parse_describe
+  end
+end
