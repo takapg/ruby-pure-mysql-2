@@ -93,7 +93,7 @@ module RubyPureMysql
       i = 0
       while i < clause.length
         char = clause[i]
-        if (char == "'" || char == '"') && (i == 0 || clause[i - 1] != '\\')
+        if ["'", '"'].include?(char) && (i.zero? || clause[i - 1] != '\\')
           if in_quote == char
             in_quote = nil
           elsif in_quote.nil?
@@ -101,7 +101,7 @@ module RubyPureMysql
           end
         end
 
-        if in_quote.nil? && (clause[i..i + 4] || '') =~ /\A\s+AND\s+/i
+        if in_quote.nil? && (clause[i..(i + 4)] || '') =~ /\A\s+AND\s+/i
           parts << current.strip
           current = +''
           i += 5
