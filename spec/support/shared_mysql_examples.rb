@@ -177,6 +177,38 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Query Limiting (LIMIT clause)' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'charlie');")
+    end
+
+    it 'limits the number of rows returned' do
+      results = client.query('SELECT * FROM users LIMIT 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns empty result set for LIMIT 0' do
+      results = client.query('SELECT * FROM users LIMIT 0;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns all rows when LIMIT exceeds row count' do
+      results = client.query('SELECT * FROM users LIMIT 10;')
+      expect(results.count).to eq(3)
+    end
+
+    it 'combines WHERE and LIMIT correctly' do
+      results = client.query('SELECT * FROM users WHERE id = 2 LIMIT 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+  end
+
   describe 'Data Modification (UPDATE & DELETE)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')

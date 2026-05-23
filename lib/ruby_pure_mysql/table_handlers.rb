@@ -56,6 +56,9 @@ module RubyPureMysql
       rows = apply_where_filter(client, result[:where], table_columns, rows) if result[:where]
       return unless rows
 
+      # LIMIT句の適用
+      rows = rows.take(result[:limit]) if result[:limit]
+
       send_select_result(client, result, rows, table_columns)
     end
 
