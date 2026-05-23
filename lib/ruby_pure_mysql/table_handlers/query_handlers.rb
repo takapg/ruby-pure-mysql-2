@@ -10,7 +10,12 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      send_selected_columns(client, rows, columns, result[:columns])
+      if result[:aggregate] == :count
+        # COUNT(*) の場合、フィルタリング後の行数を返す
+        send_result_set(client, [[rows.size]], ['COUNT(*)'])
+      else
+        send_selected_columns(client, rows, columns, result[:columns])
+      end
     end
 
     def fetch_and_filter_rows(client, columns, result)

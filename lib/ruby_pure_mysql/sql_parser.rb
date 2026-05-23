@@ -89,11 +89,19 @@ module RubyPureMysql
       match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
-      result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      result = { type: :select_from, table_name: match[2] }
       parse_select_clauses(result, match)
     end
 
     def parse_select_clauses(result, match)
+      # COUNT(*) の検出とフラグ設定
+      if match[1].strip.upcase == 'COUNT(*)'
+        result[:aggregate] = :count
+        result[:columns] = ['COUNT(*)']
+      else
+        result[:columns] = match[1].split(',').map(&:strip)
+      end
+
       if match[3]
         where_res = parse_where_clause_into(result, match[3])
         return where_res if where_res.is_a?(Hash) && where_res[:error]

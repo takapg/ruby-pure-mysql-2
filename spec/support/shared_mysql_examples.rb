@@ -359,4 +359,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(1)
     end
   end
+
+  describe 'Aggregate Functions (COUNT(*))' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+    end
+
+    it 'returns the total count of rows' do
+      results = client.query('SELECT COUNT(*) FROM users;')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns the count of rows matching a WHERE clause' do
+      results = client.query("SELECT COUNT(*) FROM users WHERE id > 1;")
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns 0 when no rows match' do
+      results = client.query('SELECT COUNT(*) FROM users WHERE id = 999;')
+      expect(results.first.values.first).to eq(0)
+    end
+  end
 end
