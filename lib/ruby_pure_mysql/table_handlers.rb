@@ -128,7 +128,17 @@ module RubyPureMysql
         return nil
       end
 
-      rows.select { |row| row[col_idx] == where_clause[:value] }
+      operator = where_clause[:operator].to_sym
+      target_value = where_clause[:value]
+
+      rows.select do |row|
+        val = row[col_idx]
+        if operator == :!=
+          val != target_value
+        else
+          val.public_send(operator, target_value)
+        end
+      end
     end
 
     def handle_projection(client, result, rows, table_columns)
