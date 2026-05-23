@@ -144,17 +144,20 @@ module RubyPureMysql
         val = row[col_idx]
         next false if val.nil?
 
-        case operator
-        when 'LIKE'
-          # SQLの % を正規表現の .* に、_ を . に変換
-          pattern = target_value.to_s.gsub('%', '.*').gsub('_', '.')
-          # 大文字小文字を区別しないマッチング
-          val.to_s.match?(/\A#{pattern}\z/i)
-        else
-          # 既存の比較演算子
-          method = operator == '=' ? :== : operator.to_sym
-          val.public_send(method, target_value)
-        end
+        apply_filter(val, operator, target_value)
+      end
+    end
+
+    def apply_filter(val, operator, target_value)
+      if operator == 'LIKE'
+        # SQLの % を正規表現の .* に、_ を . に変換
+        pattern = target_value.to_s.gsub('%', '.*').tr('_', '.')
+        # 大文字小文字を区別しないマッチング
+        val.to_s.match?(/\A#{pattern}\z/i)
+      else
+        # 既存の比較演算子
+        method = operator == '=' ? :== : operator.to_sym
+        val.public_send(method, target_value)
       end
     end
 
