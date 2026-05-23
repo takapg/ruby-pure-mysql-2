@@ -149,19 +149,19 @@ module RubyPureMysql
       indices = find_matching_indices(client, rows, columns, result[:where])
       return unless indices
 
-      # デバッグ用に result[:set_col] が空文字の場合にエラーを投げる
-      if result[:set_col].nil? || result[:set_col].empty?
-        send_err_packet(client, 1, "Update failed: set_col is empty. Result: #{result.inspect}", 1000)
+      # result[:column] が空文字の場合にエラーを投げる
+      if result[:column].nil? || result[:column].empty?
+        send_err_packet(client, 1, "Update failed: column is empty. Result: #{result.inspect}", 1000)
         return
       end
 
-      col_idx = get_column_index(client, columns, result[:set_col])
+      col_idx = get_column_index(client, columns, result[:column])
       return unless col_idx
 
-      if @storage_engine.update_rows(result[:table_name], indices, col_idx, result[:set_val])
+      if @storage_engine.update_rows(result[:table_name], indices, col_idx, result[:value])
         send_ok_packet(client, 1)
       else
-        send_err_packet(client, 1, "Update failed", 1000)
+        send_err_packet(client, 1, 'Update failed', 1000)
       end
     end
 
