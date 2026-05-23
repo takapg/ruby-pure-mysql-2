@@ -248,7 +248,7 @@ jobs:
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
             gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI がすべて成功しました！<br>Draft を解除し、レビューを開始します。"
           else
-            echo "PR #$PR_NUMBER is already open. Skipping promotion."
+            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
           fi
 
   review-dispatch:
@@ -275,8 +275,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_BODY: ${{ github.event.review.body }}
         run: |
-          set -e
-          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai pause"
+          GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai pause"
 
           cat << 'COMMENT_EOF' > rabbit_comment.txt
           /auto-dev code
