@@ -149,6 +149,12 @@ module RubyPureMysql
       indices = find_matching_indices(client, rows, columns, result[:where])
       return unless indices
 
+      # デバッグ用に result[:set_col] が空文字の場合にエラーを投げる
+      if result[:set_col].nil? || result[:set_col].empty?
+        send_err_packet(client, 1, "Update failed: set_col is empty. Result: #{result.inspect}", 1000)
+        return
+      end
+
       col_idx = get_column_index(client, columns, result[:set_col])
       return unless col_idx
 
