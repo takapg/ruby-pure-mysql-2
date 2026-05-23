@@ -87,7 +87,32 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      clause.split(/\s+AND\s+/i).map { |c| parse_single_where_condition(c) }
+      parts = []
+      current = +''
+      in_quote = nil
+      i = 0
+      while i < clause.length
+        char = clause[i]
+        if (char == "'" || char == '"') && (i == 0 || clause[i - 1] != '\\')
+          if in_quote == char
+            in_quote = nil
+          elsif in_quote.nil?
+            in_quote = char
+          end
+        end
+
+        if in_quote.nil? && (clause[i..i + 4] || '') =~ /\A\s+AND\s+/i
+          parts << current.strip
+          current = +''
+          i += 5
+          next
+        else
+          current << char
+        end
+        i += 1
+      end
+      parts << current.strip
+      parts.map { |c| parse_single_where_condition(c) }
     end
 
     def parse_single_where_condition(clause)
@@ -165,7 +190,8 @@ module RubyPureMysql
 
     def parse_update_where(result, clause)
       where_clauses = SqlParserUtils.parse_where_clause(clause)
-      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
 
       result[:where_clauses] = where_clauses
       result
@@ -179,7 +205,8 @@ module RubyPureMysql
       return result unless match[2]
 
       where_clauses = SqlParserUtils.parse_where_clause(match[2])
-      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
 
       result[:where_clauses] = where_clauses
       result
@@ -224,7 +251,8 @@ module RubyPureMysql
 
     def parse_where_clause_into(result, clause)
       where_clauses = SqlParserUtils.parse_where_clause(clause)
-      return where_clauses.first if where_clauses.first.is_a?(Hash) && where_clauses.first[:error]
+      error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
+      return error if error
 
       result[:where_clauses] = where_clauses
     end

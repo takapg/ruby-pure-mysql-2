@@ -167,11 +167,10 @@ module RubyPureMysql
       indices = get_update_indices(client, columns, result)
       return unless indices
 
-      # 複数条件対応（簡易的に最初の条件のみを使用）
-      where_clause = result[:where_clauses]&.first
-      where_value = where_clause ? where_clause[:value] : nil
+      # 複数条件対応
+      where_clauses = result[:where_clauses]
 
-      success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
+      success = @storage_engine.update(result[:table_name], *indices, result[:value], where_clauses)
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -181,17 +180,12 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      where_clause = result[:where_clauses]&.first
-      return execute_delete(client, result[:table_name], nil, nil) unless where_clause
-
-      col_idx = find_column_index(client, where_clause[:column], columns)
-      return unless col_idx
-
-      execute_delete(client, result[:table_name], col_idx, where_clause[:value])
+      where_clauses = result[:where_clauses]
+      execute_delete(client, result[:table_name], where_clauses)
     end
 
-    def execute_delete(client, table_name, col_idx, value)
-      success = @storage_engine.delete(table_name, col_idx, value)
+    def execute_delete(client, table_name, where_clauses)
+      success = @storage_engine.delete(table_name, where_clauses)
       return send_err_packet(client, 1, "Table '#{table_name}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
