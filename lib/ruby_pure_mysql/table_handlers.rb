@@ -43,64 +43,8 @@ module RubyPureMysql
     end
   end
 
-  # テーブル操作に関連するハンドラメソッドをまとめたモジュール
-  module TableHandlers
-    include TableHandlerUtils
-    include SchemaHandlers
-
-    def handle_insert(client, result)
-      columns = @storage_engine.get_columns(result[:table_name])
-      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
-
-      if result[:values].size != columns.size
-        return send_err_packet(client, 1, 'Column count doesn\'t match value count at row 1', 1136)
-      end
-
-      success = @storage_engine.insert(result[:table_name], result[:values])
-      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
-
-      send_ok_packet(client, 1)
-    end
-
-    def handle_update(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
-      with_single_where(result) do
-        indices = get_update_indices(client, columns, result)
-        return unless indices
-
-        where_value = result[:where] ? result[:where][:value] : nil
-        success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
-        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
-      end
-
-      send_ok_packet(client, 1)
-    end
-
-    def handle_delete(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
-      with_single_where(result) do
-        params = get_delete_params(client, columns, result)
-        return unless params
-
-        success = @storage_engine.delete(result[:table_name], *params)
-        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
-      end
-
-      send_ok_packet(client, 1)
-    end
-
-    def with_single_where(result)
-      original_where = result[:where]
-      result[:where] = original_where&.first
-      yield
-    ensure
-      result[:where] = original_where
-    end
-
+  # クエリ操作に関連するハンドラメソッドをまとめたモジュール
+  module QueryHandlers
     def handle_select(client, result)
       table_columns = @storage_engine.get_columns(result[:table_name])
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless table_columns
@@ -191,6 +135,66 @@ module RubyPureMysql
 
       projected_rows = rows.map { |row| indices.map { |i| row[i] } }
       send_result_set(client, projected_rows, result[:columns])
+    end
+  end
+
+  # テーブル操作に関連するハンドラメソッドをまとめたモジュール
+  module TableHandlers
+    include TableHandlerUtils
+    include SchemaHandlers
+    include QueryHandlers
+
+    def handle_insert(client, result)
+      columns = @storage_engine.get_columns(result[:table_name])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless columns
+
+      if result[:values].size != columns.size
+        return send_err_packet(client, 1, 'Column count doesn\'t match value count at row 1', 1136)
+      end
+
+      success = @storage_engine.insert(result[:table_name], result[:values])
+      return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
+
+      send_ok_packet(client, 1)
+    end
+
+    def handle_update(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      with_single_where(result) do
+        indices = get_update_indices(client, columns, result)
+        return unless indices
+
+        where_value = result[:where] ? result[:where][:value] : nil
+        success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
+        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
+      end
+
+      send_ok_packet(client, 1)
+    end
+
+    def handle_delete(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      with_single_where(result) do
+        params = get_delete_params(client, columns, result)
+        return unless params
+
+        success = @storage_engine.delete(result[:table_name], *params)
+        return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
+      end
+
+      send_ok_packet(client, 1)
+    end
+
+    def with_single_where(result)
+      original_where = result[:where]
+      result[:where] = original_where&.first
+      yield
+    ensure
+      result[:where] = original_where
     end
   end
 end
