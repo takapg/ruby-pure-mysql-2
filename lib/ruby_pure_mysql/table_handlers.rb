@@ -76,3 +76,8 @@ module RubyPureMysql
       return unless where_clauses
 
       return unless @storage_engine.delete_rows_with_where(result[:table_name], where_clauses)
+
+      send_ok_packet(client, 1)
+    end
+  end
+end
