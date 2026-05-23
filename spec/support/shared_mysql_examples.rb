@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples 'a MySQL-compatible server' do |port|
+RSpec.shared_examples 'a MySQL-compatible server' |port|
   let(:client) do
     Mysql2::Client.new(
       host: '127.0.0.1',
@@ -190,6 +190,22 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM users LIMIT 1;')
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns empty result set for LIMIT 0' do
+      results = client.query('SELECT * FROM users LIMIT 0;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns all rows when LIMIT exceeds row count' do
+      results = client.query('SELECT * FROM users LIMIT 10;')
+      expect(results.count).to eq(3)
+    end
+
+    it 'combines WHERE and LIMIT correctly' do
+      results = client.query('SELECT * FROM users WHERE id = 2 LIMIT 1;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
     end
   end
 
