@@ -79,6 +79,7 @@ module RubyPureMysql
         end
       end
 
+      # RuboCopの指摘を回避しつつ、可読性を保つ
       if result[:limit]
         rows = rows.first(result[:limit])
       end
