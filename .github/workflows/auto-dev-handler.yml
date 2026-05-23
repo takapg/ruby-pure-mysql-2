@@ -277,14 +277,16 @@ jobs:
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
           set -e
-          gh pr comment $PR_NUMBER --body "$(cat <<COMMENT_EOF
+
+          cat << 'COMMENT_EOF' > rabbit_comment.txt
           /auto-dev code
           🐰 CodeRabbit からのレビュー指摘を反映してください。
 
           ---
-          $REVIEW_BODY
           COMMENT_EOF
-          )
+
+          echo "$REVIEW_BODY" >> rabbit_comment.txt
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body-file=rabbit_comment.txt
 
   finish-auto-dev:
     if: |
