@@ -183,8 +183,7 @@ module RubyPureMysql
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
       '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
-      '(?:\s+LIMIT\s+(\d+))?' \
-      '(?:\s+OFFSET\s+(\d+))?\s*;?\s*\z',
+      '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
     )
 
