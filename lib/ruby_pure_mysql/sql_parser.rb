@@ -73,7 +73,10 @@ module RubyPureMysql
 
       { result: values, columns: columns }
     end
+  end
 
+  # SqlParserConditionParsersは、WHERE句などの条件解析メソッドを提供します。
+  module SqlParserConditionParsers
     def convert_value(val)
       if (m = val.match(/\A(['"])(.*?)\1\z/))
         m[2]
@@ -93,39 +96,36 @@ module RubyPureMysql
       i = 0
       while i < clause.length
         char = clause[i]
-        if ["'", '"'].include?(char) && (i.zero? || clause[i - 1] != '\\')
-          if in_quote == char
-            in_quote = nil
-          elsif in_quote.nil?
-            in_quote = char
-          end
-        end
+        in_quote = update_quote_state(char, i, clause, in_quote)
 
         if in_quote.nil? && (clause[i..(i + 4)] || '') =~ /\A\s+AND\s+/i
           parts << current.strip
           current = +''
           i += 5
-          next
         else
           current << char
+          i += 1
         end
-        i += 1
       end
       parts << current.strip
       parts.map { |c| parse_single_where_condition(c) }
     end
 
+    def update_quote_state(char, i, clause, in_quote)
+      if ["'", '"'].include?(char) && (i.zero? || clause[i - 1] != '\\')
+        return in_quote == char ? nil : char
+      end
+      in_quote
+    end
+
     def parse_single_where_condition(clause)
-      # 演算子の正規表現に LIKE を追加し、大文字小文字を区別しないように修正
       where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
-      operator = where_match[2].upcase # LIKE を大文字に統一
-      # <> を != に正規化
+      operator = where_match[2].upcase
       operator = '!=' if operator == '<>'
 
-      # 値からセミコロンを除去
       value_str = where_match[3].strip.delete_suffix(';')
       value = convert_value(value_str)
       return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
@@ -168,7 +168,7 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = SqlParserUtils.split_insert_values(match[2]).map { |val| SqlParserUtils.convert_value(val) }
+      values = SqlParserUtils.split_insert_values(match[2]).map { |val| convert_value(val) }
       error = values.find { |v| v.is_a?(Hash) && v[:error] }
       return error if error
 
@@ -179,7 +179,7 @@ module RubyPureMysql
       match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid UPDATE syntax' } unless match
 
-      value = SqlParserUtils.convert_value(match[3].strip)
+      value = convert_value(match[3].strip)
       return value if value.is_a?(Hash) && value[:error]
 
       result = { type: :update, table_name: match[1], column: match[2], value: value }
@@ -189,7 +189,7 @@ module RubyPureMysql
     end
 
     def parse_update_where(result, clause)
-      where_clauses = SqlParserUtils.parse_where_clause(clause)
+      where_clauses = parse_where_clause(clause)
       error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
       return error if error
 
@@ -204,7 +204,7 @@ module RubyPureMysql
       result = { type: :delete, table_name: match[1] }
       return result unless match[2]
 
-      where_clauses = SqlParserUtils.parse_where_clause(match[2])
+      where_clauses = parse_where_clause(match[2])
       error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
       return error if error
 
@@ -250,7 +250,7 @@ module RubyPureMysql
     end
 
     def parse_where_clause_into(result, clause)
-      where_clauses = SqlParserUtils.parse_where_clause(clause)
+      where_clauses = parse_where_clause(clause)
       error = where_clauses.find { |c| c.is_a?(Hash) && c[:error] }
       return error if error
 
@@ -273,6 +273,7 @@ module RubyPureMysql
   class SqlParser
     extend Evaluator
     extend SqlParserUtils
+    extend SqlParserConditionParsers
     extend SqlParserDdlParsers
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
