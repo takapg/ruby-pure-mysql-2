@@ -17,4 +17,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     # 接続が既に切れている場合のクローズエラーを無視
   end
 
-  it
+  it 'filters rows by AND condition' do
+    results = client.query("SELECT * FROM users WHERE id > 1 AND name LIKE 'b%';")
+    expect(results.count).to eq(1)
+    expect(results.first.values).to eq([2, 'bob'])
+  end
+end
