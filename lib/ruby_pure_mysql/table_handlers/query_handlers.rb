@@ -15,7 +15,10 @@ module RubyPureMysql
 
     def fetch_and_filter_rows(client, columns, result)
       rows = @storage_engine.select(result[:table_name])
-      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+      if result[:where]
+        rows = filter_rows(client, columns, rows, result[:where])
+        return nil if rows.nil?
+      end
       if result[:order]
         rows = apply_order_by(client, result[:order], columns, rows)
         return nil if rows.nil?
@@ -26,7 +29,7 @@ module RubyPureMysql
 
     def filter_rows(client, columns, rows, where)
       where_clauses = prepare_where_clauses(client, columns, where)
-      return rows unless where_clauses
+      return nil if where_clauses.nil?
 
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
     end
