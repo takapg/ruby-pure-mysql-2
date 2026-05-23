@@ -48,7 +48,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if @storage_engine.insert_row(result[:table_name], result[:values])
+      if @storage_engine.insert(result[:table_name], result[:values])
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
