@@ -146,4 +146,32 @@ module RubyPureMysql
       return unless columns
 
       rows = @storage_engine.select(result[:table_name])
-      indices = find_
+      indices = find_matching_indices(client, rows, columns, result[:where])
+      return unless indices
+
+      col_idx = get_column_index(client, columns, result[:set_col])
+      return unless col_idx
+
+      if @storage_engine.update_rows(result[:table_name], indices, col_idx, result[:set_val])
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Update failed", 1000)
+      end
+    end
+
+    def handle_delete(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      rows = @storage_engine.select(result[:table_name])
+      indices = find_matching_indices(client, rows, columns, result[:where])
+      return unless indices
+
+      if @storage_engine.delete_rows(result[:table_name], indices)
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Delete failed", 1000)
+      end
+    end
+  end
+end
