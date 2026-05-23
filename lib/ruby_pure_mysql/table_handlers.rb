@@ -153,7 +153,7 @@ module RubyPureMysql
         # SQLのワイルドカードを正規表現に変換する前に、他のメタ文字をエスケープする
         # Regexp.escapeは % や _ をエスケープしないため、安全に置換可能
         escaped = Regexp.escape(target_value.to_s)
-        pattern = escaped.gsub('%', '.*').gsub('_', '.')
+        pattern = escaped.gsub('%', '.*').tr('_', '.')
         val.to_s.match?(/\A#{pattern}\z/i)
       else
         # 既存の比較演算子
