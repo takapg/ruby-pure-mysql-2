@@ -25,18 +25,18 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
 
-      - name: Post launch checkbox
+      - name: Post launch command
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue comment $ISSUE_NUMBER --repo ${{ github.repository }} --body "
-          この Issue の実装を開始するには、下記のコマンドをコメントにしてください。
+          gh issue comment $ISSUE_NUMBER --repo ${{ github.repository }} --body '
+          この Issue の実装を開始するには、下記のコマンドをコメントしてください。
 
           ```
           /auto-dev launch
           ```
-          "
+          '
 
   launch-auto-dev:
     if: |
