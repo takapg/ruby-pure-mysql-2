@@ -183,7 +183,8 @@ module RubyPureMysql
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
       '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
-      '(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z',
+      '(?:\s+LIMIT\s+(\d+))?' \
+      '(?:\s+OFFSET\s+(\d+))?\s*;?\s*\z',
       Regexp::IGNORECASE
     )
 
@@ -202,6 +203,7 @@ module RubyPureMysql
       end
       result[:order_by] = { column: match[4], direction: (match[5] || 'ASC').upcase.to_sym } if match[4]
       result[:limit] = match[6].to_i if match[6]
+      result[:offset] = match[7].to_i if match[7]
       result
     end
 
