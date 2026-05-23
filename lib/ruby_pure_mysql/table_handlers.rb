@@ -202,7 +202,7 @@ module RubyPureMysql
     end
 
     def extract_where_info(client, where_clauses, columns, action)
-      return nil unless validate_where_clause_size(client, where_clauses, action)
+      return nil unless validate_where_clause_size?(client, where_clauses, action)
 
       where_clause = where_clauses&.first
       where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
@@ -211,7 +211,7 @@ module RubyPureMysql
       { col_idx: where_col_idx, value: where_clause&.fetch(:value, nil) }
     end
 
-    def validate_where_clause_size(client, where_clauses, action)
+    def validate_where_clause_size?(client, where_clauses, action)
       if where_clauses && where_clauses.size > 1
         send_err_packet(client, 1, "Multiple conditions in #{action} are not supported yet", 1235)
         return false
