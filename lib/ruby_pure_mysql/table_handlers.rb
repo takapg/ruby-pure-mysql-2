@@ -79,7 +79,14 @@ module RubyPureMysql
         rows = rows.first(result[:limit])
       end
 
-      send_result_set(client, rows, columns)
+      # SELECT句で指定されたカラムのみを抽出
+      if result[:columns] && result[:columns] != ['*']
+        selected_indices = result[:columns].map { |col| columns.index(col) }
+        rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
+        send_result_set(client, rows, result[:columns])
+      else
+        send_result_set(client, rows, columns)
+      end
     end
 
     def handle_update(client, result)
