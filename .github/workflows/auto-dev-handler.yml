@@ -8,6 +8,10 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
 
 jobs:
   init-auto-dev:
@@ -308,7 +312,7 @@ jobs:
 
   debug-coderabbit:
     runs-on: ubuntu-latest
-    if: github.event.comment.user.login == 'coderabbitai[bot]'
+    if: github.event.comment.user.login == 'coderabbitai[bot]' || github.event.review.user.login == 'coderabbitai[bot]'
     steps:
       - name: Dump Comment Payload
         run: |
