@@ -26,6 +26,7 @@ module RubyPureMysql
       rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
       return nil if rows.nil?
 
+      rows = rows.drop(result[:offset]) if result[:offset]
       result[:limit] ? rows.first(result[:limit]) : rows
     end
 

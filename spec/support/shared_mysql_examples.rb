@@ -382,5 +382,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT COUNT(*) FROM users WHERE id = 999;')
       expect(results.first.values.first).to eq(0)
     end
+
+    it 'returns the count of rows considering LIMIT and OFFSET' do
+      # 2行あるうち、OFFSET 1 で 1行スキップし、残りの1行をカウントする
+      results = client.query('SELECT COUNT(*) FROM users LIMIT 1 OFFSET 1;')
+      expect(results.first.values.first).to eq(1)
+    end
   end
 end
