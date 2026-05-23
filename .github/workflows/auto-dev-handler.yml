@@ -250,7 +250,7 @@ jobs:
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
             gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI がすべて成功しました！<br>Draft を解除し、レビューを開始します。"
           else
-            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
+            echo "PR #$PR_NUMBER is already open. Skipping promotion."
           fi
 
   review-dispatch:
@@ -279,7 +279,6 @@ jobs:
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
           set -e
-          gh pr comment $PR_NUMBER --body "@coderabbitai pause"
           gh pr comment $PR_NUMBER --body "$(cat <<COMMENT_EOF
           /auto-dev code
           🐰 CodeRabbit からのレビュー指摘を反映してください。
