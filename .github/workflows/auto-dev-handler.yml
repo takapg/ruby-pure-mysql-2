@@ -261,7 +261,7 @@ jobs:
       github.event_name == 'pull_request_review' &&
       github.event.action == 'submitted' &&
       github.event.issue.pull_request != null &&
-      github.event.comment.user.login == 'coderabbitai[bot]' &&
+      github.event.comment.review.login == 'coderabbitai[bot]' &&
       contains(github.event.review.body, 'Prompt for all review comments with AI agents')
     runs-on: ubuntu-latest
     permissions:
