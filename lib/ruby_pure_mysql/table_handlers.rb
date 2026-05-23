@@ -163,12 +163,14 @@ module RubyPureMysql
     def handle_update(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
+
       perform_update(client, result, columns)
     end
 
     def handle_delete(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
+
       perform_delete(client, result, columns)
     end
 
@@ -177,23 +179,15 @@ module RubyPureMysql
       return unless indices
 
       col_idx = indices.is_a?(Array) ? indices.first : indices
-
-      # 複数条件対応: StorageEngineが単一条件のみ対応している場合を考慮
-      where_clauses = result[:where_clauses]
-      if where_clauses && where_clauses.size > 1
-        return send_err_packet(client, 1, 'Multiple conditions in UPDATE are not supported yet', 1235)
-      end
-
-      where_clause = where_clauses&.first
-      where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
-      return if where_clause && !where_col_idx
+      where_info = extract_where_info(client, result[:where_clauses], columns, 'UPDATE')
+      return unless where_info
 
       success = @storage_engine.update(
         result[:table_name],
         col_idx,
-        where_col_idx,
+        where_info[:col_idx],
         result[:value],
-        where_clause&.fetch(:value, nil)
+        where_info[:value]
       )
 
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
@@ -202,16 +196,26 @@ module RubyPureMysql
     end
 
     def perform_delete(client, result, columns)
-      where_clauses = result[:where_clauses]
+      where_info = extract_where_info(client, result[:where_clauses], columns, 'DELETE')
+      return unless where_info
+
+      execute_delete(client, result[:table_name], where_info[:col_idx], where_info[:value])
+    end
+
+    def extract_where_info(client, where_clauses, columns, action)
       if where_clauses && where_clauses.size > 1
-        return send_err_packet(client, 1, 'Multiple conditions in DELETE are not supported yet', 1235)
+        send_err_packet(client, 1, "Multiple conditions in #{action} are not supported yet", 1235)
+        return nil
       end
 
       where_clause = where_clauses&.first
       where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
-      return if where_clause && !where_col_idx
+      return nil if where_clause && !where_col_idx
 
-      execute_delete(client, result[:table_name], where_col_idx, where_clause&.fetch(:value, nil))
+      {
+        col_idx: where_col_idx,
+        value: where_clause&.fetch(:value, nil)
+      }
     end
 
     def execute_delete(client, table_name, col_idx, value)
