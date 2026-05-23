@@ -66,11 +66,17 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
+      # 複数条件対応のため、UPDATE/DELETEは最初の条件のみを使用
+      original_where = result[:where]
+      result[:where] = original_where&.first
+
       indices = get_update_indices(client, columns, result)
       return unless indices
 
       where_value = result[:where] ? result[:where][:value] : nil
       success = @storage_engine.update(result[:table_name], *indices, result[:value], where_value)
+
+      result[:where] = original_where # 戻す
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -80,7 +86,12 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
+      # 複数条件対応のため、UPDATE/DELETEは最初の条件のみを使用
+      original_where = result[:where]
+      result[:where] = original_where&.first
+
       params = get_delete_params(client, columns, result)
+      result[:where] = original_where # 戻す
       return unless params
 
       success = @storage_engine.delete(result[:table_name], *params)
@@ -122,11 +133,14 @@ module RubyPureMysql
       end
     end
 
-    def apply_where_filter(client, where_clause, table_columns, rows)
-      col_idx = find_column_index(client, where_clause[:column], table_columns)
-      return nil unless col_idx
+    def apply_where_filter(client, where_clauses, table_columns, rows)
+      where_clauses.each do |where_clause|
+        col_idx = find_column_index(client, where_clause[:column], table_columns)
+        return nil unless col_idx
 
-      filter_rows(rows, col_idx, where_clause)
+        rows = filter_rows(rows, col_idx, where_clause)
+      end
+      rows
     end
 
     def find_column_index(client, column_name, table_columns)
