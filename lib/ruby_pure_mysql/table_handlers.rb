@@ -178,18 +178,17 @@ module RubyPureMysql
       indices = get_update_indices(client, columns, result)
       return unless indices
 
-      col_idx = indices.is_a?(Array) ? indices.first : indices
       where_info = extract_where_info(client, result[:where_clauses], columns, 'UPDATE')
       return unless where_info
 
-      success = @storage_engine.update(
-        result[:table_name],
-        col_idx,
-        where_info[:col_idx],
-        result[:value],
-        where_info[:value]
-      )
+      execute_update(client, result, indices, where_info)
+    end
 
+    def execute_update(client, result, indices, where_info)
+      col_idx = indices.is_a?(Array) ? indices.first : indices
+      success = @storage_engine.update(
+        result[:table_name], col_idx, where_info[:col_idx], result[:value], where_info[:value]
+      )
       return send_err_packet(client, 1, "Table '#{result[:table_name]}' doesn't exist", 1146) unless success
 
       send_ok_packet(client, 1)
@@ -203,19 +202,21 @@ module RubyPureMysql
     end
 
     def extract_where_info(client, where_clauses, columns, action)
-      if where_clauses && where_clauses.size > 1
-        send_err_packet(client, 1, "Multiple conditions in #{action} are not supported yet", 1235)
-        return nil
-      end
+      return nil unless validate_where_clause_size(client, where_clauses, action)
 
       where_clause = where_clauses&.first
       where_col_idx = where_clause ? find_column_index(client, where_clause[:column], columns) : nil
       return nil if where_clause && !where_col_idx
 
-      {
-        col_idx: where_col_idx,
-        value: where_clause&.fetch(:value, nil)
-      }
+      { col_idx: where_col_idx, value: where_clause&.fetch(:value, nil) }
+    end
+
+    def validate_where_clause_size(client, where_clauses, action)
+      if where_clauses && where_clauses.size > 1
+        send_err_packet(client, 1, "Multiple conditions in #{action} are not supported yet", 1235)
+        return false
+      end
+      true
     end
 
     def execute_delete(client, table_name, col_idx, value)
