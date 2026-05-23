@@ -43,6 +43,7 @@ module RubyPureMysql
     def update_rows(table_name, indices, col_idx, new_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+
         indices.each { |idx| @data[table_name][idx][col_idx] = new_value }
         true
       end
@@ -51,6 +52,7 @@ module RubyPureMysql
     def delete_rows(table_name, indices)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+
         # インデックスの大きい順に削除しないとインデックスがずれるため reverse_each
         indices.sort.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true

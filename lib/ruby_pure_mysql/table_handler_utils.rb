@@ -28,6 +28,7 @@ module RubyPureMysql
         where_clauses.all? do |clause|
           col_idx = get_column_index(client, table_columns, clause[:column])
           return nil unless col_idx
+
           apply_filter(row[col_idx], clause[:operator], clause[:value])
         end
       end.map(&:last)
