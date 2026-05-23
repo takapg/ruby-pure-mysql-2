@@ -87,8 +87,8 @@ module RubyPureMysql
     end
 
     def parse_where_clause(clause)
-      # 演算子をキャプチャする正規表現に変更
-      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(.+)\z/)
+      # 演算子の順序を修正: 長い演算子を先にマッチさせる
+      where_match = clause.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<)\s*(.+)\z/)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
