@@ -93,20 +93,22 @@ module RubyPureMysql
     private
 
     def match_row?(row, columns, where_clauses)
-      where_clauses.all? do |clause|
-        c_idx = columns.index(clause[:column])
-        return false unless c_idx
+      where_clauses.all? { |clause| match_clause?(row, columns, clause) }
+    end
 
-        val = row[c_idx]
-        next false if val.nil?
+    def match_clause?(row, columns, clause)
+      c_idx = columns.index(clause[:column])
+      return false unless c_idx
 
-        if clause[:operator] == 'LIKE'
-          pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
-          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
-        else
-          method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
-          val.public_send(method, clause[:value])
-        end
+      val = row[c_idx]
+      return false if val.nil?
+
+      if clause[:operator] == 'LIKE'
+        pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
+        Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+      else
+        method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
+        val.public_send(method, clause[:value])
       end
     end
   end
