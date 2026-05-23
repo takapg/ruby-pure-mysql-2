@@ -55,5 +55,16 @@ module RubyPureMysql
 
       [col_idx, result[:where][:value]]
     end
+
+    def apply_order_by(client, order_by, table_columns, rows)
+      col_idx = get_column_index(client, table_columns, order_by[:column])
+      return nil unless col_idx
+
+      # ソート実行
+      # MySQL 8.0 の挙動に合わせる: ASC は NULLS FIRST, DESC は NULLS LAST
+      sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
+      sorted_rows.reverse! if order_by[:direction] == :DESC
+      sorted_rows
+    end
   end
 end

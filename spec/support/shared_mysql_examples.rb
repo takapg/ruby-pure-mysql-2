@@ -177,6 +177,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Query Sorting (ORDER BY clause)' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'charlie');")
+    end
+
+    it 'sorts rows in ascending order' do
+      results = client.query('SELECT * FROM users ORDER BY id ASC;')
+      expect(results.map { |r| r['id'] }).to eq([1, 2, 3])
+    end
+
+    it 'defaults to ascending order when direction is omitted' do
+      results = client.query('SELECT * FROM users ORDER BY id;')
+      expect(results.map { |r| r['id'] }).to eq([1, 2, 3])
+    end
+
+    it 'sorts rows in descending order' do
+      results = client.query('SELECT * FROM users ORDER BY id DESC;')
+      expect(results.map { |r| r['id'] }).to eq([3, 2, 1])
+    end
+
+    it 'combines ORDER BY and LIMIT' do
+      results = client.query('SELECT id FROM users ORDER BY id DESC LIMIT 2;')
+      expect(results.map { |r| r['id'] }).to eq([3, 2])
+    end
+  end
+
   describe 'Query Limiting (LIMIT clause)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')
