@@ -68,17 +68,7 @@ module RubyPureMysql
       end
 
       if result[:order]
-        col_idx = columns.index(result[:order][:column])
-        if col_idx
-          # 破壊的変更を避けるために sort_by を使用
-          rows = rows.sort_by { |row| row[col_idx] }
-          # 大文字小文字を区別しない比較にする
-          # directionがシンボルや文字列で渡される可能性があるため、明示的に文字列化して比較
-          direction = result[:order][:direction].to_s.upcase
-          if direction == 'DESC'
-            rows.reverse!
-          end
-        end
+        rows = apply_order_by(client, result[:order], columns, rows)
       end
 
       # RuboCopの指摘を回避しつつ、可読性を保つ
