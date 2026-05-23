@@ -15,16 +15,13 @@ module RubyPureMysql
 
     def fetch_and_filter_rows(client, columns, result)
       rows = @storage_engine.select(result[:table_name])
-      if result[:where]
-        rows = filter_rows(client, columns, rows, result[:where])
-        return nil if rows.nil?
-      end
-      if result[:order]
-        rows = apply_order_by(client, result[:order], columns, rows)
-        return nil if rows.nil?
-      end
-      rows = rows.first(result[:limit]) if result[:limit]
-      rows
+      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+      return nil if rows.nil?
+
+      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
+      return nil if rows.nil?
+
+      result[:limit] ? rows.first(result[:limit]) : rows
     end
 
     def filter_rows(client, columns, rows, where)
