@@ -40,21 +40,56 @@ module RubyPureMysql
       end
     end
 
-    def update_rows(table_name, indices, col_idx, new_value)
+    def update_rows_with_where(table_name, where_clauses, col_idx, new_value)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+        columns = @tables[table_name]
+        rows = @data[table_name]
 
-        indices.each { |idx| @data[table_name][idx][col_idx] = new_value }
+        indices = rows.each_with_index.select do |row, _idx|
+          where_clauses.all? do |clause|
+            c_idx = columns.index(clause[:column])
+            return false unless c_idx
+            val = row[c_idx]
+            next false if val.nil?
+            if clause[:operator] == 'LIKE'
+              pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
+              Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+            else
+              method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
+              val.public_send(method, clause[:value])
+            end
+          end
+        end.map(&:last)
+
+        indices.each { |idx| rows[idx][col_idx] = new_value }
         true
       end
     end
 
-    def delete_rows(table_name, indices)
+    def delete_rows_with_where(table_name, where_clauses)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
+        columns = @tables[table_name]
+        rows = @data[table_name]
 
-        # インデックスの大きい順に削除しないとインデックスがずれるため reverse_each
-        indices.sort.reverse_each { |idx| @data[table_name].delete_at(idx) }
+        indices = rows.each_with_index.select do |row, _idx|
+          where_clauses.all? do |clause|
+            c_idx = columns.index(clause[:column])
+            return false unless c_idx
+            val = row[c_idx]
+            next false if val.nil?
+            if clause[:operator] == 'LIKE'
+              pattern = Regexp.escape(clause[:value].to_s).gsub('%', '.*').tr('_', '.')
+              Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
+            else
+              method = clause[:operator] == '=' ? :== : clause[:operator].to_sym
+              val.public_send(method, clause[:value])
+            end
+          end
+        end.map(&:last)
+
+        indices.sort.reverse_each { |idx| rows.delete_at(idx) }
         true
       end
     end

@@ -24,19 +24,31 @@ module RubyPureMysql
     def find_matching_indices(client, rows, table_columns, where_clauses)
       return (0...rows.size).to_a unless where_clauses
 
-      rows.each_with_index.select do |row, _idx|
-        where_clauses.all? do |clause|
-          col_idx = get_column_index(client, table_columns, clause[:column])
-          return nil unless col_idx
+      # 事前解決
+      compiled_clauses = where_clauses.map do |clause|
+        col_idx = table_columns.index(clause[:column])
+        unless col_idx
+          send_err_packet(client, 1, "Unknown column '#{clause[:column]}'", 1054)
+          return nil
+        end
+        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
+        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
+      end
 
-          apply_filter(row[col_idx], clause[:operator], clause[:value])
+      rows.each_with_index.select do |row, _idx|
+        compiled_clauses.all? do |c|
+          target = c[:regex] || c[:value]
+          apply_filter(row[c[:col_idx]], c[:operator], target)
         end
       end.map(&:last)
     end
 
-    def apply_filter(val, operator, target_value, compiled_regex = nil)
+    def apply_filter(val, operator, target_value)
+      return false if val.nil?
+
       if operator == 'LIKE'
-        compiled_regex ||= build_like_regex(target_value)
+        # target_value が正規表現オブジェクトならそのまま使う
+        compiled_regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
         compiled_regex.match?(val.to_s)
       else
         # 既存の比較演算子

@@ -145,28 +145,10 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      rows = @storage_engine.select(result[:table_name])
-      indices = find_matching_indices(client, rows, columns, result[:where])
-      return unless indices
-
-      return unless valid_update_params?(client, result)
-
       col_idx = get_column_index(client, columns, result[:column])
       return unless col_idx
 
-      perform_update(client, result, indices, col_idx)
-    end
-
-    def valid_update_params?(client, result)
-      if result[:column].nil? || result[:column].empty?
-        send_err_packet(client, 1, "Update failed: column is empty. Result: #{result.inspect}", 1000)
-        return false
-      end
-      true
-    end
-
-    def perform_update(client, result, indices, col_idx)
-      if @storage_engine.update_rows(result[:table_name], indices, col_idx, result[:value])
+      if @storage_engine.update_rows_with_where(result[:table_name], result[:where] || [], col_idx, result[:value])
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Update failed', 1000)
@@ -177,11 +159,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      rows = @storage_engine.select(result[:table_name])
-      indices = find_matching_indices(client, rows, columns, result[:where])
-      return unless indices
-
-      if @storage_engine.delete_rows(result[:table_name], indices)
+      if @storage_engine.delete_rows_with_where(result[:table_name], result[:where] || [])
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Delete failed', 1000)
