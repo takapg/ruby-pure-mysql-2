@@ -131,14 +131,10 @@ module RubyPureMysql
       operator = where_clause[:operator].to_sym
       target_value = where_clause[:value]
 
-      rows.select do |row|
-        val = row[col_idx]
-        if operator == :!=
-          val != target_value
-        else
-          val.public_send(operator, target_value)
-        end
-      end
+      # 演算子をRubyのメソッド名に変換
+      method = (operator == :=) ? :== : operator
+
+      rows.select { |row| row[col_idx].public_send(method, target_value) }
     end
 
     def handle_projection(client, result, rows, table_columns)
