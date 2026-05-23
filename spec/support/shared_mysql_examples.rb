@@ -179,14 +179,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by > operator' do
       results = client.query('SELECT * FROM users WHERE id > 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by != operator' do
       results = client.query('SELECT * FROM users WHERE id != 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by <= operator' do
@@ -197,8 +197,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by >= operator' do
       results = client.query('SELECT * FROM users WHERE id >= 2;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by < operator' do
@@ -209,8 +209,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'filters rows by <> operator (alias for !=)' do
       results = client.query('SELECT * FROM users WHERE id <> 1;')
-      expect(results.count).to eq(1)
-      expect(results.first.values.first).to eq(2)
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to include(2, 3)
     end
 
     it 'filters rows by >= operator (boundary)' do
