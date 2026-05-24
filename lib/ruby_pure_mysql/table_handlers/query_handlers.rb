@@ -12,13 +12,23 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      send_selected_columns(client, rows, columns, result[:columns])
+      if result[:aggregate] == :count
+        # COUNT(*) の場合、行数を返す
+        # fetch_and_filter_rows でフィルタリング済み（LIMIT/OFFSETは適用されない）
+        count = rows.size
+        send_result_set(client, [[count]], ['COUNT(*)'])
+      else
+        send_selected_columns(client, rows, columns, result[:columns])
+      end
     end
 
     def fetch_and_filter_rows(client, columns, result)
       rows = @storage_engine.select(result[:table_name])
       rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
       return nil if rows.nil?
+
+      # COUNT(*) の場合は LIMIT/OFFSET を適用しない
+      return rows if result[:aggregate] == :count
 
       rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
       return nil if rows.nil?
