@@ -32,7 +32,9 @@ module RubyPureMysql
     end
 
     def send_selected_columns(client, rows, columns, selected_columns)
-      if selected_columns && !selected_columns.include?('*')
+      if selected_columns.include?('COUNT(*)')
+        send_result_set(client, [[rows.size]], ['COUNT(*)'])
+      elsif selected_columns && !selected_columns.include?('*')
         return unless validate_selected_columns?(client, columns, selected_columns)
 
         selected_indices = selected_columns.map { |col| columns.index(col) }
@@ -45,6 +47,7 @@ module RubyPureMysql
 
     def validate_selected_columns?(client, columns, selected_columns)
       selected_columns.each do |col|
+        next if col == 'COUNT(*)'
         unless columns.include?(col)
           send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
           return false
