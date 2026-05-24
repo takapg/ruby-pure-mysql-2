@@ -90,6 +90,7 @@ module RubyPureMysql
       return { error: 'Invalid SELECT syntax' } unless match
 
       result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      result[:aggregate] = :count if result[:columns].size == 1 && result[:columns].first.casecmp?('COUNT(*)')
       parse_select_clauses(result, match)
     end
 

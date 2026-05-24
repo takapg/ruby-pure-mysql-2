@@ -306,6 +306,37 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Aggregate Functions (COUNT(*))' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'charlie');")
+    end
+
+    it 'returns the total count of rows' do
+      results = client.query('SELECT COUNT(*) FROM users;')
+      expect(results.first.values.first).to eq(3)
+    end
+
+    it 'returns the filtered count of rows' do
+      results = client.query('SELECT COUNT(*) FROM users WHERE id > 1;')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns 0 when no rows match' do
+      results = client.query('SELECT COUNT(*) FROM users WHERE id = 999;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'returns 0 for an empty table' do
+      client.query('DELETE FROM users;')
+      results = client.query('SELECT COUNT(*) FROM users;')
+      expect(results.first.values.first).to eq(0)
+    end
+  end
+
   describe 'Query Limiting (LIMIT clause)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')
