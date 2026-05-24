@@ -339,6 +339,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(0)
     end
+
+    it 'returns an empty result set for COUNT(*) with LIMIT 0' do
+      results = client.query('SELECT COUNT(*) FROM users LIMIT 0;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns an empty result set for COUNT(*) with OFFSET 1' do
+      results = client.query('SELECT COUNT(*) FROM users OFFSET 1;')
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'Query Limiting (LIMIT clause)' do

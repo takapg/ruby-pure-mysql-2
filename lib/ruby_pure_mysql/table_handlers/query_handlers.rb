@@ -16,7 +16,7 @@ module RubyPureMysql
 
     def handle_count_aggregate(client, columns, result)
       # COUNT(*) の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
-      rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil))
+      rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
       # 集計結果（1行）に対して OFFSET/LIMIT を適用する
