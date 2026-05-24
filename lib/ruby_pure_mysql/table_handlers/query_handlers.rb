@@ -7,6 +7,25 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
+      if result[:aggregate] == :count
+        handle_count_aggregate(client, columns, result)
+      else
+        handle_standard_select(client, columns, result)
+      end
+    end
+
+    def handle_count_aggregate(client, columns, result)
+      # COUNT(*) の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
+      rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
+      return if rows.nil?
+
+      # 集計結果（1行）に対して OFFSET/LIMIT を適用する
+      res_rows = [[rows.size]]
+      final_rows = apply_offset_and_limit(res_rows, result)
+      send_result_set(client, final_rows, ['COUNT(*)'])
+    end
+
+    def handle_standard_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
@@ -21,6 +40,11 @@ module RubyPureMysql
       rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
       return nil if rows.nil?
 
+      apply_offset_and_limit(rows, result)
+    end
+
+    def apply_offset_and_limit(rows, result)
+      rows = rows.drop(result[:offset] || 0)
       result[:limit] ? rows.first(result[:limit]) : rows
     end
 
