@@ -3,6 +3,8 @@
 module RubyPureMysql
   # クエリ操作に関連するハンドラメソッド
   module QueryHandlers
+    include TableHandlerUtils
+
     def handle_select(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
