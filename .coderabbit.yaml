@@ -6,6 +6,11 @@ reviews:
   path_filters:
     - "!Gemfile.lock"
     - "!.ruby-version"
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
   instructions: >
     あなたは熟練のRubyエンジニアとしてレビューしてください。
     特に以下の点に注意して指摘してください：
