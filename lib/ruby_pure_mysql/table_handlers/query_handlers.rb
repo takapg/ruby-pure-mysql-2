@@ -8,20 +8,28 @@ module RubyPureMysql
       return unless columns
 
       if result[:aggregate] == :count
-        # COUNT(*) の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
-        rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil))
-        return if rows.nil?
-
-        # 集計結果（1行）に対して OFFSET/LIMIT を適用する
-        res_rows = [[rows.size]]
-        final_rows = apply_offset_and_limit(res_rows, result)
-        send_result_set(client, final_rows, ['COUNT(*)'])
+        handle_count_aggregate(client, columns, result)
       else
-        rows = fetch_and_filter_rows(client, columns, result)
-        return if rows.nil?
-
-        send_selected_columns(client, rows, columns, result[:columns])
+        handle_standard_select(client, columns, result)
       end
+    end
+
+    def handle_count_aggregate(client, columns, result)
+      # COUNT(*) の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
+      rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil))
+      return if rows.nil?
+
+      # 集計結果（1行）に対して OFFSET/LIMIT を適用する
+      res_rows = [[rows.size]]
+      final_rows = apply_offset_and_limit(res_rows, result)
+      send_result_set(client, final_rows, ['COUNT(*)'])
+    end
+
+    def handle_standard_select(client, columns, result)
+      rows = fetch_and_filter_rows(client, columns, result)
+      return if rows.nil?
+
+      send_selected_columns(client, rows, columns, result[:columns])
     end
 
     def fetch_and_filter_rows(client, columns, result)
