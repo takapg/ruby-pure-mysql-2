@@ -112,24 +112,30 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
   describe 'Aggregate Functions' do
     it 'executes SELECT COUNT(*) and returns the correct count' do
+      client.query('DROP TABLE IF EXISTS counts;')
       client.query('CREATE TABLE counts (id INT);')
       client.query('INSERT INTO counts VALUES (1);')
       client.query('INSERT INTO counts VALUES (2);')
       results = client.query('SELECT COUNT(*) FROM counts;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(2)
     end
 
     it 'executes SELECT COUNT(*) with WHERE clause' do
+      client.query('DROP TABLE IF EXISTS counts_where;')
       client.query('CREATE TABLE counts_where (id INT);')
       client.query('INSERT INTO counts_where VALUES (1);')
       client.query('INSERT INTO counts_where VALUES (2);')
       results = client.query('SELECT COUNT(*) FROM counts_where WHERE id > 1;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(1)
     end
 
     it 'returns 0 for SELECT COUNT(*) with no matching rows' do
+      client.query('DROP TABLE IF EXISTS counts_empty;')
       client.query('CREATE TABLE counts_empty (id INT);')
       results = client.query('SELECT COUNT(*) FROM counts_empty WHERE id = 999;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(0)
     end
   end

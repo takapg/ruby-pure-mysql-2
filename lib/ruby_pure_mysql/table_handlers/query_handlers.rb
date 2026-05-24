@@ -19,11 +19,9 @@ module RubyPureMysql
       rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
       return if rows.nil?
 
-      # COUNT(*) の結果(1行)に対して LIMIT/OFFSET を適用する
-      count_result = [[rows.size]]
-      final_rows = apply_limit_offset(count_result, result[:limit], result[:offset])
-
-      send_result_set(client, final_rows, ['COUNT(*)'])
+      # LIMIT/OFFSET を適用してからカウントする
+      rows = apply_limit_offset(rows, result[:limit], result[:offset])
+      send_result_set(client, [[rows.size]], ['COUNT(*)'])
     end
 
     def handle_select_rows(client, result, columns)
