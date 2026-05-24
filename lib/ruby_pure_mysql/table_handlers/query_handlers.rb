@@ -7,12 +7,21 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      rows = fetch_and_filter_rows(client, columns, result)
-      return if rows.nil?
-
       if result[:aggregate] == :count
-        send_result_set(client, [[rows.size]], ['COUNT(*)'])
+        # COUNT(*) の場合は LIMIT/OFFSET を適用する前の行数が必要
+        rows = @storage_engine.select(result[:table_name])
+        rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+        return if rows.nil?
+
+        # COUNT(*) の結果(1行)に対して LIMIT/OFFSET を適用する
+        count_result = [[rows.size]]
+        final_rows = apply_limit_offset(count_result, result[:limit], result[:offset])
+
+        send_result_set(client, final_rows, ['COUNT(*)'])
       else
+        rows = fetch_and_filter_rows(client, columns, result)
+        return if rows.nil?
+
         send_selected_columns(client, rows, columns, result[:columns])
       end
     end
