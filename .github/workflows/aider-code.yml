@@ -79,7 +79,7 @@ jobs:
         run: |
           echo "Executing: $INSTRUCTION"
 
-          aider --model openrouter/openai/gpt-oss-120b:free \
+          aider --model gemini/gemma-4-31b-it \
                 --editor-model gemini/gemini-3.1-flash-lite \
                 --weak-model gemini/gemini-3.1-flash-lite \
                 --yes-always \
