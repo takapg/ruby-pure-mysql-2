@@ -238,15 +238,12 @@ jobs:
           PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
             --jq '.pull_requests[0].number // empty')
 
-          if [ -z "$PR_NUMBER" ]; then
-            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
-          fi
-
           IS_DRAFT=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json isDraft --jq '.isDraft')
 
           if [ "$IS_DRAFT" = "true" ]; then
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
             gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI がすべて成功しました！<br>Draft を解除し、レビューを開始します。"
+            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai full review"
           else
             GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
           fi
