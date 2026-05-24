@@ -32,22 +32,31 @@ module RubyPureMysql
     end
 
     def send_selected_columns(client, rows, columns, selected_columns)
-      if selected_columns.include?('COUNT(*)')
-        send_result_set(client, [[rows.size]], ['COUNT(*)'])
+      if selected_columns&.include?('COUNT(*)')
+        send_count_result(client, rows)
       elsif selected_columns && !selected_columns.include?('*')
-        return unless validate_selected_columns?(client, columns, selected_columns)
-
-        selected_indices = selected_columns.map { |col| columns.index(col) }
-        rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        send_result_set(client, rows, selected_columns)
+        send_filtered_columns(client, rows, columns, selected_columns)
       else
         send_result_set(client, rows, columns)
       end
     end
 
+    def send_count_result(client, rows)
+      send_result_set(client, [[rows.size]], ['COUNT(*)'])
+    end
+
+    def send_filtered_columns(client, rows, columns, selected_columns)
+      return unless validate_selected_columns?(client, columns, selected_columns)
+
+      selected_indices = selected_columns.map { |col| columns.index(col) }
+      rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
+      send_result_set(client, rows, selected_columns)
+    end
+
     def validate_selected_columns?(client, columns, selected_columns)
       selected_columns.each do |col|
         next if col == 'COUNT(*)'
+
         unless columns.include?(col)
           send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
           return false
