@@ -346,7 +346,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'returns an empty result set for COUNT(*) with OFFSET 1' do
-      results = client.query('SELECT COUNT(*) FROM users OFFSET 1;')
+      results = client.query('SELECT COUNT(*) FROM users LIMIT 1 OFFSET 1;')
       expect(results.count).to eq(0)
     end
   end
