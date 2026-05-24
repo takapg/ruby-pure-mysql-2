@@ -317,22 +317,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns the total count of rows' do
       results = client.query('SELECT COUNT(*) FROM users;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(3)
     end
 
     it 'returns the filtered count of rows' do
       results = client.query('SELECT COUNT(*) FROM users WHERE id > 1;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(2)
     end
 
     it 'returns 0 when no rows match' do
       results = client.query('SELECT COUNT(*) FROM users WHERE id = 999;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(0)
     end
 
     it 'returns 0 for an empty table' do
       client.query('DELETE FROM users;')
       results = client.query('SELECT COUNT(*) FROM users;')
+      expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(0)
     end
   end
