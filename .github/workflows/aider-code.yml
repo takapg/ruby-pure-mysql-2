@@ -73,12 +73,13 @@ jobs:
       - name: Run AI Agent CLI
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           INSTRUCTION: ${{ github.event.inputs.instruction }}
         run: |
           echo "Executing: $INSTRUCTION"
 
-          aider --model gemini/gemma-4-31b-it \
+          aider --model openrouter/nvidia/nemotron-3-super-120b-a12b:free \
                 --editor-model gemini/gemini-3.1-flash-lite \
                 --weak-model gemini/gemini-3.1-flash-lite \
                 --yes-always \
