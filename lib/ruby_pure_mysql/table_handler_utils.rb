@@ -21,6 +21,13 @@ module RubyPureMysql
       idx
     end
 
+    def filter_rows(client, columns, rows, where_clauses)
+      indices = find_matching_indices(client, rows, columns, where_clauses)
+      return nil if indices.nil?
+
+      indices.map { |i| rows[i] }
+    end
+
     def find_matching_indices(client, rows, table_columns, where_clauses)
       return (0...rows.size).to_a unless where_clauses
 
