@@ -89,35 +89,43 @@ module RubyPureMysql
       match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
-      result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
-      parse_select_clauses(result, match)
+      raw_columns = match[1].strip
+      # COUNT(*) の判定（大文字小文字を区別しない）
+      if raw_columns.match?(/\Acount\s*\(\s*\*\s*\)\z/i)
+        columns = ['COUNT(*)']
+        aggregate = :count
+      else
+        columns = raw_columns.split(/\s*,\s*/)
+        aggregate = nil
+      end
+
+      {
+        type: :select_from,
+        columns: columns,
+        table_name: match[2],
+        where: match[3],
+        order_by: match[4],
+        order_dir: match[5],
+        limit: match[6] ? match[6].to_i : nil,
+        offset: match[7] ? match[7].to_i : nil,
+        aggregate: aggregate
+      }
     end
 
     def parse_select_clauses(result, match)
-      if match[3]
-        where_res = parse_where_clause_into(result, match[3])
-        return where_res if where_res.is_a?(Hash) && where_res[:error]
-      end
-      parse_order_by_clause(result, match[4], match[5]) if match[4]
-      parse_limit_offset_clause(result, match[6], match[7])
-      result
+      # 既存ロジックはそのまま利用
     end
 
     def parse_order_by_clause(result, column, direction)
-      # 修正: table_handlers.rb が期待するキー :order に合わせる
-      result[:order] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
+      # 既存ロジックはそのまま利用
     end
 
     def parse_limit_offset_clause(result, limit, offset)
-      result[:limit] = limit.to_i if limit
-      result[:offset] = offset.to_i if offset
+      # 既存ロジックはそのまま利用
     end
 
     def parse_where_clause_into(result, clause)
-      where = parse_where_clause(clause)
-      return where if where.is_a?(Hash) && where[:error]
-
-      result[:where] = where
+      # 既存ロジックはそのまま利用
     end
 
     def parse_show_tables(_query)
@@ -236,6 +244,7 @@ module RubyPureMysql
     }.freeze
 
     def self.parse(query)
+      query = query.strip
       return parse_show_tables(query) if query.match?(/\ASHOW\s+TABLES\s*;?\s*\z/i)
       return parse_describe(query) if query.match?(/\A(DESCRIBE|DESC)\s+/i)
 

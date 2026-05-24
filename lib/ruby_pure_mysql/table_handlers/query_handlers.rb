@@ -10,18 +10,27 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
+      # 集計関数が指定されている場合は特別処理
+      if result[:aggregate] == :count
+        count_value = rows.size
+        # COUNT(*) の結果は単一行・単一列として返す
+        send_result_set(
+          client,
+          [[count_value]],
+          ['COUNT(*)']
+        )
+        return
+      end
+
       send_selected_columns(client, rows, columns, result[:columns])
     end
 
     def fetch_and_filter_rows(client, columns, result)
       rows = @storage_engine.select(result[:table_name])
       rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
-      return nil if rows.nil?
-
-      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
-      return nil if rows.nil?
-
-      result[:limit] ? rows.first(result[:limit]) : rows
+      rows = apply_order_by(client, result[:order_by], columns, rows) if result[:order_by]
+      rows = rows.slice(result[:offset] || 0, result[:limit]) if result[:limit]
+      rows
     end
 
     def filter_rows(client, columns, rows, where)
