@@ -287,6 +287,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'alice';")
       expect(results.count).to eq(1)
     end
+
+    it 'returns empty when no rows match' do
+      results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'non_existent';")
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do
