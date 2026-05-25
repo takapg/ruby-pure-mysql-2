@@ -282,6 +282,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT name FROM distinct_test;')
       expect(results.count).to eq(5)
     end
+
+    it 'returns unique values when combined with WHERE' do
+      results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'alice';")
+      expect(results.count).to eq(1)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do

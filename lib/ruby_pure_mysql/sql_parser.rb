@@ -91,7 +91,7 @@ module RubyPureMysql
 
       result = {
         type: :select_from,
-        distinct: !match[1].nil?,
+        distinct: !!match[1],
         table_name: match[3],
         columns: match[2].split(',').map(&:strip)
       }
