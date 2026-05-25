@@ -18,7 +18,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           config.model: "gemini/gemma-4-31b-it"
           config.fallback_models: '["gemini/gemma-4-31b-it"]'
-          config.custom_model_max_tokens: "128000"
+          config.custom_model_max_tokens: "8192"
           config.ai_timeout: "600"
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           github_action_config.auto_review: "true"
