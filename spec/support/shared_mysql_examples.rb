@@ -260,6 +260,34 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'SELECT DISTINCT' do
+    before do
+      client.query('DROP TABLE IF EXISTS distinct_test;')
+      client.query('CREATE TABLE distinct_test (val INT);')
+      client.query("INSERT INTO distinct_test VALUES (1);")
+      client.query("INSERT INTO distinct_test VALUES (1);")
+      client.query("INSERT INTO distinct_test VALUES (2);")
+      client.query("INSERT INTO distinct_test VALUES (2);")
+      client.query("INSERT INTO distinct_test VALUES (3);")
+    end
+
+    it 'removes duplicate rows' do
+      results = client.query('SELECT DISTINCT val FROM distinct_test;')
+      expect(results.count).to eq(3)
+      expect(results.map { |r| r['val'] }).to match_array([1, 2, 3])
+    end
+
+    it 'works with SELECT DISTINCT *' do
+      results = client.query('SELECT DISTINCT * FROM distinct_test;')
+      expect(results.count).to eq(3)
+    end
+
+    it 'works with non-distinct SELECT' do
+      results = client.query('SELECT val FROM distinct_test;')
+      expect(results.count).to eq(5)
+    end
+  end
+
   describe 'Query Filtering (WHERE clause with AND)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')

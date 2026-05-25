@@ -26,10 +26,28 @@ module RubyPureMysql
     end
 
     def handle_standard_select(client, columns, result)
-      rows = fetch_and_filter_rows(client, columns, result)
+      # 1. Fetch and Filter (WHERE)
+      rows = @storage_engine.select(result[:table_name])
+      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
       return if rows.nil?
 
-      send_selected_columns(client, rows, columns, result[:columns])
+      # 2. Projection
+      projected_rows, final_columns = project_columns(client, rows, columns, result[:columns])
+      return if projected_rows.nil?
+
+      # 3. DISTINCT
+      projected_rows = projected_rows.uniq if result[:distinct]
+
+      # 4. Order By
+      if result[:order]
+        projected_rows = apply_order_by(client, result[:order], final_columns, projected_rows)
+        return if projected_rows.nil?
+      end
+
+      # 5. Offset/Limit
+      final_rows = apply_offset_and_limit(projected_rows, result)
+
+      send_result_set(client, final_rows, final_columns)
     end
 
     def fetch_and_filter_rows(client, columns, result)
@@ -55,15 +73,15 @@ module RubyPureMysql
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
     end
 
-    def send_selected_columns(client, rows, columns, selected_columns)
+    def project_columns(client, rows, table_columns, selected_columns)
       if selected_columns && !selected_columns.include?('*')
-        return unless validate_selected_columns?(client, columns, selected_columns)
+        return nil unless validate_selected_columns?(client, table_columns, selected_columns)
 
-        selected_indices = selected_columns.map { |col| columns.index(col) }
-        rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        send_result_set(client, rows, selected_columns)
+        selected_indices = selected_columns.map { |col| table_columns.index(col) }
+        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
+        [projected_rows, selected_columns]
       else
-        send_result_set(client, rows, columns)
+        [rows, table_columns]
       end
     end
 
