@@ -275,7 +275,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT DISTINCT name FROM distinct_test;')
       expect(results.count).to eq(3)
       names = results.map { |r| r['name'] }.sort
-      expect(names).to eq(['alice', 'bob', 'charlie'])
+      expect(names).to eq(%w[alice bob charlie])
     end
 
     it 'returns all values when DISTINCT is not used' do
