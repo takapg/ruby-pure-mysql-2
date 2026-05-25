@@ -80,8 +80,6 @@ jobs:
           echo "Executing: $INSTRUCTION"
 
           aider --model gemini/gemma-4-31b-it \
-                --editor-model gemini/gemini-3.1-flash-lite \
-                --weak-model gemini/gemini-3.1-flash-lite \
                 --edit-format diff-fenced \
                 --yes-always \
                 --chat-language japanese \
