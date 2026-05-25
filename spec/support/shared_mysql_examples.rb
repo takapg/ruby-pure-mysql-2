@@ -264,11 +264,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     before do
       client.query('DROP TABLE IF EXISTS distinct_test;')
       client.query('CREATE TABLE distinct_test (val INT);')
-      client.query("INSERT INTO distinct_test VALUES (1);")
-      client.query("INSERT INTO distinct_test VALUES (1);")
-      client.query("INSERT INTO distinct_test VALUES (2);")
-      client.query("INSERT INTO distinct_test VALUES (2);")
-      client.query("INSERT INTO distinct_test VALUES (3);")
+      client.query('INSERT INTO distinct_test VALUES (1);')
+      client.query('INSERT INTO distinct_test VALUES (1);')
+      client.query('INSERT INTO distinct_test VALUES (2);')
+      client.query('INSERT INTO distinct_test VALUES (2);')
+      client.query('INSERT INTO distinct_test VALUES (3);')
     end
 
     it 'removes duplicate rows' do

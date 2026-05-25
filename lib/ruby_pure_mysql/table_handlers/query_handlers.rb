@@ -26,28 +26,29 @@ module RubyPureMysql
     end
 
     def handle_standard_select(client, columns, result)
-      # 1. Fetch and Filter (WHERE)
-      rows = @storage_engine.select(result[:table_name])
-      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+      rows = fetch_rows_for_select(client, columns, result)
       return if rows.nil?
 
-      # 2. Projection
       projected_rows, final_columns = project_columns(client, rows, columns, result[:columns])
       return if projected_rows.nil?
 
-      # 3. DISTINCT
-      projected_rows = projected_rows.uniq if result[:distinct]
-
-      # 4. Order By
-      if result[:order]
-        projected_rows = apply_order_by(client, result[:order], final_columns, projected_rows)
-        return if projected_rows.nil?
-      end
-
-      # 5. Offset/Limit
-      final_rows = apply_offset_and_limit(projected_rows, result)
+      final_rows = refine_result_set(client, projected_rows, final_columns, result)
+      return if final_rows.nil?
 
       send_result_set(client, final_rows, final_columns)
+    end
+
+    def fetch_rows_for_select(client, columns, result)
+      rows = @storage_engine.select(result[:table_name])
+      result[:where] ? filter_rows(client, columns, rows, result[:where]) : rows
+    end
+
+    def refine_result_set(client, rows, columns, result)
+      rows = rows.uniq if result[:distinct]
+      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
+      return nil if rows.nil?
+
+      apply_offset_and_limit(rows, result)
     end
 
     def fetch_and_filter_rows(client, columns, result)
