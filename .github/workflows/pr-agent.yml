@@ -5,7 +5,7 @@ on:
   # issue_comment:
 jobs:
   pr_agent_job:
-    # if: ${{ github.event.sender.type != 'Bot' }}
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -17,7 +17,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           config.model: "gemini/gemma-4-31b-it"
-          config.fallback_models: '["gemini/gemini-3.1-flash-lite"]'
+          config.fallback_models: '["gemini/gemma-4-31b-it"]'
+          config.custom_model_max_tokens: "128000"
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
