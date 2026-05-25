@@ -19,7 +19,7 @@ jobs:
           config.model: "gemini/gemma-4-31b-it"
           config.fallback_models: '["gemini/gemma-4-31b-it"]'
           config.custom_model_max_tokens: "8192"
-          config.ai_timeout: "600"
+          config.ai_timeout: "1200"
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
