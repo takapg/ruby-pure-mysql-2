@@ -92,7 +92,13 @@ module RubyPureMysql
       seq = start_seq
       column_names.each_with_index do |name, index|
         val = sample_row ? sample_row[index] : nil
-        type = val.is_a?(Integer) ? MYSQL_TYPE_LONGLONG : MYSQL_TYPE_VAR_STRING
+        type = if val.is_a?(Integer)
+                 MYSQL_TYPE_LONGLONG
+               elsif val.is_a?(Float)
+                 MYSQL_TYPE_DOUBLE
+               else
+                 MYSQL_TYPE_VAR_STRING
+               end
         send_packet(client, seq & 0xFF, pack_column_definition(type, name))
         seq += 1
       end

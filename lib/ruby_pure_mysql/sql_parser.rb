@@ -95,15 +95,7 @@ module RubyPureMysql
         table_name: match[3],
         columns: match[2].split(',').map(&:strip)
       }
-      if result[:columns].size == 1
-        col = result[:columns].first
-        if col.casecmp?('COUNT(*)')
-          result[:aggregate] = :count
-        elsif (m = col.match(/(SUM|AVG|MIN|MAX)\((\w+)\)/i))
-          result[:aggregate] = m[1].downcase.to_sym
-          result[:aggregate_column] = m[2]
-        end
-      end
+      detect_aggregate_function(result) if result[:columns].size == 1
       parse_select_clauses(result, match)
     end
 
@@ -125,6 +117,16 @@ module RubyPureMysql
     def parse_limit_offset_clause(result, limit, offset)
       result[:limit] = limit.to_i if limit
       result[:offset] = offset.to_i if offset
+    end
+
+    def detect_aggregate_function(result)
+      col = result[:columns].first
+      if col.casecmp?('COUNT(*)')
+        result[:aggregate] = :count
+      elsif (m = col.match(/(SUM|AVG|MIN|MAX)\((\w+)\)/i))
+        result[:aggregate] = m[1].downcase.to_sym
+        result[:aggregate_column] = m[2]
+      end
     end
 
     def parse_where_clause_into(result, clause)
