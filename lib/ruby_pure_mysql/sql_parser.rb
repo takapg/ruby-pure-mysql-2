@@ -79,7 +79,7 @@ module RubyPureMysql
   # クエリパースロジック
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
-      '\ASELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
+      '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
       '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
       '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
@@ -89,18 +89,23 @@ module RubyPureMysql
       match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
-      result = { type: :select_from, table_name: match[2], columns: match[1].split(',').map(&:strip) }
+      result = {
+        type: :select_from,
+        distinct: !match[1].nil?,
+        table_name: match[3],
+        columns: match[2].split(',').map(&:strip)
+      }
       result[:aggregate] = :count if result[:columns].size == 1 && result[:columns].first.casecmp?('COUNT(*)')
       parse_select_clauses(result, match)
     end
 
     def parse_select_clauses(result, match)
-      if match[3]
-        where_res = parse_where_clause_into(result, match[3])
+      if match[4]
+        where_res = parse_where_clause_into(result, match[4])
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
-      parse_order_by_clause(result, match[4], match[5]) if match[4]
-      parse_limit_offset_clause(result, match[6], match[7])
+      parse_order_by_clause(result, match[5], match[6]) if match[5]
+      parse_limit_offset_clause(result, match[7], match[8])
       result
     end
 

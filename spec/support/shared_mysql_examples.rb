@@ -260,6 +260,40 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'SELECT DISTINCT' do
+    before do
+      client.query('DROP TABLE IF EXISTS distinct_test;')
+      client.query('CREATE TABLE distinct_test (name VARCHAR(255));')
+      client.query("INSERT INTO distinct_test VALUES ('alice');")
+      client.query("INSERT INTO distinct_test VALUES ('bob');")
+      client.query("INSERT INTO distinct_test VALUES ('alice');")
+      client.query("INSERT INTO distinct_test VALUES ('charlie');")
+      client.query("INSERT INTO distinct_test VALUES ('bob');")
+    end
+
+    it 'returns only unique values when DISTINCT is used' do
+      results = client.query('SELECT DISTINCT name FROM distinct_test;')
+      expect(results.count).to eq(3)
+      names = results.map { |r| r['name'] }.sort
+      expect(names).to eq(%w[alice bob charlie])
+    end
+
+    it 'returns all values when DISTINCT is not used' do
+      results = client.query('SELECT name FROM distinct_test;')
+      expect(results.count).to eq(5)
+    end
+
+    it 'returns unique values when combined with WHERE' do
+      results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'alice';")
+      expect(results.count).to eq(1)
+    end
+
+    it 'returns empty when no rows match' do
+      results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'non_existent';")
+      expect(results.count).to eq(0)
+    end
+  end
+
   describe 'Query Filtering (WHERE clause with AND)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')

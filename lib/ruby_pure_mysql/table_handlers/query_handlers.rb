@@ -29,7 +29,16 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      send_selected_columns(client, rows, columns, result[:columns])
+      rows, final_columns = project_rows(client, rows, columns, result[:columns])
+      return if rows.nil?
+
+      rows.uniq! if result[:distinct]
+
+      rows = apply_order_by(client, result[:order], final_columns, rows) if result[:order]
+      return if rows.nil?
+
+      rows = apply_offset_and_limit(rows, result)
+      send_result_set(client, rows, final_columns)
     end
 
     def fetch_and_filter_rows(client, columns, result)
@@ -37,10 +46,7 @@ module RubyPureMysql
       rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
       return nil if rows.nil?
 
-      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
-      return nil if rows.nil?
-
-      apply_offset_and_limit(rows, result)
+      rows
     end
 
     def apply_offset_and_limit(rows, result)
@@ -55,15 +61,15 @@ module RubyPureMysql
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
     end
 
-    def send_selected_columns(client, rows, columns, selected_columns)
+    def project_rows(client, rows, columns, selected_columns)
       if selected_columns && !selected_columns.include?('*')
-        return unless validate_selected_columns?(client, columns, selected_columns)
+        return nil unless validate_selected_columns?(client, columns, selected_columns)
 
         selected_indices = selected_columns.map { |col| columns.index(col) }
-        rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        send_result_set(client, rows, selected_columns)
+        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
+        [projected_rows, selected_columns]
       else
-        send_result_set(client, rows, columns)
+        [rows, columns]
       end
     end
 
