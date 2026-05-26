@@ -118,10 +118,28 @@ module RubyPureMysql
     #   - flags: 2 bytes
     #   - decimals: 1 byte
     def pack_column_definition(type, name)
-      # column_length を 0 にするとクライアント側で正しく読み込めない場合があるため、255 に設定する
-      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, 255, type, 0, 0]
-      data.pack('a*a*a*a*a*a*C v v V C v C')
+      # 可変長文字列の定義を構築
+      # 1. 可変長フィールド (catalog, schema, table, org_table, name, org_name)
+      header = [
+        lenenc_str('def'),
+        lenenc_str(''),
+        lenenc_str(''),
+        lenenc_str(''),
+        lenenc_str(name),
+        lenenc_str(name)
+      ].join
+
+      # 2. 固定長フィールド (12 bytes)
+      # - fixed_fields_length: 0x0c (1 byte)
+      # - character_set: 0x0021 (2 bytes)
+      # - collation: 0 (2 bytes)
+      # - column_length: 0 (4 bytes) - VAR_STRINGの場合は0で許容されることが多い
+      # - column_type: type (1 byte)
+      # - flags: 0 (2 bytes)
+      # - decimals: 0 (1 byte)
+      fixed = [0x0c, 0x0021, 0, 0, type, 0, 0].pack('C v v V C v C')
+
+      header + fixed
     end
 
     def send_row_data(client, seq, values)
