@@ -32,7 +32,7 @@ module RubyPureMysql
       rows, final_columns = project_rows(client, rows, columns, result[:columns])
       return if rows.nil?
 
-      rows = rows.uniq if result[:distinct]
+      rows.uniq! if result[:distinct]
 
       rows = apply_order_by(client, result[:order], final_columns, rows) if result[:order]
       return if rows.nil?
