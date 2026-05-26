@@ -385,6 +385,50 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
+    before do
+      client.query('DROP TABLE IF EXISTS agg_test;')
+      client.query('CREATE TABLE agg_test (val INT);')
+      client.query('INSERT INTO agg_test VALUES (10);')
+      client.query('INSERT INTO agg_test VALUES (20);')
+      client.query('INSERT INTO agg_test VALUES (30);')
+    end
+
+    it 'calculates SUM correctly' do
+      results = client.query('SELECT SUM(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(60)
+    end
+
+    it 'calculates AVG correctly' do
+      results = client.query('SELECT AVG(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(20.0)
+    end
+
+    it 'calculates MIN correctly' do
+      results = client.query('SELECT MIN(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(10)
+    end
+
+    it 'calculates MAX correctly' do
+      results = client.query('SELECT MAX(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(30)
+    end
+
+    it 'returns NULL for SUM/AVG/MIN/MAX on empty table' do
+      client.query('DELETE FROM agg_test;')
+      expect(client.query('SELECT SUM(val) FROM agg_test;').first.values.first).to be_nil
+      expect(client.query('SELECT AVG(val) FROM agg_test;').first.values.first).to be_nil
+      expect(client.query('SELECT MIN(val) FROM agg_test;').first.values.first).to be_nil
+      expect(client.query('SELECT MAX(val) FROM agg_test;').first.values.first).to be_nil
+    end
+
+    it 'returns 0 for COUNT(*) on empty table' do
+      client.query('DELETE FROM agg_test;')
+      results = client.query('SELECT COUNT(*) FROM agg_test;')
+      expect(results.first.values.first).to eq(0)
+    end
+  end
+
   describe 'Query Limiting (LIMIT clause)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')
