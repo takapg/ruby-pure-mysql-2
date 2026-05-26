@@ -24,9 +24,11 @@ module RubyPureMysql
       values = result[:aggregate_column] ? rows.filter_map { |r| r[col_idx] } : []
       res_val = calculate_aggregate_value(result[:aggregate], rows, values)
 
-      res_rows = [[res_val]]
-      final_rows = apply_offset_and_limit(res_rows, result)
+      send_aggregate_result(client, res_val, result)
+    end
 
+    def send_aggregate_result(client, value, result)
+      final_rows = apply_offset_and_limit([[value]], result)
       col_name = result[:aggregate_column] ? "#{result[:aggregate].upcase}(#{result[:aggregate_column]})" : 'COUNT(*)'
       send_result_set(client, final_rows, [col_name])
     end
@@ -42,14 +44,16 @@ module RubyPureMysql
       col_idx
     end
 
+    AGGREGATE_FUNCS = {
+      count: ->(rows, _vals) { rows.size },
+      sum:   ->(_rows, vals) { vals.empty? ? nil : vals.sum },
+      avg:   ->(_rows, vals) { vals.empty? ? nil : vals.sum.to_f / vals.size },
+      min:   ->(_rows, vals) { vals.min },
+      max:   ->(_rows, vals) { vals.max }
+    }.freeze
+
     def calculate_aggregate_value(agg_func, rows, values)
-      case agg_func
-      when :count then rows.size
-      when :sum then values.empty? ? nil : values.sum
-      when :avg then values.empty? ? nil : values.sum.to_f / values.size
-      when :min then values.min
-      when :max then values.max
-      end
+      AGGREGATE_FUNCS[agg_func]&.call(rows, values)
     end
 
     def handle_standard_select(client, columns, result)

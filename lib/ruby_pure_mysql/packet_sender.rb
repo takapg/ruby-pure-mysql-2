@@ -92,17 +92,15 @@ module RubyPureMysql
       seq = start_seq
       column_names.each_with_index do |name, index|
         val = sample_row ? sample_row[index] : nil
-        type = if val.is_a?(Integer)
-                 MYSQL_TYPE_LONGLONG
-               elsif val.is_a?(Float)
-                 MYSQL_TYPE_DOUBLE
-               else
-                 MYSQL_TYPE_VAR_STRING
-               end
-        send_packet(client, seq & 0xFF, pack_column_definition(type, name))
+        send_packet(client, seq & 0xFF, pack_column_definition(column_type_for(val), name))
         seq += 1
       end
       seq
+    end
+
+    def column_type_for(_val)
+      # send_row_data がすべて文字列で送信するため、型定義も VAR_STRING に統一する
+      MYSQL_TYPE_VAR_STRING
     end
 
     # MySQL Column Definition Packet (COM_QUERY response):
@@ -114,15 +112,15 @@ module RubyPureMysql
     #   - org_name: lenenc_str column name
     #   - fixed_fields_length: 0x0c (12 bytes follow)
     #   - character_set: 2 bytes (0x21, 0x00 = utf8_general_ci)
+    #   - collation: 2 bytes (0x00, 0x00)
     #   - column_length: 4 bytes
     #   - column_type: 1 byte
     #   - flags: 2 bytes
     #   - decimals: 1 byte
-    #   - filler: 2 bytes
     def pack_column_definition(type, name)
       data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, type, 0, 0, 0]
-      data.pack('a*a*a*a*a*a*C v V C v C v')
+              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, 0, type, 0, 0]
+      data.pack('a*a*a*a*a*a*C v v V C v C')
     end
 
     def send_row_data(client, seq, values)
