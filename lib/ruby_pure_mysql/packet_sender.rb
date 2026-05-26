@@ -118,8 +118,9 @@ module RubyPureMysql
     #   - flags: 2 bytes
     #   - decimals: 1 byte
     def pack_column_definition(type, name)
+      # column_length を 0 にするとクライアント側で正しく読み込めない場合があるため、255 に設定する
       data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, 0, type, 0, 0]
+              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, 255, type, 0, 0]
       data.pack('a*a*a*a*a*a*C v v V C v C')
     end
 
