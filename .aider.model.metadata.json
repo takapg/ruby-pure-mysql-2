@@ -15,12 +15,26 @@
     },
     "gemini/gemma-4-31b-it": {
         "max_tokens": 8192,
-        "max_input_tokens": 128000,
+        "max_input_tokens": 256000,
         "max_output_tokens": 8192,
         "input_cost_per_token": 0.0,
         "output_cost_per_token": 0.0,
         "litellm_provider": "gemini",
         "mode": "chat",
-        "supports_system_messages": true
+        "supports_system_messages": true,
+        "supports_function_calling": true,
+        "supports_vision": true
+    },
+    "gemini/gemma-4-26b-a4b-it": {
+        "max_tokens": 8192,
+        "max_input_tokens": 256000,
+        "max_output_tokens": 8192,
+        "input_cost_per_token": 0.0,
+        "output_cost_per_token": 0.0,
+        "litellm_provider": "gemini",
+        "mode": "chat",
+        "supports_system_messages": true,
+        "supports_function_calling": true,
+        "supports_vision": true
     }
 }
