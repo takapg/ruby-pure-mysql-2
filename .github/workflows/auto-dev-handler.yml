@@ -210,7 +210,7 @@ jobs:
           </details>
           "
 
-  promote-pr-on-success:
+  ready-pr-on-success:
     if: |
       startsWith(github.event.workflow_run.head_branch, 'auto-dev') &&
       github.event_name == 'workflow_run' &&
@@ -230,7 +230,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      - name: Promote PR
+      - name: Ready PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
@@ -242,10 +242,8 @@ jobs:
 
           if [ "$IS_DRAFT" = "true" ]; then
             gh pr ready $PR_NUMBER --repo ${{ github.repository }}
-            gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "✅ CI がすべて成功しました！<br>Draft を解除し、レビューを開始します。"
-            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai full review"
           else
-            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "@coderabbitai resume"
+            echo "PR #$PR_NUMBER is already open."
           fi
 
   review-dispatch:
