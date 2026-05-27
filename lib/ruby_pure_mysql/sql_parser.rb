@@ -128,15 +128,11 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      if match[4]
-        where_res = parse_where_clause_into(result, match[4])
-        return where_res if where_res.is_a?(Hash) && where_res[:error]
-      end
+      return parse_where_clause_into(result, match[4]) if match[4] && (res = parse_where_clause_into(result, match[4])).is_a?(Hash) && res[:error]
+
       result[:group_by] = match[5] if match[5]
-      if match[6]
-        having_res = parse_having_clause(result, match[6])
-        return having_res if having_res.is_a?(Hash) && having_res[:error]
-      end
+      return parse_having_clause(result, match[6]) if match[6] && (res = parse_having_clause(result, match[6])).is_a?(Hash) && res[:error]
+
       parse_order_by_clause(result, match[7], match[8]) if match[7]
       parse_limit_offset_clause(result, match[9], match[10])
       result

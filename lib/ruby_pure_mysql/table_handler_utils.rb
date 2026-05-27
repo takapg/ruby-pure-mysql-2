@@ -108,7 +108,7 @@ module RubyPureMysql
       end
     end
 
-    def evaluate_having_condition(client, columns, group_val, group_rows, group_indices, clause)
+    def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
       col_expr = clause[:column]
       if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
         agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
@@ -116,6 +116,7 @@ module RubyPureMysql
       else
         col_idx = columns.index(col_expr)
         return false unless col_idx
+
         group_idx = group_indices.index(col_idx)
         val = group_idx ? group_val[group_idx] : nil
       end

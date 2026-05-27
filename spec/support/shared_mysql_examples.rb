@@ -465,7 +465,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # price > 100 のものを集計し、その結果 COUNT(*) > 1 のものを抽出
       # electronics: 200 (1件), books: 150 (1件), clothing: 300 (1件)
       # 全て1件になるため、COUNT(*) > 1 では 0件になるはず
-      results = client.query('SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category HAVING COUNT(*) > 1;')
+      query = 'SELECT category, COUNT(*) FROM products ' \
+              'WHERE price > 100 GROUP BY category HAVING COUNT(*) > 1;'
+      results = client.query(query)
       expect(results.count).to eq(0)
     end
 
