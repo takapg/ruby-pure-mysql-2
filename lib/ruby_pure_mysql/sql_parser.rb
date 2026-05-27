@@ -82,6 +82,7 @@ module RubyPureMysql
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
       '(?:\s+GROUP\s+BY\s+(.+?))?' \
+      '(?:\s+HAVING\s+(.+?))?' \
       '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?' \
       '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
@@ -132,9 +133,17 @@ module RubyPureMysql
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
       result[:group_by] = match[5] if match[5]
-      parse_order_by_clause(result, match[6], match[7]) if match[6]
-      parse_limit_offset_clause(result, match[8], match[9])
+      parse_having_clause(result, match[6]) if match[6]
+      parse_order_by_clause(result, match[7], match[8]) if match[7]
+      parse_limit_offset_clause(result, match[9], match[10])
       result
+    end
+
+    def parse_having_clause(result, clause)
+      having = parse_where_clause(clause)
+      return having if having.is_a?(Hash) && having[:error]
+
+      result[:having] = having
     end
 
     def parse_order_by_clause(result, column, direction)

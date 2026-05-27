@@ -446,6 +446,33 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(%w[electronics clothing]).to include(results.first['category'])
       expect(results.first['SUM(price)']).to eq(300.0)
     end
+
+    it 'filters groups using HAVING clause' do
+      results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category HAVING COUNT(*) > 1;')
+      expect(results.count).to eq(2) # electronics and books
+      categories = results.map { |r| r['category'] }
+      expect(categories).to contain_exactly('electronics', 'books')
+    end
+
+    it 'filters groups using HAVING with SUM' do
+      results = client.query('SELECT category, SUM(price) FROM products GROUP BY category HAVING SUM(price) >= 300;')
+      expect(results.count).to eq(2) # electronics(300) and clothing(300)
+      categories = results.map { |r| r['category'] }
+      expect(categories).to contain_exactly('electronics', 'clothing')
+    end
+
+    it 'combines WHERE and HAVING clauses' do
+      # price > 100 のものを集計し、その結果 COUNT(*) > 1 のものを抽出
+      # electronics: 200 (1件), books: 150 (1件), clothing: 300 (1件)
+      # 全て1件になるため、COUNT(*) > 1 では 0件になるはず
+      results = client.query('SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category HAVING COUNT(*) > 1;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns empty result set when no groups match HAVING' do
+      results = client.query('SELECT category FROM products GROUP BY category HAVING SUM(price) > 10000;')
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'GROUP BY with multiple columns' do

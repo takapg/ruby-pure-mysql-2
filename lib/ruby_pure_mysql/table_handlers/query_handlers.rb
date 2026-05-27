@@ -23,19 +23,30 @@ module RubyPureMysql
       group_indices = get_group_column_indices(client, columns, result[:group_by])
       return if group_indices.nil?
 
-      res_rows = compute_grouped_results(columns, result, rows, group_indices)
-      return send_err_packet(client, 1, 'Error executing GROUP BY query', 1105) if res_rows.nil?
-
-      finalize_and_send_group_results(client, result, res_rows)
-    end
-
-    def compute_grouped_results(columns, result, rows, group_indices)
       grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
       res_rows = grouped.map do |group_val, group_rows|
         compute_group_row(columns, result, group_val, group_rows, group_indices)
       end
+      return send_err_packet(client, 1, 'Error executing GROUP BY query', 1105) if res_rows.nil? || res_rows.any? { |row| row.include?(:error) }
 
-      res_rows.any? { |row| row.include?(:error) } ? nil : res_rows
+      if result[:having]
+        res_rows = filter_having_rows(client, columns, res_rows, grouped, result[:having], group_indices)
+        return if res_rows.nil?
+      end
+
+      finalize_and_send_group_results(client, result, res_rows)
+    end
+
+
+    def filter_having_rows(client, columns, res_rows, grouped, having_clauses, group_indices)
+      grouped_keys = grouped.keys
+      res_rows.each_with_index.select do |row, idx|
+        group_val = grouped_keys[idx]
+        group_rows = grouped[group_val]
+        having_clauses.all? do |clause|
+          evaluate_having_condition(client, columns, group_val, group_rows, group_indices, clause)
+        end
+      end.map(&:first)
     end
 
     def finalize_and_send_group_results(client, result, res_rows)

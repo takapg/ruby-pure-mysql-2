@@ -108,6 +108,21 @@ module RubyPureMysql
       end
     end
 
+    def evaluate_having_condition(client, columns, group_val, group_rows, group_indices, clause)
+      col_expr = clause[:column]
+      if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
+        agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
+        val = compute_single_aggregate_value(group_rows, columns, agg)
+      else
+        col_idx = columns.index(col_expr)
+        return false unless col_idx
+        group_idx = group_indices.index(col_idx)
+        val = group_idx ? group_val[group_idx] : nil
+      end
+
+      apply_filter(val, clause[:operator], clause[:value])
+    end
+
     private
 
     def compile_where_clauses(client, table_columns, where_clauses)
