@@ -20,39 +20,11 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      group_col = result[:group_by]
-      group_idx = columns.index(group_col)
-      unless group_idx
-        send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group clause'", 1054)
-        return
-      end
+      group_idx = get_group_column_index(client, columns, result[:group_by])
+      return unless group_idx
 
       grouped = rows.group_by { |row| row[group_idx] }
-
-      res_rows = grouped.map do |group_val, group_rows|
-        result[:columns].map do |col|
-          if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
-            agg_type = m[1].downcase.to_sym
-            agg_col = m[2]
-            if agg_col == '*'
-              group_rows.size
-            else
-              agg_idx = columns.index(agg_col)
-              if agg_idx
-                values = group_rows.filter_map { |r| r[agg_idx] }.map(&:to_f)
-                calculate_aggregate_value(values, agg_type)
-              else
-                :error
-              end
-            end
-          elsif col == group_col
-            group_val
-          else
-            col_idx = columns.index(col)
-            col_idx ? group_rows.first[col_idx] : nil
-          end
-        end
-      end
+      res_rows = grouped.map { |val, rows| compute_group_row(columns, result, val, rows) }
 
       if res_rows.flatten.include?(:error)
         send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
@@ -64,6 +36,37 @@ module RubyPureMysql
 
       res_rows = apply_offset_and_limit(res_rows, result)
       send_result_set(client, res_rows, result[:columns])
+    end
+
+    def get_group_column_index(client, columns, group_col)
+      idx = columns.index(group_col)
+      send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group clause'", 1054) unless idx
+      idx
+    end
+
+    def compute_group_row(columns, result, group_val, group_rows)
+      result[:columns].map do |col|
+        if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
+          compute_aggregate_for_group(columns, m, group_rows)
+        elsif col == result[:group_by]
+          group_val
+        else
+          col_idx = columns.index(col)
+          col_idx ? group_rows.first[col_idx] : nil
+        end
+      end
+    end
+
+    def compute_aggregate_for_group(columns, match, group_rows)
+      agg_type = match[1].downcase.to_sym
+      agg_col = match[2]
+      return group_rows.size if agg_col == '*'
+
+      agg_idx = columns.index(agg_col)
+      return :error unless agg_idx
+
+      values = group_rows.filter_map { |r| r[agg_idx] }.map(&:to_f)
+      calculate_aggregate_value(values, agg_type)
     end
 
     def handle_aggregate(client, columns, result)

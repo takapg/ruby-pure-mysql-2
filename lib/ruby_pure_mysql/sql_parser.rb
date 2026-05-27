@@ -103,12 +103,13 @@ module RubyPureMysql
     def detect_aggregate(result)
       # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
       result[:columns].each_with_index do |col, idx|
-        if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
-          result[:aggregate] = m[1].downcase.to_sym
-          result[:aggregate_column] = m[2]
-          result[:aggregate_index] = idx
-          break
-        end
+        m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
+        next unless m
+
+        result[:aggregate] = m[1].downcase.to_sym
+        result[:aggregate_column] = m[2]
+        result[:aggregate_index] = idx
+        break
       end
     end
 

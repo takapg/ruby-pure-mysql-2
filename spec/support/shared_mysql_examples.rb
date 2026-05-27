@@ -399,7 +399,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'calculates COUNT(*) with GROUP BY' do
       results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category;')
       expect(results.count).to eq(3)
-      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      data = results.to_h { |r| [r['category'], r['COUNT(*)']] }
       expect(data['electronics']).to eq(2)
       expect(data['books']).to eq(2)
       expect(data['clothing']).to eq(1)
@@ -407,7 +407,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'calculates SUM with GROUP BY' do
       results = client.query('SELECT category, SUM(price) FROM products GROUP BY category;')
-      data = results.map { |r| [r['category'], r['SUM(price)']] }.to_h
+      data = results.to_h { |r| [r['category'], r['SUM(price)']] }
       expect(data['electronics']).to eq(300.0)
       expect(data['books']).to eq(200.0)
       expect(data['clothing']).to eq(300.0)
@@ -415,7 +415,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'calculates AVG with GROUP BY' do
       results = client.query('SELECT category, AVG(price) FROM products GROUP BY category;')
-      data = results.map { |r| [r['category'], r['AVG(price)']] }.to_h
+      data = results.to_h { |r| [r['category'], r['AVG(price)']] }
       expect(data['electronics']).to eq(150.0)
       expect(data['books']).to eq(100.0)
       expect(data['clothing']).to eq(300.0)
@@ -423,25 +423,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'calculates MIN and MAX with GROUP BY' do
       results = client.query('SELECT category, MIN(price), MAX(price) FROM products GROUP BY category;')
-      data = results.map { |r| [r['category'], [r['MIN(price)'], r['MAX(price)']]] }.to_h
+      data = results.to_h { |r| [r['category'], [r['MIN(price)'], r['MAX(price)']]] }
       expect(data['electronics']).to eq([100.0, 200.0])
       expect(data['books']).to eq([50.0, 150.0])
       expect(data['clothing']).to eq([300.0, 300.0])
     end
 
     it 'combines GROUP BY with WHERE' do
-      results = client.query("SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category;")
-      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      results = client.query('SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category;')
+      data = results.to_h { |r| [r['category'], r['COUNT(*)']] }
       expect(data['electronics']).to eq(1)
       expect(data['books']).to eq(1)
       expect(data['clothing']).to eq(1)
     end
 
     it 'combines GROUP BY with ORDER BY and LIMIT' do
-      results = client.query('SELECT category, SUM(price) FROM products GROUP BY category ORDER BY SUM(price) DESC LIMIT 1;')
+      query = 'SELECT category, SUM(price) FROM products ' \
+              'GROUP BY category ORDER BY SUM(price) DESC LIMIT 1;'
+      results = client.query(query)
       expect(results.count).to eq(1)
       # electronics(300) or clothing(300)
-      expect(['electronics', 'clothing']).to include(results.first['category'])
+      expect(%w[electronics clothing]).to include(results.first['category'])
       expect(results.first['SUM(price)']).to eq(300.0)
     end
   end
