@@ -448,6 +448,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'GROUP BY with multiple columns' do
+    before do
+      client.query('DROP TABLE IF EXISTS sales;')
+      client.query('CREATE TABLE sales (product VARCHAR(255), region VARCHAR(255), amount INT);')
+      client.query("INSERT INTO sales VALUES ('Apple', 'North', 10);")
+      client.query("INSERT INTO sales VALUES ('Apple', 'North', 20);")
+      client.query("INSERT INTO sales VALUES ('Apple', 'South', 15);")
+      client.query("INSERT INTO sales VALUES ('Banana', 'North', 5);")
+      client.query("INSERT INTO sales VALUES ('Banana', 'North', 10);")
+    end
+
+    it 'calculates COUNT(*) with multiple columns in GROUP BY' do
+      results = client.query('SELECT product, region, COUNT(*) FROM sales GROUP BY product, region;')
+      expect(results.count).to eq(3)
+      data = results.to_h { |r| [ [r['product'], r['region']], r['COUNT(*)'] ] }
+      expect(data[['Apple', 'North']]).to eq(2)
+      expect(data[['Apple', 'South']]).to eq(1)
+      expect(data[['Banana', 'North']]).to eq(2)
+    end
+  end
+
   describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
     before do
       client.query('DROP TABLE IF EXISTS products;')
