@@ -7,10 +7,53 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if result[:aggregate]
+      if result[:group_by]
+        handle_group_by_select(client, columns, result)
+      elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
       else
         handle_standard_select(client, columns, result)
+      end
+    end
+
+    def handle_group_by_select(client, columns, result)
+      rows = fetch_and_filter_rows(client, columns, result)
+      return if rows.nil?
+
+      group_indices = get_group_column_indices(client, columns, result[:group_by])
+      return if group_indices.nil?
+
+      res_rows = compute_grouped_results(columns, result, rows, group_indices)
+      return send_err_packet(client, 1, 'Error executing GROUP BY query', 1105) if res_rows.nil?
+
+      finalize_and_send_group_results(client, result, res_rows)
+    end
+
+    def compute_grouped_results(columns, result, rows, group_indices)
+      grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
+      res_rows = grouped.map do |group_val, group_rows|
+        compute_group_row(columns, result, group_val, group_rows, group_indices)
+      end
+
+      res_rows.any? { |row| row.include?(:error) } ? nil : res_rows
+    end
+
+    def finalize_and_send_group_results(client, result, res_rows)
+      res_rows = apply_order_by(client, result[:order], result[:columns], res_rows) if result[:order]
+      return if res_rows.nil?
+
+      res_rows = apply_offset_and_limit(res_rows, result)
+      send_result_set(client, res_rows, result[:columns])
+    end
+
+    def compute_group_row(columns, result, group_val, group_rows, group_indices)
+      result[:columns].each_with_index.map do |col, idx|
+        agg = result[:aggregates]&.find { |a| a[:index] == idx }
+        if agg
+          compute_aggregate_for_group(columns, agg, group_rows)
+        else
+          resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
+        end
       end
     end
 
@@ -18,37 +61,25 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
-      res_val = compute_aggregate_value(client, rows, columns, result)
-      return if res_val == :error
+      res_row = build_aggregate_row(rows, columns, result)
+      return send_err_packet(client, 1, 'Error executing aggregate query', 1105) if res_row == :error
 
-      res_rows = [[res_val]]
+      res_rows = [res_row]
       final_rows = apply_offset_and_limit(res_rows, result)
-      send_result_set(client, final_rows, [result[:columns].first])
+      send_result_set(client, final_rows, result[:columns])
     end
 
-    def compute_aggregate_value(client, rows, columns, result)
-      col_name = result[:aggregate_column]
-      return rows.size if col_name == '*'
+    def build_aggregate_row(rows, columns, result)
+      result[:columns].each_with_index.map do |col, idx|
+        agg = result[:aggregates].find { |a| a[:index] == idx }
+        if agg
+          val = compute_single_aggregate_value(rows, columns, agg)
+          return :error if val == :error
 
-      col_idx = columns.index(col_name)
-      unless col_idx
-        send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
-        return :error
-      end
-
-      values = rows.filter_map { |r| r[col_idx] }.map(&:to_f)
-      calculate_aggregate_value(values, result[:aggregate])
-    end
-
-    def calculate_aggregate_value(values, type)
-      return values.size if type == :count
-      return nil if values.empty?
-
-      case type
-      when :sum then values.sum
-      when :avg then values.sum / values.size
-      when :min then values.min
-      when :max then values.max
+          val
+        else
+          resolve_aggregate_non_col(rows, columns, col)
+        end
       end
     end
 
@@ -76,56 +107,11 @@ module RubyPureMysql
       rows
     end
 
-    def apply_offset_and_limit(rows, result)
-      rows = rows.drop(result[:offset] || 0)
-      result[:limit] ? rows.first(result[:limit]) : rows
-    end
-
     def filter_rows(client, columns, rows, where)
       where_clauses = prepare_where_clauses(client, columns, where)
       return nil if where_clauses.nil?
 
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
-    end
-
-    def project_rows(client, rows, columns, selected_columns)
-      if selected_columns && !selected_columns.include?('*')
-        return nil unless validate_selected_columns?(client, columns, selected_columns)
-
-        selected_indices = selected_columns.map { |col| columns.index(col) }
-        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        [projected_rows, selected_columns]
-      else
-        [rows, columns]
-      end
-    end
-
-    def validate_selected_columns?(client, columns, selected_columns)
-      selected_columns.each do |col|
-        unless columns.include?(col)
-          send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
-          return false
-        end
-      end
-      true
-    end
-
-    def apply_order_by(client, order, columns, rows)
-      col_idx = columns.index(order[:column])
-      if col_idx.nil?
-        send_err_packet(client, 1, "Unknown column '#{order[:column]}' in 'order clause'", 1054)
-        return nil
-      end
-
-      sort_rows(rows, col_idx, order[:direction])
-    end
-
-    def sort_rows(rows, col_idx, direction)
-      sorted_rows = rows.sort_by do |row|
-        val = row[col_idx]
-        [val.nil? ? 0 : 1, val]
-      end
-      direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
   end
 end

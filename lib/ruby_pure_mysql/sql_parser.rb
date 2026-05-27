@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'sql_parser/evaluator'
+require_relative 'aggregate_utils'
 
 module RubyPureMysql
   # DDLパースロジック
@@ -80,7 +81,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
-      '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
+      '(?:\s+GROUP\s+BY\s+(.+?))?' \
+      '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?' \
       '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
     )
@@ -95,17 +97,33 @@ module RubyPureMysql
         table_name: match[3],
         columns: match[2].split(',').map(&:strip)
       }
-      detect_aggregate(result)
+      detect_aggregates(result)
       parse_select_clauses(result, match)
     end
 
-    def detect_aggregate(result)
-      return unless result[:columns].size == 1
+    def detect_aggregates(result)
+      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
+      result[:aggregates] = result[:columns].each_with_index.filter_map do |col, idx|
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
+        next unless m
 
-      if (m = result[:columns].first.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
-        result[:aggregate] = m[1].downcase.to_sym
-        result[:aggregate_column] = m[2]
+        parse_aggregate_column(m, idx)
       end
+
+      return if result[:aggregates].empty?
+
+      assign_first_aggregate(result)
+    end
+
+    def parse_aggregate_column(match, idx)
+      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+    end
+
+    def assign_first_aggregate(result)
+      first = result[:aggregates].first
+      result[:aggregate] = first[:type]
+      result[:aggregate_column] = first[:column]
+      result[:aggregate_index] = first[:index]
     end
 
     def parse_select_clauses(result, match)
@@ -113,8 +131,9 @@ module RubyPureMysql
         where_res = parse_where_clause_into(result, match[4])
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
-      parse_order_by_clause(result, match[5], match[6]) if match[5]
-      parse_limit_offset_clause(result, match[7], match[8])
+      result[:group_by] = match[5] if match[5]
+      parse_order_by_clause(result, match[6], match[7]) if match[6]
+      parse_limit_offset_clause(result, match[8], match[9])
       result
     end
 
