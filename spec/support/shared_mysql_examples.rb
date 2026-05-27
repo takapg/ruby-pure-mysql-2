@@ -462,10 +462,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'calculates COUNT(*) with multiple columns in GROUP BY' do
       results = client.query('SELECT product, region, COUNT(*) FROM sales GROUP BY product, region;')
       expect(results.count).to eq(3)
-      data = results.to_h { |r| [ [r['product'], r['region']], r['COUNT(*)'] ] }
-      expect(data[['Apple', 'North']]).to eq(2)
-      expect(data[['Apple', 'South']]).to eq(1)
-      expect(data[['Banana', 'North']]).to eq(2)
+      data = results.to_h { |r| [[r['product'], r['region']], r['COUNT(*)']] }
+      expect(data[%w[Apple North]]).to eq(2)
+      expect(data[%w[Apple South]]).to eq(1)
+      expect(data[%w[Banana North]]).to eq(2)
     end
   end
 
