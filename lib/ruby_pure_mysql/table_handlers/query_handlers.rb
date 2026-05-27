@@ -9,7 +9,7 @@ module RubyPureMysql
 
       if result[:group_by]
         handle_group_by_select(client, columns, result)
-      elsif result[:aggregate]
+      elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
       else
         handle_standard_select(client, columns, result)
@@ -20,10 +20,10 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      group_idx = get_group_column_index(client, columns, result[:group_by])
-      return unless group_idx
+      group_indices = get_group_column_indices(client, columns, result[:group_by])
+      return unless group_indices
 
-      res_rows = compute_grouped_results(columns, result, rows, group_idx)
+      res_rows = compute_grouped_results(columns, result, rows, group_indices)
       if res_rows.nil?
         send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
         return
@@ -32,9 +32,9 @@ module RubyPureMysql
       finalize_and_send_group_results(client, result, res_rows)
     end
 
-    def compute_grouped_results(columns, result, rows, group_idx)
-      grouped = rows.group_by { |row| row[group_idx] }
-      res_rows = grouped.map { |val, rows| compute_group_row(columns, result, val, rows) }
+    def compute_grouped_results(columns, result, rows, group_indices)
+      grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
+      res_rows = grouped.map { |group_val, group_rows| compute_group_row(columns, result, group_val, group_rows, group_indices) }
 
       res_rows.flatten.include?(:error) ? nil : res_rows
     end
@@ -47,15 +47,18 @@ module RubyPureMysql
       send_result_set(client, res_rows, result[:columns])
     end
 
-    def compute_group_row(columns, result, group_val, group_rows)
+    def compute_group_row(columns, result, group_val, group_rows, group_indices)
       result[:columns].map do |col|
-        if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
+        m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
+        if m
           compute_aggregate_for_group(columns, m, group_rows)
-        elsif col == result[:group_by]
-          group_val
         else
           col_idx = columns.index(col)
-          col_idx ? group_rows.first[col_idx] : nil
+          if col_idx && (rel_idx = group_indices.index(col_idx))
+            group_val[rel_idx]
+          else
+            col_idx ? group_rows.first[col_idx] : nil
+          end
         end
       end
     end
@@ -76,26 +79,33 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
-      res_val = compute_aggregate_value(client, rows, columns, result)
-      return if res_val == :error
+      res_row = result[:columns].map do |col|
+        agg = result[:aggregates].find { |a| a[:index] == result[:columns].index(col) }
+        if agg
+          val = compute_single_aggregate_value(rows, columns, agg)
+          return :error if val == :error
+          val
+        else
+          # 非集計カラムが含まれている場合は、最初の行の値を返す（MySQLの挙動に近似）
+          col_idx = columns.index(col)
+          col_idx ? (rows.first ? rows.first[col_idx] : nil) : nil
+        end
+      end
+      return if res_row == :error
 
-      res_rows = [[res_val]]
+      res_rows = [res_row]
       final_rows = apply_offset_and_limit(res_rows, result)
-      send_result_set(client, final_rows, [result[:columns].first])
+      send_result_set(client, final_rows, result[:columns])
     end
 
-    def compute_aggregate_value(client, rows, columns, result)
-      col_name = result[:aggregate_column]
-      return rows.size if col_name == '*'
+    def compute_single_aggregate_value(rows, columns, agg)
+      return rows.size if agg[:column] == '*'
 
-      col_idx = columns.index(col_name)
-      unless col_idx
-        send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
-        return :error
-      end
+      col_idx = columns.index(agg[:column])
+      return :error unless col_idx
 
       values = rows.filter_map { |r| r[col_idx] }.map(&:to_f)
-      calculate_aggregate_value(values, result[:aggregate])
+      calculate_aggregate_value(values, agg[:type])
     end
 
     def handle_standard_select(client, columns, result)

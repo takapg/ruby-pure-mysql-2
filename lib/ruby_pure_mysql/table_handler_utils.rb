@@ -92,10 +92,16 @@ module RubyPureMysql
       false
     end
 
-    def get_group_column_index(client, columns, group_col)
-      idx = columns.index(group_col)
-      send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group clause'", 1054) unless idx
-      idx
+    def get_group_column_indices(client, columns, group_by_str)
+      group_by_str.split(',').map do |col_name|
+        name = col_name.strip
+        idx = columns.index(name)
+        unless idx
+          send_err_packet(client, 1, "Unknown column '#{name}' in 'group clause'", 1054)
+          return nil
+        end
+        idx
+      end
     end
 
     def calculate_aggregate_value(values, type)

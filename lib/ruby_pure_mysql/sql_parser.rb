@@ -96,20 +96,29 @@ module RubyPureMysql
         table_name: match[3],
         columns: match[2].split(',').map(&:strip)
       }
-      detect_aggregate(result)
+      detect_aggregates(result)
       parse_select_clauses(result, match)
     end
 
-    def detect_aggregate(result)
+    def detect_aggregates(result)
       # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
+      result[:aggregates] = []
       result[:columns].each_with_index do |col, idx|
         m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
         next unless m
 
-        result[:aggregate] = m[1].downcase.to_sym
-        result[:aggregate_column] = m[2]
-        result[:aggregate_index] = idx
-        break
+        result[:aggregates] << {
+          type: m[1].downcase.to_sym,
+          column: m[2],
+          index: idx
+        }
+      end
+      # 後方互換性のために最初の集計関数をセット
+      if result[:aggregates].any?
+        first = result[:aggregates].first
+        result[:aggregate] = first[:type]
+        result[:aggregate_column] = first[:column]
+        result[:aggregate_index] = first[:index]
       end
     end
 
