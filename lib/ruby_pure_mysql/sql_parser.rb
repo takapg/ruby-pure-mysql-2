@@ -133,7 +133,10 @@ module RubyPureMysql
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
       result[:group_by] = match[5] if match[5]
-      parse_having_clause(result, match[6]) if match[6]
+      if match[6]
+        having_res = parse_having_clause(result, match[6])
+        return having_res if having_res.is_a?(Hash) && having_res[:error]
+      end
       parse_order_by_clause(result, match[7], match[8]) if match[7]
       parse_limit_offset_clause(result, match[9], match[10])
       result
@@ -247,7 +250,7 @@ module RubyPureMysql
     end
 
     def parse_single_where_condition(condition)
-      where_match = condition.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      where_match = condition.match(/\A(.+?)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
