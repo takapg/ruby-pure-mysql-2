@@ -111,14 +111,14 @@ module RubyPureMysql
 
       return if result[:aggregates].empty?
 
-      set_first_aggregate(result)
+      assign_first_aggregate(result)
     end
 
     def parse_aggregate_column(match, idx)
       { type: match[1].downcase.to_sym, column: match[2], index: idx }
     end
 
-    def set_first_aggregate(result)
+    def assign_first_aggregate(result)
       first = result[:aggregates].first
       result[:aggregate] = first[:type]
       result[:aggregate_column] = first[:column]

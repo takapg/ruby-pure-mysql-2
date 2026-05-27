@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require_relative 'aggregate_utils'
+
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
   module TableHandlerUtils
+    include AggregateUtils
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
       unless columns
@@ -102,13 +105,6 @@ module RubyPureMysql
         end
         idx
       end
-    end
-
-    def calculate_aggregate_value(values, type)
-      return values.size if type == :count
-      return nil if values.empty?
-
-      type == :avg ? values.sum / values.size : values.public_send(type)
     end
 
     private
