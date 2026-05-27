@@ -389,9 +389,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     before do
       client.query('DROP TABLE IF EXISTS products;')
       client.query('CREATE TABLE products (id INT, price INT);')
-      client.query("INSERT INTO products VALUES (1, 100);")
-      client.query("INSERT INTO products VALUES (2, 200);")
-      client.query("INSERT INTO products VALUES (3, 300);")
+      client.query('INSERT INTO products VALUES (1, 100);')
+      client.query('INSERT INTO products VALUES (2, 200);')
+      client.query('INSERT INTO products VALUES (3, 300);')
     end
 
     it 'calculates SUM correctly' do

@@ -41,12 +41,14 @@ module RubyPureMysql
     end
 
     def calculate_aggregate_value(values, type)
+      return values.size if type == :count
+      return nil if values.empty?
+
       case type
-      when :count then values.size
-      when :sum then values.empty? ? nil : values.sum
-      when :avg then values.empty? ? nil : values.sum / values.size
-      when :min then values.empty? ? nil : values.min
-      when :max then values.empty? ? nil : values.max
+      when :sum then values.sum
+      when :avg then values.sum / values.size
+      when :min then values.min
+      when :max then values.max
       end
     end
 
