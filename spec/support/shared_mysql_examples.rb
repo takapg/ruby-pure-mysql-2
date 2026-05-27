@@ -260,6 +260,49 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'GROUP BY support' do
+    before do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 200);")
+      client.query("INSERT INTO products VALUES (3, 'books', 50);")
+      client.query("INSERT INTO products VALUES (4, 'books', 50);")
+      client.query("INSERT INTO products VALUES (5, 'clothing', 300);")
+    end
+
+    it 'groups by category and counts rows' do
+      results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category;')
+      expect(results.count).to eq(3)
+      
+      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      expect(data['electronics']).to eq(2)
+      expect(data['books']).to eq(2)
+      expect(data['clothing']).to eq(1)
+    end
+
+    it 'groups by category and sums price' do
+      results = client.query('SELECT category, SUM(price) FROM products GROUP BY category;')
+      expect(results.count).to eq(3)
+      
+      data = results.map { |r| [r['category'], r['SUM(price)']] }.to_h
+      expect(data['electronics']).to eq(300.0)
+      expect(data['books']).to eq(100.0)
+      expect(data['clothing']).to eq(300.0)
+    end
+
+    it 'filters with WHERE before grouping' do
+      results = client.query('SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category;')
+      # electronics (200), clothing (300) が該当
+      expect(results.count).to eq(2)
+      
+      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      expect(data['electronics']).to eq(1)
+      expect(data['clothing']).to eq(1)
+      expect(data.key?('books')).to be false
+    end
+  end
+
   describe 'SELECT DISTINCT' do
     before do
       client.query('DROP TABLE IF EXISTS distinct_test;')

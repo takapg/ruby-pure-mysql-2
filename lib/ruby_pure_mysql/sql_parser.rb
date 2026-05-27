@@ -80,6 +80,7 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
+      '(?:\s+GROUP\s+BY\s+(\w+))?' \
       '(?:\s+ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?)?' \
       '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
       Regexp::IGNORECASE
@@ -100,11 +101,12 @@ module RubyPureMysql
     end
 
     def detect_aggregate(result)
-      return unless result[:columns].size == 1
-
-      if (m = result[:columns].first.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
-        result[:aggregate] = m[1].downcase.to_sym
-        result[:aggregate_column] = m[2]
+      result[:columns].each do |col|
+        if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
+          result[:aggregate] = m[1].downcase.to_sym
+          result[:aggregate_column] = m[2]
+          return
+        end
       end
     end
 
@@ -113,8 +115,9 @@ module RubyPureMysql
         where_res = parse_where_clause_into(result, match[4])
         return where_res if where_res.is_a?(Hash) && where_res[:error]
       end
-      parse_order_by_clause(result, match[5], match[6]) if match[5]
-      parse_limit_offset_clause(result, match[7], match[8])
+      result[:group_by] = match[5] if match[5]
+      parse_order_by_clause(result, match[6], match[7]) if match[6]
+      parse_limit_offset_clause(result, match[8], match[9])
       result
     end
 
