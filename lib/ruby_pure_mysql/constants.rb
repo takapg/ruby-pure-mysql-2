@@ -22,6 +22,7 @@ module RubyPureMysql
     NULL_COLUMN_VALUE = 0xFB
 
     # MySQL Type Codes
+    MYSQL_TYPE_DOUBLE = 0x02
     MYSQL_TYPE_LONGLONG = 0x08
     MYSQL_TYPE_VAR_STRING = 0xFD
 

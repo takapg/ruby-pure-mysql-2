@@ -385,6 +385,46 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
+    before do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, price INT);')
+      client.query('INSERT INTO products VALUES (1, 100);')
+      client.query('INSERT INTO products VALUES (2, 200);')
+      client.query('INSERT INTO products VALUES (3, 300);')
+    end
+
+    it 'calculates SUM correctly' do
+      results = client.query('SELECT SUM(price) FROM products;')
+      expect(results.first.values.first).to eq(600.0)
+    end
+
+    it 'calculates AVG correctly' do
+      results = client.query('SELECT AVG(price) FROM products;')
+      expect(results.first.values.first).to eq(200.0)
+    end
+
+    it 'calculates MIN correctly' do
+      results = client.query('SELECT MIN(price) FROM products;')
+      expect(results.first.values.first).to eq(100.0)
+    end
+
+    it 'calculates MAX correctly' do
+      results = client.query('SELECT MAX(price) FROM products;')
+      expect(results.first.values.first).to eq(300.0)
+    end
+
+    it 'filters rows before aggregating' do
+      results = client.query('SELECT SUM(price) FROM products WHERE price > 150;')
+      expect(results.first.values.first).to eq(500.0)
+    end
+
+    it 'returns NULL for SUM/AVG/MIN/MAX on empty result set' do
+      results = client.query('SELECT SUM(price) FROM products WHERE price > 1000;')
+      expect(results.first.values.first).to be_nil
+    end
+  end
+
   describe 'Query Limiting (LIMIT clause)' do
     before do
       client.query('DROP TABLE IF EXISTS users;')
