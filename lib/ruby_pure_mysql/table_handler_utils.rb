@@ -87,6 +87,7 @@ module RubyPureMysql
 
     def validate_selected_columns?(client, columns, selected_columns)
       return true if selected_columns.all? { |col| columns.include?(col) }
+
       send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
       false
     end
