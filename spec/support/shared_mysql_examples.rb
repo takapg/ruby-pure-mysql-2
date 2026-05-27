@@ -374,6 +374,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(0)
     end
 
+    it 'returns NULL for SUM, AVG, MIN, MAX on an empty table' do
+      client.query('DELETE FROM users;')
+      %w[SUM AVG MIN MAX].each do |func|
+        results = client.query("SELECT #{func}(id) FROM users;")
+        expect(results.first.values.first).to be_nil
+      end
+    end
+
     it 'returns an empty result set for COUNT(*) with LIMIT 0' do
       results = client.query('SELECT COUNT(*) FROM users LIMIT 0;')
       expect(results.count).to eq(0)
@@ -382,6 +390,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns an empty result set for COUNT(*) with OFFSET 1' do
       results = client.query('SELECT COUNT(*) FROM users LIMIT 1 OFFSET 1;')
       expect(results.count).to eq(0)
+    end
+  end
+
+  describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
+    before do
+      client.query('DROP TABLE IF EXISTS agg_test;')
+      client.query('CREATE TABLE agg_test (val INT);')
+      client.query('INSERT INTO agg_test VALUES (10);')
+      client.query('INSERT INTO agg_test VALUES (20);')
+      client.query('INSERT INTO agg_test VALUES (30);')
+    end
+
+    it 'calculates SUM correctly' do
+      results = client.query('SELECT SUM(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(60)
+    end
+
+    it 'calculates AVG correctly' do
+      results = client.query('SELECT AVG(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(20.0)
+    end
+
+    it 'calculates MIN correctly' do
+      results = client.query('SELECT MIN(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(10)
+    end
+
+    it 'calculates MAX correctly' do
+      results = client.query('SELECT MAX(val) FROM agg_test;')
+      expect(results.first.values.first).to eq(30)
+    end
+
+    it 'calculates aggregates with WHERE clause' do
+      results = client.query('SELECT SUM(val) FROM agg_test WHERE val > 15;')
+      expect(results.first.values.first).to eq(50)
     end
   end
 
