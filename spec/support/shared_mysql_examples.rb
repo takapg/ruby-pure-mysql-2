@@ -274,8 +274,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'groups by category and counts rows' do
       results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category;')
       expect(results.count).to eq(3)
-      
-      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+
+      data = results.to_h { |r| [r['category'], r['COUNT(*)']] }
       expect(data['electronics']).to eq(2)
       expect(data['books']).to eq(2)
       expect(data['clothing']).to eq(1)
@@ -284,8 +284,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'groups by category and sums price' do
       results = client.query('SELECT category, SUM(price) FROM products GROUP BY category;')
       expect(results.count).to eq(3)
-      
-      data = results.map { |r| [r['category'], r['SUM(price)']] }.to_h
+
+      data = results.to_h { |r| [r['category'], r['SUM(price)']] }
       expect(data['electronics']).to eq(300.0)
       expect(data['books']).to eq(100.0)
       expect(data['clothing']).to eq(300.0)
@@ -295,8 +295,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category;')
       # electronics (200), clothing (300) が該当
       expect(results.count).to eq(2)
-      
-      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+
+      data = results.to_h { |r| [r['category'], r['COUNT(*)']] }
       expect(data['electronics']).to eq(1)
       expect(data['clothing']).to eq(1)
       expect(data.key?('books')).to be false

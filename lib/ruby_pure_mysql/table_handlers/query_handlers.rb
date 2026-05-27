@@ -10,49 +10,64 @@ module RubyPureMysql
       if result[:group_by]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregate]
-        if result[:columns].size > 1
-          send_err_packet(client, 1, "Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column", 1055)
-          return
-        end
-        handle_aggregate(client, columns, result)
+        handle_aggregate_with_validation(client, columns, result)
       else
         handle_standard_select(client, columns, result)
       end
+    end
+
+    def handle_aggregate_with_validation(client, columns, result)
+      if result[:columns].size > 1
+        msg = 'Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column'
+        send_err_packet(client, 1, msg, 1055)
+        return
+      end
+      handle_aggregate(client, columns, result)
     end
 
     def handle_group_by_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
 
-      group_col = result[:group_by]
-      group_idx = columns.index(group_col)
-      unless group_idx
-        send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group by clause'", 1054)
-        return
-      end
+      group_idx = find_group_column_index(client, columns, result[:group_by])
+      return unless group_idx
 
-      grouped_rows = rows.group_by { |row| row[group_idx] }
-      
-      final_rows = grouped_rows.map do |key, group|
-        agg_val = compute_aggregate_value(client, group, columns, result)
-        return if agg_val == :error
-
-        result[:columns].map do |col|
-          if col == group_col
-            key
-          elsif col.match?(/\A(COUNT|SUM|AVG|MIN|MAX)\(/i)
-            agg_val
-          else
-            nil
-          end
-        end
-      end.compact
+      final_rows = aggregate_grouped_rows(client, rows, columns, result, group_idx)
+      return if final_rows.nil?
 
       final_rows = apply_order_by(client, result[:order], result[:columns], final_rows) if result[:order]
       return if final_rows.nil?
 
       final_rows = apply_offset_and_limit(final_rows, result)
       send_result_set(client, final_rows, result[:columns])
+    end
+
+    def find_group_column_index(client, columns, group_col)
+      idx = columns.index(group_col)
+      unless idx
+        send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group by clause'", 1054)
+      end
+      idx
+    end
+
+    def aggregate_grouped_rows(client, rows, columns, result, group_idx)
+      group_col = result[:group_by]
+      grouped = rows.group_by { |row| row[group_idx] }
+      final_rows = []
+      error_occurred = false
+
+      grouped.each do |key, group|
+        agg_val = compute_aggregate_value(client, group, columns, result)
+        if agg_val == :error
+          error_occurred = true
+          break
+        end
+
+        final_rows << result[:columns].map do |col|
+          col == group_col ? key : (col.match?(/\A(COUNT|SUM|AVG|MIN|MAX)\(/i) ? agg_val : nil)
+        end
+      end
+      error_occurred ? nil : final_rows
     end
 
     def handle_aggregate(client, columns, result)
