@@ -48,11 +48,14 @@ module RubyPureMysql
 
     def perform_aggregation(values, type)
       t = type.to_s.downcase
-      case
-      when t.include?('sum') then values.map(&:to_i).sum
-      when t.include?('avg') then values.map(&:to_f).sum / values.size
-      when t.include?('min') then values.map(&:to_i).min
-      when t.include?('max') then values.map(&:to_i).max
+      if t.include?('sum')
+        values.sum(&:to_i)
+      elsif t.include?('avg')
+        values.sum(&:to_f) / values.size
+      elsif t.include?('min')
+        values.map(&:to_i).min
+      elsif t.include?('max')
+        values.map(&:to_i).max
       end
     end
 
