@@ -47,11 +47,6 @@ module RubyPureMysql
       send_result_set(client, res_rows, result[:columns])
     end
 
-    def get_group_column_index(client, columns, group_col)
-      idx = columns.index(group_col)
-      send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group clause'", 1054) unless idx
-      idx
-    end
 
     def compute_group_row(columns, result, group_val, group_rows)
       result[:columns].map do |col|
@@ -104,17 +99,6 @@ module RubyPureMysql
       calculate_aggregate_value(values, result[:aggregate])
     end
 
-    def calculate_aggregate_value(values, type)
-      return values.size if type == :count
-      return nil if values.empty?
-
-      case type
-      when :sum then values.sum
-      when :avg then values.sum / values.size
-      when :min then values.min
-      when :max then values.max
-      end
-    end
 
     def handle_standard_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
@@ -146,6 +130,5 @@ module RubyPureMysql
 
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
     end
-
   end
 end

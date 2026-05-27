@@ -97,6 +97,24 @@ module RubyPureMysql
       true
     end
 
+    def get_group_column_index(client, columns, group_col)
+      idx = columns.index(group_col)
+      send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group clause'", 1054) unless idx
+      idx
+    end
+
+    def calculate_aggregate_value(values, type)
+      return values.size if type == :count
+      return nil if values.empty?
+
+      case type
+      when :sum then values.sum
+      when :avg then values.sum / values.size
+      when :min then values.min
+      when :max then values.max
+      end
+    end
+
     private
 
     def compile_where_clauses(client, table_columns, where_clauses)
