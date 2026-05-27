@@ -21,7 +21,10 @@ module RubyPureMysql
       return if rows.nil?
 
       group_indices = get_group_column_indices(client, columns, result[:group_by])
-      return unless group_indices
+      if group_indices.nil?
+        # get_group_column_indices 内部で既にエラーパケット (1054) が送信されているため、ここでは処理を中断する
+        return
+      end
 
       res_rows = compute_grouped_results(columns, result, rows, group_indices)
       if res_rows.nil?
@@ -73,8 +76,8 @@ module RubyPureMysql
     end
 
     def build_aggregate_row(rows, columns, result)
-      result[:columns].map do |col|
-        agg = result[:aggregates].find { |a| a[:index] == result[:columns].index(col) }
+      result[:columns].each_with_index.map do |col, idx|
+        agg = result[:aggregates].find { |a| a[:index] == idx }
         if agg
           val = compute_single_aggregate_value(rows, columns, agg)
           return :error if val == :error
