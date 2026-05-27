@@ -423,7 +423,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'calculates MIN and MAX with GROUP BY' do
       results = client.query('SELECT category, MIN(price), MAX(price) FROM products GROUP BY category;')
-      data = results.map { |r| [r['category'], [r['MIN(price)'], r['MAX(price)']] }.to_h
+      data = results.map { |r| [r['category'], [r['MIN(price)'], r['MAX(price)']]] }.to_h
       expect(data['electronics']).to eq([100.0, 200.0])
       expect(data['books']).to eq([50.0, 150.0])
       expect(data['clothing']).to eq([300.0, 300.0])
