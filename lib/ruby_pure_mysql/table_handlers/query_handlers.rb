@@ -114,7 +114,6 @@ module RubyPureMysql
       end
     end
 
-
     def handle_standard_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
