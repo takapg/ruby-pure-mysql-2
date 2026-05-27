@@ -86,13 +86,9 @@ module RubyPureMysql
     end
 
     def validate_selected_columns?(client, columns, selected_columns)
-      selected_columns.each do |col|
-        unless columns.include?(col)
-          send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
-          return false
-        end
-      end
-      true
+      return true if selected_columns.all? { |col| columns.include?(col) }
+      send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
+      false
     end
 
     def get_group_column_index(client, columns, group_col)
@@ -104,13 +100,10 @@ module RubyPureMysql
     def calculate_aggregate_value(values, type)
       return values.size if type == :count
       return nil if values.empty?
-      case type
-      when :sum then values.sum
-      when :avg then values.sum / values.size
-      when :min then values.min
-      when :max then values.max
-      end
+
+      type == :avg ? values.sum / values.size : values.public_send(type)
     end
+
     private
 
     def compile_where_clauses(client, table_columns, where_clauses)
