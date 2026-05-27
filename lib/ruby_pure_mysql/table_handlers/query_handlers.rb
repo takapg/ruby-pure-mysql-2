@@ -15,40 +15,39 @@ module RubyPureMysql
     end
 
     def handle_aggregate(client, columns, result)
-      # 集計の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
-      agg_type = result[:aggregate]
-      col_name = result[:aggregate_column]
-
-      val = if agg_type == :count
+      val = if result[:aggregate] == :count
               rows.size
             else
-              col_idx = columns.index(col_name)
-              if col_idx.nil?
-                send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
-                return
-              end
-
-              values = rows.map { |r| r[col_idx] }.compact
-              if values.empty?
-                nil
-              else
-                case agg_type
-                when :sum then values.sum
-                when :avg then values.sum.to_f / values.size
-                when :min then values.min
-                when :max then values.max
-                end
-              end
+              calculate_column_aggregate(client, columns, rows, result)
             end
+      return if val == :error
 
-      # 集計結果（1行）に対して OFFSET/LIMIT を適用する
       res_rows = [[val]]
       final_rows = apply_offset_and_limit(res_rows, result)
-      col_header = col_name ? "#{agg_type.upcase}(#{col_name})" : 'COUNT(*)'
+      col_header = result[:aggregate_column] ? "#{result[:aggregate].upcase}(#{result[:aggregate_column]})" : 'COUNT(*)'
       send_result_set(client, final_rows, [col_header])
+    end
+
+    def calculate_column_aggregate(client, columns, rows, result)
+      col_name = result[:aggregate_column]
+      col_idx = columns.index(col_name)
+      if col_idx.nil?
+        send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
+        return :error
+      end
+
+      values = rows.filter_map { |r| r[col_idx] }
+      return nil if values.empty?
+
+      case result[:aggregate]
+      when :sum then values.sum
+      when :avg then values.sum.to_f / values.size
+      when :min then values.min
+      when :max then values.max
+      end
     end
 
     def handle_standard_select(client, columns, result)

@@ -95,16 +95,20 @@ module RubyPureMysql
         table_name: match[3],
         columns: match[2].split(',').map(&:strip)
       }
-      if result[:columns].size == 1
-        col = result[:columns].first
-        if col.casecmp?('COUNT(*)')
-          result[:aggregate] = :count
-        elsif (m = col.match(/(SUM|AVG|MIN|MAX)\((\w+)\)/i))
-          result[:aggregate] = m[1].downcase.to_sym
-          result[:aggregate_column] = m[2]
-        end
-      end
+      detect_aggregate!(result)
       parse_select_clauses(result, match)
+    end
+
+    def detect_aggregate!(result)
+      return unless result[:columns].size == 1
+
+      col = result[:columns].first
+      if col.casecmp?('COUNT(*)')
+        result[:aggregate] = :count
+      elsif (m = col.match(/(SUM|AVG|MIN|MAX)\((\w+)\)/i))
+        result[:aggregate] = m[1].downcase.to_sym
+        result[:aggregate_column] = m[2]
+      end
     end
 
     def parse_select_clauses(result, match)

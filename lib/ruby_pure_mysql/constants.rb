@@ -23,6 +23,7 @@ module RubyPureMysql
 
     # MySQL Type Codes
     MYSQL_TYPE_LONGLONG = 0x08
+    MYSQL_TYPE_DOUBLE = 0x0B
     MYSQL_TYPE_VAR_STRING = 0xFD
 
     # Handshake
