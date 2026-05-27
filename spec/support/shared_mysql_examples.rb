@@ -373,6 +373,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.fields.first).to eq('COUNT(*)')
       expect(results.first.values.first).to eq(0)
     end
+
+    it 'returns an empty result set for COUNT(*) with LIMIT 0' do
+      results = client.query('SELECT COUNT(*) FROM users LIMIT 0;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns an empty result set for COUNT(*) with OFFSET 1' do
+      results = client.query('SELECT COUNT(*) FROM users LIMIT 1 OFFSET 1;')
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
@@ -412,17 +422,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns NULL for SUM/AVG/MIN/MAX on empty result set' do
       results = client.query('SELECT SUM(price) FROM products WHERE price > 1000;')
       expect(results.first.values.first).to be_nil
-    end
-  end
-
-    it 'returns an empty result set for COUNT(*) with LIMIT 0' do
-      results = client.query('SELECT COUNT(*) FROM users LIMIT 0;')
-      expect(results.count).to eq(0)
-    end
-
-    it 'returns an empty result set for COUNT(*) with OFFSET 1' do
-      results = client.query('SELECT COUNT(*) FROM users LIMIT 1 OFFSET 1;')
-      expect(results.count).to eq(0)
     end
   end
 
