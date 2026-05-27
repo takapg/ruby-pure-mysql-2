@@ -1,21 +1,8 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
-  # クエリ操作に関連するハンドラメソッド
-  module QueryHandlers
-    def handle_select(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
-      if result[:group_by]
-        handle_group_by_select(client, columns, result)
-      elsif result[:aggregate]
-        handle_aggregate_with_validation(client, columns, result)
-      else
-        handle_standard_select(client, columns, result)
-      end
-    end
-
+  # 集計操作に関連するハンドラメソッド
+  module AggregateHandlers
     def handle_aggregate_with_validation(client, columns, result)
       if result[:columns].size > 1
         msg = 'Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column'
@@ -52,7 +39,7 @@ module RubyPureMysql
       grouped = rows.group_by { |row| row[group_idx] }
       final_rows = []
 
-      for key, group in grouped
+      grouped.each do |key, group|
         agg_val = compute_aggregate_value(client, group, columns, result)
         return nil if agg_val == :error
 
@@ -67,8 +54,6 @@ module RubyPureMysql
           key
         elsif col.match?(/\A(COUNT|SUM|AVG|MIN|MAX)\(/i)
           agg_val
-        else
-          nil
         end
       end
     end
@@ -110,6 +95,25 @@ module RubyPureMysql
       when :max then values.max
       end
     end
+  end
+
+  # クエリ操作に関連するハンドラメソッド
+  module QueryHandlers
+    include AggregateHandlers
+
+    def handle_select(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      if result[:group_by]
+        handle_group_by_select(client, columns, result)
+      elsif result[:aggregate]
+        handle_aggregate_with_validation(client, columns, result)
+      else
+        handle_standard_select(client, columns, result)
+      end
+    end
+
 
     def handle_standard_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
