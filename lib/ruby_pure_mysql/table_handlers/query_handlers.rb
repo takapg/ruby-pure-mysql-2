@@ -44,30 +44,33 @@ module RubyPureMysql
 
     def find_group_column_index(client, columns, group_col)
       idx = columns.index(group_col)
-      unless idx
-        send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group by clause'", 1054)
-      end
+      send_err_packet(client, 1, "Unknown column '#{group_col}' in 'group by clause'", 1054) unless idx
       idx
     end
 
     def aggregate_grouped_rows(client, rows, columns, result, group_idx)
-      group_col = result[:group_by]
       grouped = rows.group_by { |row| row[group_idx] }
       final_rows = []
-      error_occurred = false
 
-      grouped.each do |key, group|
+      for key, group in grouped
         agg_val = compute_aggregate_value(client, group, columns, result)
-        if agg_val == :error
-          error_occurred = true
-          break
-        end
+        return nil if agg_val == :error
 
-        final_rows << result[:columns].map do |col|
-          col == group_col ? key : (col.match?(/\A(COUNT|SUM|AVG|MIN|MAX)\(/i) ? agg_val : nil)
+        final_rows << build_group_row(key, agg_val, result[:group_by], result[:columns])
+      end
+      final_rows
+    end
+
+    def build_group_row(key, agg_val, group_col, selected_columns)
+      selected_columns.map do |col|
+        if col == group_col
+          key
+        elsif col.match?(/\A(COUNT|SUM|AVG|MIN|MAX)\(/i)
+          agg_val
+        else
+          nil
         end
       end
-      error_occurred ? nil : final_rows
     end
 
     def handle_aggregate(client, columns, result)
