@@ -18,13 +18,13 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
-      val = if result[:aggregate] == :count
-              rows.size
-            else
-              calculate_column_aggregate(client, columns, rows, result)
-            end
+      val = result[:aggregate] == :count ? rows.size : calculate_column_aggregate(client, columns, rows, result)
       return if val == :error
 
+      send_aggregate_result(client, val, result)
+    end
+
+    def send_aggregate_result(client, val, result)
       res_rows = [[val]]
       final_rows = apply_offset_and_limit(res_rows, result)
       col_header = result[:aggregate_column] ? "#{result[:aggregate].upcase}(#{result[:aggregate_column]})" : 'COUNT(*)'
@@ -32,21 +32,26 @@ module RubyPureMysql
     end
 
     def calculate_column_aggregate(client, columns, rows, result)
-      col_name = result[:aggregate_column]
-      col_idx = columns.index(col_name)
-      if col_idx.nil?
-        send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
-        return :error
-      end
+      col_idx = columns.index(result[:aggregate_column])
+      return handle_unknown_column(client, result[:aggregate_column]) if col_idx.nil?
 
       values = rows.filter_map { |r| r[col_idx] }
       return nil if values.empty?
 
-      case result[:aggregate]
-      when :sum then values.sum
-      when :avg then values.sum.to_f / values.size
-      when :min then values.min
-      when :max then values.max
+      perform_aggregation(values, result[:aggregate])
+    end
+
+    def handle_unknown_column(client, col_name)
+      send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
+      :error
+    end
+
+    def perform_aggregation(values, type)
+      case type.to_s.downcase
+      when 'sum' then values.sum
+      when 'avg' then values.sum.to_f / values.size
+      when 'min' then values.min
+      when 'max' then values.max
       end
     end
 

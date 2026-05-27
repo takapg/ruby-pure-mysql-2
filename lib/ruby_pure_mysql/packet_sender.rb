@@ -91,18 +91,21 @@ module RubyPureMysql
     def send_column_definitions(client, start_seq, column_names, sample_row)
       seq = start_seq
       column_names.each_with_index do |name, index|
-        val = sample_row ? sample_row[index] : nil
-        type = if val.is_a?(Integer)
-                 MYSQL_TYPE_LONGLONG
-               elsif val.is_a?(Float)
-                 MYSQL_TYPE_DOUBLE
-               else
-                 MYSQL_TYPE_VAR_STRING
-               end
+        type = determine_column_type(sample_row ? sample_row[index] : nil)
         send_packet(client, seq & 0xFF, pack_column_definition(type, name))
         seq += 1
       end
       seq
+    end
+
+    def determine_column_type(val)
+      if val.is_a?(Integer)
+        MYSQL_TYPE_LONGLONG
+      elsif val.is_a?(Float)
+        MYSQL_TYPE_DOUBLE
+      else
+        MYSQL_TYPE_VAR_STRING
+      end
     end
 
     # MySQL Column Definition Packet (COM_QUERY response):
