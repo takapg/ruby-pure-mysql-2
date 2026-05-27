@@ -105,11 +105,20 @@ module RubyPureMysql
       result[:aggregates] = result[:columns].each_with_index.filter_map do |col, idx|
         m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
         next unless m
-        { type: m[1].downcase.to_sym, column: m[2], index: idx }
+
+        parse_aggregate_column(m, idx)
       end
 
       return if result[:aggregates].empty?
 
+      set_first_aggregate(result)
+    end
+
+    def parse_aggregate_column(match, idx)
+      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+    end
+
+    def set_first_aggregate(result)
       first = result[:aggregates].first
       result[:aggregate] = first[:type]
       result[:aggregate_column] = first[:column]

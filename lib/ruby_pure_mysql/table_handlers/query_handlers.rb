@@ -6,6 +6,7 @@ module RubyPureMysql
     def handle_select(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
+
       if result[:group_by]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?
@@ -14,6 +15,7 @@ module RubyPureMysql
         handle_standard_select(client, columns, result)
       end
     end
+
     def handle_group_by_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
@@ -99,10 +101,14 @@ module RubyPureMysql
 
           val
         else
-          col_idx = columns.index(col)
-          col_idx ? rows.first&.[](col_idx) : nil
+          resolve_aggregate_non_col(rows, columns, col)
         end
       end
+    end
+
+    def resolve_aggregate_non_col(rows, columns, col)
+      col_idx = columns.index(col)
+      col_idx ? rows.first&.[](col_idx) : nil
     end
 
     def compute_single_aggregate_value(rows, columns, agg)
