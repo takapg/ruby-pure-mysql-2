@@ -24,7 +24,7 @@ module RubyPureMysql
       return if group_indices.nil?
 
       res_rows = compute_grouped_results(columns, result, rows, group_indices)
-      return send_err_packet(client, 1, "Unknown column in 'field list'", 1054) if res_rows.nil?
+      return send_err_packet(client, 1, "Error executing GROUP BY query", 1105) if res_rows.nil?
 
       finalize_and_send_group_results(client, result, res_rows)
     end
@@ -62,7 +62,7 @@ module RubyPureMysql
       return if rows.nil?
 
       res_row = build_aggregate_row(rows, columns, result)
-      return if res_row == :error
+      return send_err_packet(client, 1, "Error executing aggregate query", 1105) if res_row == :error
 
       res_rows = [res_row]
       final_rows = apply_offset_and_limit(res_rows, result)
