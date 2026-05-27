@@ -7,22 +7,45 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if result[:aggregate] == :count
-        handle_count_aggregate(client, columns, result)
+      if result[:aggregate]
+        handle_aggregate(client, columns, result)
       else
         handle_standard_select(client, columns, result)
       end
     end
 
-    def handle_count_aggregate(client, columns, result)
-      # COUNT(*) の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
+    def handle_aggregate(client, columns, result)
+      # 集計関数の場合は、LIMIT/OFFSET が適用される前の全行数を取得する
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
+      col_name = result[:aggregate_column]
+
+      if col_name == '*'
+        res_val = rows.size
+      else
+        col_idx = columns.index(col_name)
+        unless col_idx
+          send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
+          return
+        end
+
+        # NULLを除外して数値に変換
+        values = rows.map { |r| r[col_idx] }.compact.map { |v| v.to_f }
+
+        res_val = case result[:aggregate]
+                  when :count then values.size
+                  when :sum then values.empty? ? nil : values.sum
+                  when :avg then values.empty? ? nil : values.sum / values.size
+                  when :min then values.empty? ? nil : values.min
+                  when :max then values.empty? ? nil : values.max
+                  end
+      end
+
       # 集計結果（1行）に対して OFFSET/LIMIT を適用する
-      res_rows = [[rows.size]]
+      res_rows = [[res_val]]
       final_rows = apply_offset_and_limit(res_rows, result)
-      send_result_set(client, final_rows, ['COUNT(*)'])
+      send_result_set(client, final_rows, [result[:columns].first])
     end
 
     def handle_standard_select(client, columns, result)
