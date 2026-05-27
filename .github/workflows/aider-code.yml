@@ -90,6 +90,7 @@ jobs:
                 --no-attribute-committer \
                 --no-attribute-co-authored-by \
                 --disable-playwright \
+                --no-detect-urls \
                 --message "$INSTRUCTION"
 
       - name: Push changes
