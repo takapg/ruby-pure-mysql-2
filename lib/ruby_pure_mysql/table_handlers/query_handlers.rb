@@ -51,7 +51,7 @@ module RubyPureMysql
 
     def compute_group_row(columns, result, group_val, group_rows, group_indices)
       result[:columns].map do |col|
-        m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
         if m
           compute_aggregate_for_group(columns, m, group_rows)
         else

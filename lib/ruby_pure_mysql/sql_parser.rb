@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'sql_parser/evaluator'
+require_relative 'aggregate_utils'
 
 module RubyPureMysql
   # DDLパースロジック
@@ -103,7 +104,7 @@ module RubyPureMysql
     def detect_aggregates(result)
       # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
       result[:aggregates] = result[:columns].each_with_index.filter_map do |col, idx|
-        m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
         next unless m
 
         parse_aggregate_column(m, idx)

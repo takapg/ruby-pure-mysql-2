@@ -3,6 +3,8 @@
 module RubyPureMysql
   # 集計関数の計算ロジックを提供するモジュール
   module AggregateUtils
+    AGGREGATE_REGEX = /\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i
+
     def calculate_aggregate_value(values, type)
       return values.size if type == :count
       return nil if values.empty?
