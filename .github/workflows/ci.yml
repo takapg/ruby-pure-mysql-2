@@ -8,35 +8,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  rubocop:
-    if: |
-      !(github.event_name == 'pull_request' &&
-      startsWith(github.event.pull_request.title, 'auto-dev:') &&
-      github.event.action == 'opened')
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '.ruby-version'
-          bundler-cache: true
-
-      - name: Run RuboCop
-        id: run-rubocop
-        run: |
-          bundle exec rubocop
-
-      - name: Show RuboCop Auto-correction Diff
-        if: failure() && steps.run-rubocop.outcome == 'failure'
-        run: |
-          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
-          git diff --color
-
-  rspec:
+  ci:
     if: |
       !(github.event_name == 'pull_request' &&
       startsWith(github.event.pull_request.title, 'auto-dev:') &&
@@ -79,3 +51,14 @@ jobs:
         env:
           DB_HOST: 127.0.0.1
           DB_USER: root
+
+      - name: Run RuboCop
+        id: run-rubocop
+        run: |
+          bundle exec rubocop
+
+      - name: Show RuboCop Auto-correction Diff
+        if: failure() && steps.run-rubocop.outcome == 'failure'
+        run: |
+          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
+          git diff --color
