@@ -23,14 +23,23 @@ module RubyPureMysql
       group_idx = get_group_column_index(client, columns, result[:group_by])
       return unless group_idx
 
-      grouped = rows.group_by { |row| row[group_idx] }
-      res_rows = grouped.map { |val, rows| compute_group_row(columns, result, val, rows) }
-
-      if res_rows.flatten.include?(:error)
+      res_rows = compute_grouped_results(columns, result, rows, group_idx)
+      if res_rows.nil?
         send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
         return
       end
 
+      finalize_and_send_group_results(client, result, res_rows)
+    end
+
+    def compute_grouped_results(columns, result, rows, group_idx)
+      grouped = rows.group_by { |row| row[group_idx] }
+      res_rows = grouped.map { |val, rows| compute_group_row(columns, result, val, rows) }
+
+      res_rows.flatten.include?(:error) ? nil : res_rows
+    end
+
+    def finalize_and_send_group_results(client, result, res_rows)
       res_rows = apply_order_by(client, result[:order], result[:columns], res_rows) if result[:order]
       return if res_rows.nil?
 
@@ -131,11 +140,6 @@ module RubyPureMysql
       rows
     end
 
-    def apply_offset_and_limit(rows, result)
-      rows = rows.drop(result[:offset] || 0)
-      result[:limit] ? rows.first(result[:limit]) : rows
-    end
-
     def filter_rows(client, columns, rows, where)
       where_clauses = prepare_where_clauses(client, columns, where)
       return nil if where_clauses.nil?
@@ -143,44 +147,5 @@ module RubyPureMysql
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
     end
 
-    def project_rows(client, rows, columns, selected_columns)
-      if selected_columns && !selected_columns.include?('*')
-        return nil unless validate_selected_columns?(client, columns, selected_columns)
-
-        selected_indices = selected_columns.map { |col| columns.index(col) }
-        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        [projected_rows, selected_columns]
-      else
-        [rows, columns]
-      end
-    end
-
-    def validate_selected_columns?(client, columns, selected_columns)
-      selected_columns.each do |col|
-        unless columns.include?(col)
-          send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
-          return false
-        end
-      end
-      true
-    end
-
-    def apply_order_by(client, order, columns, rows)
-      col_idx = columns.index(order[:column])
-      if col_idx.nil?
-        send_err_packet(client, 1, "Unknown column '#{order[:column]}' in 'order clause'", 1054)
-        return nil
-      end
-
-      sort_rows(rows, col_idx, order[:direction])
-    end
-
-    def sort_rows(rows, col_idx, direction)
-      sorted_rows = rows.sort_by do |row|
-        val = row[col_idx]
-        [val.nil? ? 0 : 1, val]
-      end
-      direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
-    end
   end
 end

@@ -59,11 +59,42 @@ module RubyPureMysql
       col_idx = get_column_index(client, table_columns, order_by[:column])
       return nil unless col_idx
 
-      # ソート実行
-      # MySQL 8.0 の挙動に合わせる: ASC は NULLS FIRST, DESC は NULLS LAST
-      sorted_rows = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
-      sorted_rows.reverse! if order_by[:direction] == :DESC
-      sorted_rows
+      sort_rows(rows, col_idx, order_by[:direction])
+    end
+
+    def sort_rows(rows, col_idx, direction)
+      sorted_rows = rows.sort_by do |row|
+        val = row[col_idx]
+        [val.nil? ? 0 : 1, val]
+      end
+      direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
+    end
+
+    def apply_offset_and_limit(rows, result)
+      rows = rows.drop(result[:offset] || 0)
+      result[:limit] ? rows.first(result[:limit]) : rows
+    end
+
+    def project_rows(client, rows, columns, selected_columns)
+      if selected_columns && !selected_columns.include?('*')
+        return nil unless validate_selected_columns?(client, columns, selected_columns)
+
+        selected_indices = selected_columns.map { |col| columns.index(col) }
+        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
+        [projected_rows, selected_columns]
+      else
+        [rows, columns]
+      end
+    end
+
+    def validate_selected_columns?(client, columns, selected_columns)
+      selected_columns.each do |col|
+        unless columns.include?(col)
+          send_err_packet(client, 1, "Unknown column '#{col}' in 'field list'", 1054)
+          return false
+        end
+      end
+      true
     end
 
     private
