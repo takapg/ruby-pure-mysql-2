@@ -21,16 +21,10 @@ module RubyPureMysql
       return if rows.nil?
 
       group_indices = get_group_column_indices(client, columns, result[:group_by])
-      if group_indices.nil?
-        # get_group_column_indices 内部で既にエラーパケット (1054) が送信されているため、ここでは処理を中断する
-        return
-      end
+      return if group_indices.nil?
 
       res_rows = compute_grouped_results(columns, result, rows, group_indices)
-      if res_rows.nil?
-        send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
-        return
-      end
+      return send_err_packet(client, 1, "Unknown column in 'field list'", 1054) if res_rows.nil?
 
       finalize_and_send_group_results(client, result, res_rows)
     end
