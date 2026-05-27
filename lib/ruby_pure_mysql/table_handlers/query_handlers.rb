@@ -33,7 +33,10 @@ module RubyPureMysql
 
     def calculate_column_aggregate(client, columns, rows, result)
       col_idx = columns.index(result[:aggregate_column])
-      return handle_unknown_column(client, result[:aggregate_column]) if col_idx.nil?
+      unless col_idx
+        send_err_packet(client, 1, "Unknown column '#{result[:aggregate_column]}' in 'field list'", 1054)
+        return :error
+      end
 
       values = rows.filter_map { |r| r[col_idx] }
       return nil if values.empty?
@@ -41,22 +44,16 @@ module RubyPureMysql
       perform_aggregation(values, result[:aggregate])
     end
 
-    def handle_unknown_column(client, col_name)
-      send_err_packet(client, 1, "Unknown column '#{col_name}' in 'field list'", 1054)
-      :error
-    end
-
     def perform_aggregation(values, type)
       t = type.to_s.downcase
-      if t.include?('sum')
-        values.sum(&:to_i)
-      elsif t.include?('avg')
-        values.sum(&:to_f) / values.size
-      elsif t.include?('min')
-        values.map(&:to_i).min
-      elsif t.include?('max')
-        values.map(&:to_i).max
-      end
+      ops = {
+        'sum' => -> { values.sum(&:to_i) },
+        'avg' => -> { values.sum(&:to_f) / values.size },
+        'min' => -> { values.map(&:to_i).min },
+        'max' => -> { values.map(&:to_i).max }
+      }
+      key = ops.keys.find { |k| t.include?(k) }
+      ops[key]&.call
     end
 
     def handle_standard_select(client, columns, result)
