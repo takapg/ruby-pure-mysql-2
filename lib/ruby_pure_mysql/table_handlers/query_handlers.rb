@@ -90,7 +90,7 @@ module RubyPureMysql
 
       case type
       when :sum then values.sum
-      when :avg then values.sum / values.size
+      when :avg then values.sum.to_f / values.size
       when :min then values.min
       when :max then values.max
       end
