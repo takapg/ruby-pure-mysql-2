@@ -6,6 +6,7 @@ module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
   module TableHandlerUtils
     include AggregateUtils
+
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
       unless columns

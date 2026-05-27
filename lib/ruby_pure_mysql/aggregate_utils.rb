@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # 集計関数の計算ロジックを提供するモジュール
   module AggregateUtils
     def calculate_aggregate_value(values, type)
       return values.size if type == :count
