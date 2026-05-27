@@ -47,7 +47,6 @@ module RubyPureMysql
       send_result_set(client, res_rows, result[:columns])
     end
 
-
     def compute_group_row(columns, result, group_val, group_rows)
       result[:columns].map do |col|
         if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
@@ -98,7 +97,6 @@ module RubyPureMysql
       values = rows.filter_map { |r| r[col_idx] }.map(&:to_f)
       calculate_aggregate_value(values, result[:aggregate])
     end
-
 
     def handle_standard_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)

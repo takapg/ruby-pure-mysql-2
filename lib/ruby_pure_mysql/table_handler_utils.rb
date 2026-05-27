@@ -39,11 +39,9 @@ module RubyPureMysql
       return false if val.nil?
 
       if operator == 'LIKE'
-        # target_value が正規表現オブジェクトならそのまま使う
         compiled_regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
         compiled_regex.match?(val.to_s)
       else
-        # 既存の比較演算子
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
@@ -106,7 +104,6 @@ module RubyPureMysql
     def calculate_aggregate_value(values, type)
       return values.size if type == :count
       return nil if values.empty?
-
       case type
       when :sum then values.sum
       when :avg then values.sum / values.size
@@ -114,7 +111,6 @@ module RubyPureMysql
       when :max then values.max
       end
     end
-
     private
 
     def compile_where_clauses(client, table_columns, where_clauses)
