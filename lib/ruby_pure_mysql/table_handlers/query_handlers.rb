@@ -6,7 +6,6 @@ module RubyPureMysql
     def handle_select(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
-
       if result[:group_by]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?
@@ -15,7 +14,6 @@ module RubyPureMysql
         handle_standard_select(client, columns, result)
       end
     end
-
     def handle_group_by_select(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
       return if rows.nil?
@@ -34,7 +32,9 @@ module RubyPureMysql
 
     def compute_grouped_results(columns, result, rows, group_indices)
       grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
-      res_rows = grouped.map { |group_val, group_rows| compute_group_row(columns, result, group_val, group_rows, group_indices) }
+      res_rows = grouped.map do |group_val, group_rows|
+        compute_group_row(columns, result, group_val, group_rows, group_indices)
+      end
 
       res_rows.flatten.include?(:error) ? nil : res_rows
     end
@@ -53,14 +53,17 @@ module RubyPureMysql
         if m
           compute_aggregate_for_group(columns, m, group_rows)
         else
-          col_idx = columns.index(col)
-          if col_idx && (rel_idx = group_indices.index(col_idx))
-            group_val[rel_idx]
-          else
-            col_idx ? group_rows.first[col_idx] : nil
-          end
+          resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
         end
       end
+    end
+
+    def resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
+      col_idx = columns.index(col)
+      return nil unless col_idx
+
+      rel_idx = group_indices.index(col_idx)
+      rel_idx ? group_val[rel_idx] : group_rows.first[col_idx]
     end
 
     def compute_aggregate_for_group(columns, match, group_rows)
@@ -79,23 +82,27 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?
 
-      res_row = result[:columns].map do |col|
-        agg = result[:aggregates].find { |a| a[:index] == result[:columns].index(col) }
-        if agg
-          val = compute_single_aggregate_value(rows, columns, agg)
-          return :error if val == :error
-          val
-        else
-          # 非集計カラムが含まれている場合は、最初の行の値を返す（MySQLの挙動に近似）
-          col_idx = columns.index(col)
-          col_idx ? (rows.first ? rows.first[col_idx] : nil) : nil
-        end
-      end
+      res_row = build_aggregate_row(rows, columns, result)
       return if res_row == :error
 
       res_rows = [res_row]
       final_rows = apply_offset_and_limit(res_rows, result)
       send_result_set(client, final_rows, result[:columns])
+    end
+
+    def build_aggregate_row(rows, columns, result)
+      result[:columns].map do |col|
+        agg = result[:aggregates].find { |a| a[:index] == result[:columns].index(col) }
+        if agg
+          val = compute_single_aggregate_value(rows, columns, agg)
+          return :error if val == :error
+
+          val
+        else
+          col_idx = columns.index(col)
+          col_idx ? rows.first&.[](col_idx) : nil
+        end
+      end
     end
 
     def compute_single_aggregate_value(rows, columns, agg)

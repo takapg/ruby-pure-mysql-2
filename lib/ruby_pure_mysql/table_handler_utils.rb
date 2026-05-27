@@ -11,7 +11,6 @@ module RubyPureMysql
       end
       columns
     end
-
     def get_column_index(client, columns, column_name)
       idx = columns.index(column_name)
       unless idx
