@@ -81,6 +81,7 @@ jobs:
 
           aider --model gemini/gemma-4-31b-it \
                 --edit-format diff-fenced \
+                --reasoning-effort low \
                 --thinking-tokens 2048 \
                 --yes-always \
                 --chat-language japanese \
