@@ -385,6 +385,67 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'GROUP BY support' do
+    before do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 200);")
+      client.query("INSERT INTO products VALUES (3, 'books', 50);")
+      client.query("INSERT INTO products VALUES (4, 'books', 150);")
+      client.query("INSERT INTO products VALUES (5, 'clothing', 300);")
+    end
+
+    it 'calculates COUNT(*) with GROUP BY' do
+      results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category;')
+      expect(results.count).to eq(3)
+      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      expect(data['electronics']).to eq(2)
+      expect(data['books']).to eq(2)
+      expect(data['clothing']).to eq(1)
+    end
+
+    it 'calculates SUM with GROUP BY' do
+      results = client.query('SELECT category, SUM(price) FROM products GROUP BY category;')
+      data = results.map { |r| [r['category'], r['SUM(price)']] }.to_h
+      expect(data['electronics']).to eq(300.0)
+      expect(data['books']).to eq(200.0)
+      expect(data['clothing']).to eq(300.0)
+    end
+
+    it 'calculates AVG with GROUP BY' do
+      results = client.query('SELECT category, AVG(price) FROM products GROUP BY category;')
+      data = results.map { |r| [r['category'], r['AVG(price)']] }.to_h
+      expect(data['electronics']).to eq(150.0)
+      expect(data['books']).to eq(100.0)
+      expect(data['clothing']).to eq(300.0)
+    end
+
+    it 'calculates MIN and MAX with GROUP BY' do
+      results = client.query('SELECT category, MIN(price), MAX(price) FROM products GROUP BY category;')
+      data = results.map { |r| [r['category'], [r['MIN(price)'], r['MAX(price)']] }.to_h
+      expect(data['electronics']).to eq([100.0, 200.0])
+      expect(data['books']).to eq([50.0, 150.0])
+      expect(data['clothing']).to eq([300.0, 300.0])
+    end
+
+    it 'combines GROUP BY with WHERE' do
+      results = client.query("SELECT category, COUNT(*) FROM products WHERE price > 100 GROUP BY category;")
+      data = results.map { |r| [r['category'], r['COUNT(*)']] }.to_h
+      expect(data['electronics']).to eq(1)
+      expect(data['books']).to eq(1)
+      expect(data['clothing']).to eq(1)
+    end
+
+    it 'combines GROUP BY with ORDER BY and LIMIT' do
+      results = client.query('SELECT category, SUM(price) FROM products GROUP BY category ORDER BY SUM(price) DESC LIMIT 1;')
+      expect(results.count).to eq(1)
+      # electronics(300) or clothing(300)
+      expect(['electronics', 'clothing']).to include(results.first['category'])
+      expect(results.first['SUM(price)']).to eq(300.0)
+    end
+  end
+
   describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
     before do
       client.query('DROP TABLE IF EXISTS products;')
