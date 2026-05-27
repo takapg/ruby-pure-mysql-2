@@ -102,11 +102,12 @@ module RubyPureMysql
 
     def detect_aggregate(result)
       result[:columns].each do |col|
-        if (m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i))
-          result[:aggregate] = m[1].downcase.to_sym
-          result[:aggregate_column] = m[2]
-          return
-        end
+        m = col.match(/\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i)
+        next unless m
+
+        result[:aggregate] = m[1].downcase.to_sym
+        result[:aggregate_column] = m[2]
+        break
       end
     end
 
