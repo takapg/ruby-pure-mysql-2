@@ -20,9 +20,9 @@ module RubyPureMysql
       rel_idx ? group_val[rel_idx] : group_rows.first[col_idx]
     end
 
-    def compute_aggregate_for_group(columns, match, group_rows)
-      agg_type = match[1].downcase.to_sym
-      agg_col = match[2]
+    def compute_aggregate_for_group(columns, agg, group_rows)
+      agg_type = agg[:type]
+      agg_col = agg[:column]
       return group_rows.size if agg_col == '*'
 
       agg_idx = columns.index(agg_col)

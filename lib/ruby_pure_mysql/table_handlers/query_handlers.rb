@@ -38,7 +38,7 @@ module RubyPureMysql
         compute_group_row(columns, result, group_val, group_rows, group_indices)
       end
 
-      res_rows.flatten.include?(:error) ? nil : res_rows
+      res_rows.any? { |row| row.include?(:error) } ? nil : res_rows
     end
 
     def finalize_and_send_group_results(client, result, res_rows)
@@ -50,10 +50,10 @@ module RubyPureMysql
     end
 
     def compute_group_row(columns, result, group_val, group_rows, group_indices)
-      result[:columns].map do |col|
-        m = col.match(AggregateUtils::AGGREGATE_REGEX)
-        if m
-          compute_aggregate_for_group(columns, m, group_rows)
+      result[:columns].each_with_index.map do |col, idx|
+        agg = result[:aggregates]&.find { |a| a[:index] == idx }
+        if agg
+          compute_aggregate_for_group(columns, agg, group_rows)
         else
           resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
         end
