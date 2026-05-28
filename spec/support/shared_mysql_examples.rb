@@ -33,6 +33,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate basic arithmetic with an alias (SELECT 1 + 1 AS total;)' do
+      results = client.query('SELECT 1 + 1 AS total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
     it 'handles queries with extra spaces and semicolons' do
       results = client.query('  SELECT   42  ;  ')
       expect(results.first.values.first).to eq(42)
@@ -626,6 +632,34 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM users WHERE id = 2 LIMIT 1;')
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(2)
+    end
+  end
+
+  describe 'Alias support' do
+    it 'supports column aliases with AS' do
+      results = client.query('SELECT 1 AS total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'supports column aliases without AS' do
+      results = client.query('SELECT 1 total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'supports table aliases with AS' do
+      client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      results = client.query('SELECT u.name FROM users AS u;')
+      expect(results.first.values.first).to eq('alice')
+    end
+
+    it 'supports table aliases without AS' do
+      client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      results = client.query('SELECT u.name FROM users u;')
+      expect(results.first.values.first).to eq('alice')
     end
   end
 

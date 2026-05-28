@@ -9,15 +9,15 @@ module RubyPureMysql
       end
     end
 
-    def filter_grouped_by_having(columns, grouped, having_clauses, group_indices)
+    def filter_grouped_by_having(grouped, having_clauses, group_ctx)
       grouped.select do |group_val, group_rows|
-        evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
+        evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
       end.to_a
     end
 
-    def evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
+    def evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
       having_clauses.all? do |clause|
-        evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+        evaluate_having_condition(group_val, group_rows, clause, group_ctx)
       end
     end
 
@@ -35,7 +35,7 @@ module RubyPureMysql
         if agg
           compute_aggregate_for_group(columns, agg, group_rows)
         else
-          resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
+          resolve_group_column_value(columns, col[:original], group_val, group_rows, group_indices)
         end
       end
     end

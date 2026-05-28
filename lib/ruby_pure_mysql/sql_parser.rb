@@ -81,8 +81,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)',
-        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)\s+ON\s+(?<on_condition>.+?))?',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)(?:\s+(?:AS\s+)?(?<alias1>\w+))?',
+        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
@@ -103,57 +103,14 @@ module RubyPureMysql
       parse_select_clauses(result, match)
     end
 
-    def build_select_result(match)
-      {
-        type: :select_from,
-        distinct: !match[:distinct].nil?,
-        table_name: match[:table1],
-        columns: match[:columns].split(',').map(&:strip)
-      }
-    end
-
-    def apply_join_to_result(result, match)
-      return unless match[:table2]
-
-      result[:join] = {
-        table2: match[:table2],
-        on: match[:on_condition]
-      }
-    end
-
-    def detect_aggregates(result)
-      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
-      result[:aggregates] = result[:columns].each_with_index.filter_map do |col, idx|
-        m = col.match(AggregateUtils::AGGREGATE_REGEX)
-        next unless m
-
-        parse_aggregate_column(m, idx)
-      end
-
-      return if result[:aggregates].empty?
-
-      assign_first_aggregate(result)
-    end
-
-    def parse_aggregate_column(match, idx)
-      { type: match[1].downcase.to_sym, column: match[2], index: idx }
-    end
-
-    def assign_first_aggregate(result)
-      first = result[:aggregates].first
-      result[:aggregate] = first[:type]
-      result[:aggregate_column] = first[:column]
-      result[:aggregate_index] = first[:index]
-    end
-
     def parse_select_clauses(result, match)
       if match[:where]
         res = parse_where_clause_into(result, match[:where])
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      res = apply_optional_clauses(result, match)
-      res || result
+      apply_optional_clauses(result, match)
+      result
     end
 
     def apply_optional_clauses(result, match)
@@ -204,33 +161,75 @@ module RubyPureMysql
     end
   end
 
-  # ユーティリティメソッドをまとめたモジュール
-  module SqlParserUtils
-    def split_columns(definition)
-      cols = []
-      buf = +''
-      depth = 0
-      definition.each_char { |char| depth, buf = SqlParser.process_char(char, depth, buf, cols) }
-      cols << buf.strip unless buf.strip.empty?
-      cols
+  # 結果セットの構築を支援するモジュール
+  module SqlParserResultBuilder
+    def build_select_result(match)
+      {
+        type: :select_from,
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table1],
+        table_alias: match[:alias1],
+        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
+      }
     end
 
-    def split_insert_values(values_str)
-      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+    def apply_join_to_result(result, match)
+      return unless match[:table2]
+
+      result[:join] = {
+        table2: match[:table2],
+        alias2: match[:alias2],
+        on: match[:on_condition]
+      }
     end
 
-    def convert_value(val)
-      if (m = val.match(/\A(['"])(.*?)\1\z/))
-        m[2]
-      elsif val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
+    def parse_column_alias(col)
+      # 1. 明示的な AS: "expr AS alias"
+      if (m = col.match(/(.+)\s+AS\s+([a-zA-Z_]\w*)\z/i))
+        return { original: m[1].strip, alias: m[2] }
       end
+
+      # 2. 暗黙的な AS: "expr alias"
+      # "a + b" のような式を誤って分割しないよう、直前が演算子で終わっていないことを確認する
+      if (m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/))
+        original = m[1].strip
+        return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
+
+        return { original: original, alias: m[2] }
+      end
+
+      { original: col, alias: nil }
     end
 
+    def detect_aggregates(result)
+      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
+      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
+        col = col_info[:original]
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
+        next unless m
+
+        parse_aggregate_column(m, idx)
+      end
+
+      return if result[:aggregates].empty?
+
+      assign_first_aggregate(result)
+    end
+
+    def parse_aggregate_column(match, idx)
+      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+    end
+
+    def assign_first_aggregate(result)
+      first = result[:aggregates].first
+      result[:aggregate] = first[:type]
+      result[:aggregate_column] = first[:column]
+      result[:aggregate_index] = first[:index]
+    end
+  end
+
+  # WHERE句のパースを支援するモジュール
+  module SqlParserWhereUtils
     def parse_where_clause(clause, allow_aggregates: false)
       parts = split_where_clause(clause)
       results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
@@ -291,12 +290,42 @@ module RubyPureMysql
     end
   end
 
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
+    def split_columns(definition)
+      cols = []
+      buf = +''
+      depth = 0
+      definition.each_char { |char| depth, buf = SqlParser.process_char(char, depth, buf, cols) }
+      cols << buf.strip unless buf.strip.empty?
+      cols
+    end
+
+    def split_insert_values(values_str)
+      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+    end
+
+    def convert_value(val)
+      if (m = val.match(/\A(['"])(.*?)\1\z/))
+        m[2]
+      elsif val.casecmp?('NULL')
+        nil
+      elsif val.match?(/\A-?\d+\z/)
+        val.to_i
+      else
+        { error: "Invalid INSERT value: #{val}" }
+      end
+    end
+  end
+
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
   class SqlParser
     extend Evaluator
     extend SqlParserDdlParsers
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
+    extend SqlParserResultBuilder
+    extend SqlParserWhereUtils
     extend SqlParserUtils
 
     PARSERS = {
@@ -368,8 +397,9 @@ module RubyPureMysql
       match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
 
-      columns = match[1].split(',').map(&:strip)
-      values = columns.map { |col| evaluator.evaluate_expression(col) }
+      col_strs = match[1].split(',').map(&:strip)
+      columns = col_strs.map { |col| parse_column_alias(col) }
+      values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
       { result: values, columns: columns }

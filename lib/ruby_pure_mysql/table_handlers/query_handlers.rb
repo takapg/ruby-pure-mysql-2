@@ -12,11 +12,9 @@ module RubyPureMysql
     include AggregateHandlerUtils
 
     def handle_select(client, result)
-      table_map = {}
-      columns = validate_table(client, result[:table_name])
+      table_map = initialize_table_map(client, result)
+      columns = table_map.values.first
       return unless columns
-
-      table_map[result[:table_name]] = columns
 
       if result[:join]
         join_res = handle_join_logic(client, result, columns, table_map)
@@ -28,11 +26,19 @@ module RubyPureMysql
       dispatch_select_type(client, columns, result, table_map)
     end
 
+    def initialize_table_map(client, result)
+      columns = validate_table(client, result[:table_name])
+      return {} unless columns
+
+      { result[:table_alias] || result[:table_name] => columns }
+    end
+
     def handle_join_logic(client, result, columns, table_map)
       cols2 = validate_table(client, result[:join][:table2])
       return nil unless cols2
 
-      table_map[result[:join][:table2]] = cols2
+      alias_name = result[:join][:alias2] || result[:join][:table2]
+      table_map[alias_name] = cols2
       perform_inner_join(client, build_join_params(result, columns, cols2, table_map))
     end
 
@@ -49,7 +55,7 @@ module RubyPureMysql
 
     def dispatch_select_type(client, columns, result, table_map)
       if result[:group_by] || result[:having]
-        handle_group_by_select(client, columns, result)
+        handle_group_by_select(client, columns, result, table_map)
       elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
       else
@@ -57,12 +63,13 @@ module RubyPureMysql
       end
     end
 
-    def handle_group_by_select(client, columns, result)
-      rows, indices = prepare_group_by_data(client, columns, result)
+    def handle_group_by_select(client, columns, result, table_map)
+      rows, indices = prepare_group_by_data(client, columns, result, table_map)
       return if rows.nil? || indices.nil?
 
       grouped = group_rows_by_indices(rows, indices)
-      grouped = apply_having_filter(client, columns, grouped, result, indices) || return
+      group_ctx = { columns: columns, indices: indices, table_map: table_map }
+      grouped = apply_having_filter(client, grouped, result, group_ctx) || return
 
       res_rows = compute_grouped_rows(columns, result, grouped, indices)
       return handle_group_by_error(client) if group_computation_failed?(res_rows)
@@ -70,20 +77,20 @@ module RubyPureMysql
       finalize_and_send_group_results(client, result, res_rows)
     end
 
-    def prepare_group_by_data(client, columns, result)
-      rows = fetch_and_filter_rows(client, columns, result)
+    def prepare_group_by_data(client, columns, result, table_map)
+      rows = fetch_and_filter_rows(client, columns, result, table_map)
       indices = nil
       if rows
-        indices = result[:group_by] ? get_group_column_indices(client, columns, result[:group_by]) : []
+        indices = result[:group_by] ? get_group_column_indices(client, columns, result[:group_by], table_map) : []
       end
       [rows, indices]
     end
 
-    def apply_having_filter(client, columns, grouped, result, indices)
+    def apply_having_filter(client, grouped, result, group_ctx)
       return grouped unless result[:having]
 
       begin
-        filter_grouped_by_having(columns, grouped, result[:having], indices)
+        filter_grouped_by_having(grouped, result[:having], group_ctx)
       rescue TableHandlerUtils::HavingError
         send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
         nil
