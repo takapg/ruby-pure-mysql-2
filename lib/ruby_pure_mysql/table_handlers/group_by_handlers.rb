@@ -35,7 +35,7 @@ module RubyPureMysql
         if agg
           compute_aggregate_for_group(columns, agg, group_rows)
         else
-          resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
+          resolve_group_column_value(columns, col[:original], group_val, group_rows, group_indices)
         end
       end
     end
