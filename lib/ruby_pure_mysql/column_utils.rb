@@ -48,7 +48,10 @@ module RubyPureMysql
     end
 
     def resolve_from_all_columns(client, columns, column_name)
-      idx = columns.find_index { |c| c.casecmp?(column_name) }
+      idx = columns.find_index do |c|
+        name = c.is_a?(Hash) ? c[:original] : c
+        name.casecmp?(column_name)
+      end
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
         return nil

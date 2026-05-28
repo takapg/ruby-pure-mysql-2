@@ -67,7 +67,9 @@ module RubyPureMysql
 
     def resolve_columns(rows, columns)
       # columnsが明示的に渡されている場合はそれを優先
-      return columns if columns && !columns.empty?
+      if columns && !columns.empty?
+        return columns.map { |c| c.is_a?(Hash) ? (c[:alias] || c[:original]) : c }
+      end
 
       # 渡されていない場合はrowsから推論
       cols = (rows.first if rows && !rows.empty?)
@@ -93,7 +95,10 @@ module RubyPureMysql
       column_names.each_with_index do |name, index|
         val = sample_row ? sample_row[index] : nil
         type = determine_column_type(val)
-        org_name = original_names ? original_names[index] : name
+        
+        raw_org_name = original_names ? original_names[index] : name
+        org_name = raw_org_name.is_a?(Hash) ? raw_org_name[:original] : raw_org_name
+        
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end
