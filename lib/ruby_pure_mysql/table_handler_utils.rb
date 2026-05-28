@@ -119,6 +119,8 @@ module RubyPureMysql
       rows1.each do |r1|
         rows2.each do |r2|
           row = r1 + r2
+          # nil == nil の結合（ゴーストマッチ）を防ぐため、値が nil でないことを確認する
+          next if row[left_idx].nil? || row[right_idx].nil?
           joined_rows << row if row[left_idx] == row[right_idx]
         end
       end
