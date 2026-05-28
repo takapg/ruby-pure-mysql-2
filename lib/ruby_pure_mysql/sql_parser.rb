@@ -233,50 +233,60 @@ module RubyPureMysql
   # WHERE句のパースを支援するモジュール
   module SqlParserWhereUtils
     def parse_where_clause(clause, allow_aggregates: false)
-      parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
-      error = results.find { |r| r.is_a?(Hash) && r[:error] }
-      error || results
+      tokens = tokenize(clause)
+      state = { index: 0 }
+      parse_or(tokens, state, allow_aggregates)
     end
 
-    def split_where_clause(clause)
-      parts = []
-      buffer = { current: +'', in_quote: nil, index: 0 }
-
-      handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
-      parts << buffer[:current].strip
+    def tokenize(clause)
+      clause.scan(/\s*(\(|\)|AND|OR|'[^']*'|"[^"]*"|[^\s()]+)\s*/i).flatten
     end
 
-    def handle_where_char(clause, buffer, parts)
-      buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+    def parse_or(tokens, state, allow_aggregates)
+      left = parse_and(tokens, state, allow_aggregates)
+      return left if left.is_a?(Hash) && left[:error]
 
-      if buffer[:in_quote].nil? && (match = clause[buffer[:index]..].match(/\A\s+AND\s+/i))
-        process_and_operator(match, buffer, parts)
+      while state[:index] < tokens.size && tokens[state[:index]].upcase == 'OR'
+        state[:index] += 1
+        right = parse_and(tokens, state, allow_aggregates)
+        return right if right.is_a?(Hash) && right[:error]
+        left = { op: :or, left: left, right: right }
+      end
+      left
+    end
+
+    def parse_and(tokens, state, allow_aggregates)
+      left = parse_primary(tokens, state, allow_aggregates)
+      return left if left.is_a?(Hash) && left[:error]
+
+      while state[:index] < tokens.size && tokens[state[:index]].upcase == 'AND'
+        state[:index] += 1
+        right = parse_primary(tokens, state, allow_aggregates)
+        return right if right.is_a?(Hash) && right[:error]
+        left = { op: :and, left: left, right: right }
+      end
+      left
+    end
+
+    def parse_primary(tokens, state, allow_aggregates)
+      token = tokens[state[:index]]
+      if token == '('
+        state[:index] += 1
+        ast = parse_or(tokens, state, allow_aggregates)
+        return ast if ast.is_a?(Hash) && ast[:error]
+        state[:index] += 1 # consume ')'
+        ast
       else
-        process_normal_char(clause, buffer)
+        condition_tokens = []
+        while state[:index] < tokens.size && !['AND', 'OR', ')'].include?(tokens[state[:index]].upcase)
+          condition_tokens << tokens[state[:index]]
+          state[:index] += 1
+        end
+        parse_condition(condition_tokens.join(' '), allow_aggregates)
       end
     end
 
-    def process_and_operator(match, buffer, parts)
-      parts << buffer[:current].strip
-      buffer[:current] = +''
-      buffer[:index] += match[0].length
-    end
-
-    def process_normal_char(clause, buffer)
-      buffer[:current] << clause[buffer[:index]]
-      buffer[:index] += 1
-    end
-
-    def update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
-        return in_quote == char ? nil : char
-      end
-
-      in_quote
-    end
-
-    def parse_single_where_condition(condition, allow_aggregates: false)
+    def parse_condition(condition, allow_aggregates)
       column_pattern = allow_aggregates ? '.+?' : '[\w.]+'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match

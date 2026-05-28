@@ -85,7 +85,17 @@ module RubyPureMysql
     def match_row?(row, columns, where_clauses)
       return true if where_clauses.nil? || where_clauses.empty?
 
-      where_clauses.all? { |clause| match_clause?(row, columns, clause) }
+      evaluate_ast(row, columns, where_clauses)
+    end
+
+    def evaluate_ast(row, columns, node)
+      if node.is_a?(Hash) && node[:op] == :and
+        evaluate_ast(row, columns, node[:left]) && evaluate_ast(row, columns, node[:right])
+      elsif node.is_a?(Hash) && node[:op] == :or
+        evaluate_ast(row, columns, node[:left]) || evaluate_ast(row, columns, node[:right])
+      else
+        match_clause?(row, columns, node)
+      end
     end
 
     def match_clause?(row, columns, clause)

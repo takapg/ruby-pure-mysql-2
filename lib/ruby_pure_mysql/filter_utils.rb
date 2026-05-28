@@ -10,15 +10,25 @@ module RubyPureMysql
     end
 
     def compile_where_clauses(client, table_columns, where_clauses, table_map = {})
-      where_clauses.map do |clause|
-        col_idx = get_column_index(client, table_columns, clause[:column], table_map)
-        unless col_idx
-          # get_column_index 内で send_err_packet が呼ばれるため、ここでは nil を返すのみ
-          return nil
-        end
+      return nil if where_clauses.nil? || where_clauses.empty?
+      compile_ast_node(client, table_columns, where_clauses, table_map)
+    end
 
-        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
-        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
+    private
+
+    def compile_ast_node(client, table_columns, node, table_map)
+      if node.is_a?(Hash) && node[:op] == :and
+        { op: :and, left: compile_ast_node(client, table_columns, node[:left], table_map),
+          right: compile_ast_node(client, table_columns, node[:right], table_map) }
+      elsif node.is_a?(Hash) && node[:op] == :or
+        { op: :or, left: compile_ast_node(client, table_columns, node[:left], table_map),
+          right: compile_ast_node(client, table_columns, node[:right], table_map) }
+      else
+        col_idx = get_column_index(client, table_columns, node[:column], table_map)
+        return nil unless col_idx
+
+        regex = node[:operator] == 'LIKE' ? build_like_regex(node[:value]) : nil
+        { col_idx: col_idx, operator: node[:operator], value: node[:value], regex: regex }
       end
     end
   end
