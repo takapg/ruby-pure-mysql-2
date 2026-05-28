@@ -233,47 +233,65 @@ module RubyPureMysql
   # WHERE句のパースを支援するモジュール
   module SqlParserWhereUtils
     def parse_where_clause(clause, allow_aggregates: false)
-      parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
-      error = results.find { |r| r.is_a?(Hash) && r[:error] }
-      error || results
+      tokens = tokenize(clause)
+      state = { tokens: tokens, pos: 0 }
+      ast = parse_or(state, allow_aggregates)
+      return { error: 'Invalid WHERE clause' } if ast.nil?
+
+      ast
     end
 
-    def split_where_clause(clause)
-      parts = []
-      buffer = { current: +'', in_quote: nil, index: 0 }
-
-      handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
-      parts << buffer[:current].strip
+    def tokenize(clause)
+      clause.scan(/\s*(\(|\)|AND|OR|'[^']*'|"[^"]*"|[^\s()]+)\s*/i).flatten
     end
 
-    def handle_where_char(clause, buffer, parts)
-      buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+    def parse_or(state, allow_aggregates)
+      node = parse_and(state, allow_aggregates)
+      return { error: 'Invalid WHERE clause' } if node.is_a?(Hash) && node[:error]
 
-      if buffer[:in_quote].nil? && (match = clause[buffer[:index]..].match(/\A\s+AND\s+/i))
-        process_and_operator(match, buffer, parts)
+      while state[:pos] < state[:tokens].size && state[:tokens][state[:pos]].upcase == 'OR'
+        state[:pos] += 1
+        right = parse_and(state, allow_aggregates)
+        return { error: 'Invalid WHERE clause' } if right.is_a?(Hash) && right[:error]
+        node = { op: :or, left: node, right: right }
+      end
+      node
+    end
+
+    def parse_and(state, allow_aggregates)
+      node = parse_primary(state, allow_aggregates)
+      return { error: 'Invalid WHERE clause' } if node.is_a?(Hash) && node[:error]
+
+      while state[:pos] < state[:tokens].size && state[:tokens][state[:pos]].upcase == 'AND'
+        state[:pos] += 1
+        right = parse_primary(state, allow_aggregates)
+        return { error: 'Invalid WHERE clause' } if right.is_a?(Hash) && right[:error]
+        node = { op: :and, left: node, right: right }
+      end
+      node
+    end
+
+    def parse_primary(state, allow_aggregates)
+      if state[:pos] >= state[:tokens].size
+        return { error: 'Unexpected end of clause' }
+      end
+
+      if state[:tokens][state[:pos]] == '('
+        state[:pos] += 1
+        node = parse_or(state, allow_aggregates)
+        if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
+          state[:pos] += 1
+        end
+        node
       else
-        process_normal_char(clause, buffer)
+        condition_tokens = []
+        while state[:pos] < state[:tokens].size &&
+              !['AND', 'OR', ')'].include?(state[:tokens][state[:pos]].upcase)
+          condition_tokens << state[:tokens][state[:pos]]
+          state[:pos] += 1
+        end
+        parse_single_where_condition(condition_tokens.join(' '), allow_aggregates: allow_aggregates)
       end
-    end
-
-    def process_and_operator(match, buffer, parts)
-      parts << buffer[:current].strip
-      buffer[:current] = +''
-      buffer[:index] += match[0].length
-    end
-
-    def process_normal_char(clause, buffer)
-      buffer[:current] << clause[buffer[:index]]
-      buffer[:index] += 1
-    end
-
-    def update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
-        return in_quote == char ? nil : char
-      end
-
-      in_quote
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)

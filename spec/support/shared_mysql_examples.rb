@@ -264,6 +264,33 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([2, 'bob'])
     end
+
+    it 'filters rows using OR operator' do
+      results = client.query("SELECT * FROM users WHERE id = 1 OR id = 3;")
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows using OR and AND' do
+      results = client.query("SELECT * FROM users WHERE id = 1 OR (id = 2 AND name = 'bob');")
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 2)
+    end
+
+    it 'filters rows using parentheses for priority' do
+      # (id=1 OR id=2) AND name='alice' -> alice(1)のみマッチ
+      results = client.query("SELECT * FROM users WHERE (id = 1 OR id = 2) AND name = 'alice';")
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(1)
+    end
+
+    it 'filters rows using complex nested conditions' do
+      results = client.query("SELECT * FROM users WHERE id = 3 AND (name = 'alice' OR name = 'cory');")
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(3)
+    end
   end
 
   describe 'INNER JOIN support' do
