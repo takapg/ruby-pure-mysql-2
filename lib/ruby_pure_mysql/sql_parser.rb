@@ -167,8 +167,8 @@ module RubyPureMysql
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      res = apply_optional_clauses(result, match)
-      res || result
+      apply_optional_clauses(result, match)
+      result
     end
 
     def apply_optional_clauses(result, match)
@@ -384,8 +384,9 @@ module RubyPureMysql
       match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
 
-      columns = match[1].split(',').map(&:strip)
-      values = columns.map { |col| evaluator.evaluate_expression(col) }
+      col_strs = match[1].split(',').map(&:strip)
+      columns = col_strs.map { |col| { original: col, alias: nil } }
+      values = col_strs.map { |col| evaluator.evaluate_expression(col) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
       { result: values, columns: columns }
