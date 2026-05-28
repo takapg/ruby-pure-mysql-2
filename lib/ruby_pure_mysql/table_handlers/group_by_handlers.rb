@@ -12,19 +12,21 @@ module RubyPureMysql
     def filter_grouped_by_having(columns, grouped, having_clauses, group_indices)
       filtered = []
       grouped.each do |group_val, group_rows|
-        match = true
-        having_clauses.each do |clause|
-          res = evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
-          return :error if res == :error
+        res = group_matches_having?(columns, group_val, group_rows, group_indices, having_clauses)
+        return :error if res == :error
 
-          if !res
-            match = false
-            break
-          end
-        end
-        filtered << [group_val, group_rows] if match
+        filtered << [group_val, group_rows] if res
       end
       filtered
+    end
+
+    def group_matches_having?(columns, group_val, group_rows, group_indices, having_clauses)
+      having_clauses.all? do |clause|
+        res = evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+        return :error if res == :error
+
+        res
+      end
     end
 
     def finalize_and_send_group_results(client, result, res_rows)

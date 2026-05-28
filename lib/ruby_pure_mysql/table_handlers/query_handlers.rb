@@ -21,24 +21,33 @@ module RubyPureMysql
     end
 
     def handle_group_by_select(client, columns, result)
-      rows = fetch_and_filter_rows(client, columns, result)
-      group_indices = rows ? get_group_column_indices(client, columns, result[:group_by]) : nil
-      return if rows.nil? || group_indices.nil?
+      rows, indices = prepare_group_by_data(client, columns, result)
+      return if rows.nil? || indices.nil?
 
-      grouped = group_rows_by_indices(rows, group_indices)
-      if result[:having]
-        grouped = filter_grouped_by_having(columns, grouped, result[:having], group_indices)
-        if grouped == :error
-          send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
-          return
-        end
-      end
+      grouped = group_rows_by_indices(rows, indices)
+      grouped = apply_having_filter(client, columns, grouped, result, indices) || return
 
-      res_rows = compute_grouped_rows(columns, result, grouped, group_indices)
-
+      res_rows = compute_grouped_rows(columns, result, grouped, indices)
       return handle_group_by_error(client) if group_computation_failed?(res_rows)
 
       finalize_and_send_group_results(client, result, res_rows)
+    end
+
+    def prepare_group_by_data(client, columns, result)
+      rows = fetch_and_filter_rows(client, columns, result)
+      indices = rows ? get_group_column_indices(client, columns, result[:group_by]) : nil
+      [rows, indices]
+    end
+
+    def apply_having_filter(client, columns, grouped, result, indices)
+      return grouped unless result[:having]
+
+      filtered = filter_grouped_by_having(columns, grouped, result[:having], indices)
+      if filtered == :error
+        send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
+        return nil
+      end
+      filtered
     end
 
     def group_rows_by_indices(rows, indices)
