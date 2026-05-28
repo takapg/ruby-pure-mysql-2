@@ -91,7 +91,7 @@ module RubyPureMysql
       return grouped unless result[:having]
 
       begin
-        filter_grouped_by_having(grouped, result[:having], group_ctx)
+        grouped = filter_grouped_by_having(grouped, result[:having], group_ctx)
       rescue TableHandlerUtils::HavingError
         send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
         nil

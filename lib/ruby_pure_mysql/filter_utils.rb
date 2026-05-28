@@ -18,11 +18,17 @@ module RubyPureMysql
 
     def compile_ast_node(client, table_columns, node, table_map)
       if node.is_a?(Hash) && node[:op] == :and
-        { op: :and, left: compile_ast_node(client, table_columns, node[:left], table_map),
-          right: compile_ast_node(client, table_columns, node[:right], table_map) }
+        left = compile_ast_node(client, table_columns, node[:left], table_map)
+        right = compile_ast_node(client, table_columns, node[:right], table_map)
+        return nil unless left && right
+
+        { op: :and, left: left, right: right }
       elsif node.is_a?(Hash) && node[:op] == :or
-        { op: :or, left: compile_ast_node(client, table_columns, node[:left], table_map),
-          right: compile_ast_node(client, table_columns, node[:right], table_map) }
+        left = compile_ast_node(client, table_columns, node[:left], table_map)
+        right = compile_ast_node(client, table_columns, node[:right], table_map)
+        return nil unless left && right
+
+        { op: :or, left: left, right: right }
       else
         col_idx = get_column_index(client, table_columns, node[:column], table_map)
         return nil unless col_idx
