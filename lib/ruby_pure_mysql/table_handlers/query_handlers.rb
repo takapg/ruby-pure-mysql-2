@@ -11,6 +11,7 @@ module RubyPureMysql
       table_map = {}
       columns = validate_table(client, result[:table_name])
       return unless columns
+
       table_map[result[:table_name]] = columns
 
       if result[:join]
@@ -26,6 +27,7 @@ module RubyPureMysql
     def handle_join_logic(client, result, columns, table_map)
       cols2 = validate_table(client, result[:join][:table2])
       return nil unless cols2
+
       table_map[result[:join][:table2]] = cols2
 
       rows1 = @storage_engine.select(result[:table_name])
