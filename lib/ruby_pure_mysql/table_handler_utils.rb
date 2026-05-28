@@ -44,6 +44,7 @@ module RubyPureMysql
       end
 
       # テーブル指定がない場合は、全カラムリストから最初に見つかったものを返す
+      # 結合時は曖昧なカラム名（例: 'id'）が複数存在し得るため、注意が必要
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
