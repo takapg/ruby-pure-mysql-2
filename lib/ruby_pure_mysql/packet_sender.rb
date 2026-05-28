@@ -7,11 +7,11 @@ module RubyPureMysql
   module PacketDefinitionUtils
     def determine_column_type(val)
       if val.is_a?(Integer)
-        MYSQL_TYPE_LONGLONG
+        Constants::MYSQL_TYPE_LONGLONG
       elsif val.is_a?(Float)
-        MYSQL_TYPE_DOUBLE
+        Constants::MYSQL_TYPE_DOUBLE
       else
-        MYSQL_TYPE_VAR_STRING
+        Constants::MYSQL_TYPE_VAR_STRING
       end
     end
 
