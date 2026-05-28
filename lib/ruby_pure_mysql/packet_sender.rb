@@ -97,7 +97,7 @@ module RubyPureMysql
     private
 
     def resolve_explicit_columns(columns)
-      columns.map { |c| c.is_a?(Hash) ? (c[:alias] || c[:original]) : c }
+      columns
     end
 
     def resolve_implicit_columns(cols)
@@ -115,12 +115,17 @@ module RubyPureMysql
 
     def send_column_definitions(client, start_seq, column_names, sample_row, original_names = nil)
       seq = start_seq
-      column_names.each_with_index do |name, index|
+      column_names.each_with_index do |name_info, index|
+        name = name_info.is_a?(Hash) ? (name_info[:alias] || name_info[:original].split('.').last) : name_info
+        org_name = name_info.is_a?(Hash) ? name_info[:original].split('.').last : name
+
+        if original_names
+          raw_org = original_names[index]
+          org_name = raw_org.is_a?(Hash) ? raw_org[:original].split('.').last : raw_org
+        end
+
         val = sample_row ? sample_row[index] : nil
         type = determine_column_type(val)
-
-        raw_org_name = original_names ? original_names[index] : name
-        org_name = raw_org_name.is_a?(Hash) ? raw_org_name[:original] : raw_org_name
 
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1

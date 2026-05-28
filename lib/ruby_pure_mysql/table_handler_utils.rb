@@ -76,7 +76,7 @@ module RubyPureMysql
       indices = selected_columns.map { |c| get_column_index(client, columns, c[:original], table_map) }
       return nil if indices.any?(&:nil?)
 
-      [project_data(rows, indices), project_column_names(selected_columns)]
+      [project_data(rows, indices), selected_columns]
     end
 
     def project_data(rows, indices)
