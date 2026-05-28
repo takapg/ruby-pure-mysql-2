@@ -12,12 +12,9 @@ module RubyPureMysql
     include AggregateHandlerUtils
 
     def handle_select(client, result)
-      table_map = {}
-      columns = validate_table(client, result[:table_name])
+      table_map = initialize_table_map(client, result)
+      columns = table_map.values.first
       return unless columns
-
-      alias_name = result[:table_alias] || result[:table_name]
-      table_map[alias_name] = columns
 
       if result[:join]
         join_res = handle_join_logic(client, result, columns, table_map)
@@ -27,6 +24,13 @@ module RubyPureMysql
       end
 
       dispatch_select_type(client, columns, result, table_map)
+    end
+
+    def initialize_table_map(client, result)
+      columns = validate_table(client, result[:table_name])
+      return {} unless columns
+
+      { (result[:table_alias] || result[:table_name]) => columns }
     end
 
     def handle_join_logic(client, result, columns, table_map)

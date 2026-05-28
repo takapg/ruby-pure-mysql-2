@@ -66,18 +66,21 @@ module RubyPureMysql
     end
 
     def resolve_columns(rows, columns)
-      # columnsが明示的に渡されている場合はそれを優先
-      if columns && !columns.empty?
-        return columns.map { |c| c.is_a?(Hash) ? (c[:alias] || c[:original]) : c }
-      end
+      return resolve_explicit_columns(columns) if columns && !columns.empty?
 
-      # 渡されていない場合はrowsから推論
-      cols = (rows.first if rows && !rows.empty?)
-
-      # どちらも存在しない場合はエラー
+      cols = rows&.first
       raise 'Columns must be provided for empty result sets' if cols.nil?
 
-      # カラム名がない場合はインデックスを名前にする
+      resolve_implicit_columns(cols)
+    end
+
+    private
+
+    def resolve_explicit_columns(columns)
+      columns.map { |c| c.is_a?(Hash) ? (c[:alias] || c[:original]) : c }
+    end
+
+    def resolve_implicit_columns(cols)
       cols.each_with_index.map { |_, i| (i + 1).to_s }
     end
 

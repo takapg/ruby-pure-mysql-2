@@ -77,6 +77,10 @@ module RubyPureMysql
     end
   end
 
+  # オプショナルな句（HAVING, ORDER BY, LIMIT）のパースロジック
+  module SqlParserOptionalClauseParsers
+  end
+
   # クエリパースロジック
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
@@ -308,6 +312,7 @@ module RubyPureMysql
     extend SqlParserDdlParsers
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
+    extend SqlParserOptionalClauseParsers
     extend SqlParserUtils
 
     PARSERS = {
