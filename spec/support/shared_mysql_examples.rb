@@ -268,21 +268,25 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('CREATE TABLE orders (id INT, user_id INT, amount INT);')
       client.query("INSERT INTO users VALUES (1, 'alice');")
       client.query("INSERT INTO users VALUES (2, 'bob');")
-      client.query("INSERT INTO orders VALUES (101, 1, 1000);")
-      client.query("INSERT INTO orders VALUES (102, 1, 2000);")
-      client.query("INSERT INTO orders VALUES (103, 2, 3000);")
+      client.query('INSERT INTO orders VALUES (101, 1, 1000);')
+      client.query('INSERT INTO orders VALUES (102, 1, 2000);')
+      client.query('INSERT INTO orders VALUES (103, 2, 3000);')
     end
 
     it 'executes a simple INNER JOIN' do
-      results = client.query('SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id;')
+      query = 'SELECT users.name, orders.amount FROM users ' \
+              'INNER JOIN orders ON users.id = orders.user_id;'
+      results = client.query(query)
       expect(results.count).to eq(3)
-      
+
       data = results.to_a.map { |r| [r['name'], r['amount']] }
       expect(data).to include(['alice', 1000], ['alice', 2000], ['bob', 3000])
     end
 
     it 'filters joined results using WHERE' do
-      results = client.query('SELECT users.name FROM users INNER JOIN orders ON users.id = orders.user_id WHERE orders.amount > 2000;')
+      query = 'SELECT users.name FROM users INNER JOIN orders ' \
+              'ON users.id = orders.user_id WHERE orders.amount > 2000;'
+      results = client.query(query)
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq('bob')
     end
@@ -290,7 +294,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns empty result set when no rows match JOIN condition' do
       client.query('DROP TABLE IF EXISTS orders;')
       client.query('CREATE TABLE orders (id INT, user_id INT, amount INT);')
-      client.query("INSERT INTO orders VALUES (101, 99, 1000);") # user_id 99 は存在しない
+      client.query('INSERT INTO orders VALUES (101, 99, 1000);') # user_id 99 は存在しない
       
       results = client.query('SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id;')
       expect(results.count).to eq(0)

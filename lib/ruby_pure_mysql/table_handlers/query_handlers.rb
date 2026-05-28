@@ -14,19 +14,27 @@ module RubyPureMysql
       table_map[result[:table_name]] = columns
 
       if result[:join]
-        cols2 = validate_table(client, result[:join][:table2])
-        return unless cols2
-        table_map[result[:join][:table2]] = cols2
+        join_res = handle_join_logic(client, result, columns, table_map)
+        return unless join_res
 
-        rows1 = @storage_engine.select(result[:table_name])
-        rows2 = @storage_engine.select(result[:join][:table2])
-        
-        joined_rows, joined_cols = perform_inner_join(client, rows1, columns, rows2, cols2, result[:join][:on], table_map)
-        
-        result[:joined_rows] = joined_rows
-        columns = joined_cols
+        columns, result[:joined_rows] = join_res
       end
 
+      dispatch_select_type(client, columns, result, table_map)
+    end
+
+    def handle_join_logic(client, result, columns, table_map)
+      cols2 = validate_table(client, result[:join][:table2])
+      return nil unless cols2
+      table_map[result[:join][:table2]] = cols2
+
+      rows1 = @storage_engine.select(result[:table_name])
+      rows2 = @storage_engine.select(result[:join][:table2])
+
+      perform_inner_join(client, rows1, columns, rows2, cols2, result[:join][:on], table_map)
+    end
+
+    def dispatch_select_type(client, columns, result, table_map)
       if result[:group_by] || result[:having]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?

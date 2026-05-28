@@ -22,49 +22,55 @@ module RubyPureMysql
 
     def get_column_index(client, columns, column_name, table_map = {})
       column_name = column_name.to_s.strip
-      if column_name.include?('.')
-        table, col = column_name.split('.')
-        unless table_map && table_map.key?(table)
-          send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
-          return nil
-        end
+      return resolve_qualified_column(client, column_name, table_map) if column_name.include?('.')
+      return resolve_unqualified_column(client, columns, column_name, table_map) if table_map && !table_map.empty?
 
-        # table_map の挿入順に基づいてオフセットを計算
-        offset = 0
-        table_map.each do |t, cols|
-          break if t == table
-          offset += cols.size
-        end
+      resolve_from_all_columns(client, columns, column_name)
+    end
 
-        col_idx = table_map[table].find_index { |c| c.casecmp?(col) }
-        unless col_idx
-          send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
-          return nil
-        end
-        return offset + col_idx
+    def resolve_qualified_column(client, column_name, table_map)
+      table, col = column_name.split('.')
+      unless table_map&.key?(table)
+        send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
+        return nil
       end
 
-      # テーブル指定がない場合、table_map から解決を試みる
-      if table_map && !table_map.empty?
-        table_map.each do |t, cols|
-          if (idx = cols.find_index { |c| c.casecmp?(column_name) })
-            offset = 0
-            table_map.each do |t2, cols2|
-              break if t2 == t
-              offset += cols2.size
-            end
-            return offset + idx
-          end
-        end
+      offset = calculate_table_offset(table, table_map)
+      col_idx = table_map[table].find_index { |c| c.casecmp?(col) }
+      unless col_idx
+        send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
+        return nil
       end
+      offset + col_idx
+    end
 
-      # 最終手段として全カラムリストから検索
+    def resolve_unqualified_column(client, columns, column_name, table_map)
+      table_map.each do |t, cols|
+        idx = cols.find_index { |c| c.casecmp?(column_name) }
+        next unless idx
+
+        return calculate_table_offset(t, table_map) + idx
+      end
+      resolve_from_all_columns(client, columns, column_name)
+    end
+
+    def resolve_from_all_columns(client, columns, column_name)
       idx = columns.find_index { |c| c.casecmp?(column_name) }
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
         return nil
       end
       idx
+    end
+
+    def calculate_table_offset(table, table_map)
+      offset = 0
+      table_map.each do |t, cols|
+        break if t == table
+
+        offset += cols.size
+      end
+      offset
     end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
@@ -109,24 +115,33 @@ module RubyPureMysql
     end
 
     def perform_inner_join(client, rows1, cols1, rows2, cols2, on_condition, table_map)
-      left_expr, right_expr = on_condition.split('=').map(&:strip)
-      
-      all_cols = cols1 + cols2
-      left_idx = get_column_index(client, all_cols, left_expr, table_map)
-      right_idx = get_column_index(client, all_cols, right_expr, table_map)
-
+      left_idx, right_idx, all_cols = resolve_join_indices(client, cols1, cols2, on_condition, table_map)
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
+      [execute_join_loop(rows1, rows2, left_idx, right_idx), all_cols]
+    end
+
+    def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
+      left_expr, right_expr = on_condition.split('=').map(&:strip)
+      all_cols = cols1 + cols2
+      [
+        get_column_index(client, all_cols, left_expr, table_map),
+        get_column_index(client, all_cols, right_expr, table_map),
+        all_cols
+      ]
+    end
+
+    def execute_join_loop(rows1, rows2, left_idx, right_idx)
       joined_rows = []
       rows1.each do |r1|
         rows2.each do |r2|
           row = r1 + r2
-          # nil == nil の結合（ゴーストマッチ）を防ぐため、値が nil でないことを確認する
           next if row[left_idx].nil? || row[right_idx].nil?
+
           joined_rows << row if row[left_idx] == row[right_idx]
         end
       end
-      [joined_rows, all_cols]
+      joined_rows
     end
 
     def apply_offset_and_limit(rows, result)
