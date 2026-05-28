@@ -16,7 +16,8 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      table_map[result[:table_name]] = columns
+      alias_name = result[:table_alias] || result[:table_name]
+      table_map[alias_name] = columns
 
       if result[:join]
         join_res = handle_join_logic(client, result, columns, table_map)
@@ -32,7 +33,8 @@ module RubyPureMysql
       cols2 = validate_table(client, result[:join][:table2])
       return nil unless cols2
 
-      table_map[result[:join][:table2]] = cols2
+      alias_name = result[:join][:alias2] || result[:join][:table2]
+      table_map[alias_name] = cols2
       perform_inner_join(client, build_join_params(result, columns, cols2, table_map))
     end
 

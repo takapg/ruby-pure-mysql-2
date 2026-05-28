@@ -81,8 +81,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)',
-        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)\s+ON\s+(?<on_condition>.+?))?',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)(?:\s+(?:AS\s+)?(?<alias1>\w+))?',
+        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
@@ -108,7 +108,8 @@ module RubyPureMysql
         type: :select_from,
         distinct: !match[:distinct].nil?,
         table_name: match[:table1],
-        columns: match[:columns].split(',').map(&:strip)
+        table_alias: match[:alias1],
+        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
       }
     end
 
@@ -117,13 +118,23 @@ module RubyPureMysql
 
       result[:join] = {
         table2: match[:table2],
+        alias2: match[:alias2],
         on: match[:on_condition]
       }
     end
 
+    def parse_column_alias(col)
+      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
+        { original: m[1].strip, alias: m[2] }
+      else
+        { original: col, alias: nil }
+      end
+    end
+
     def detect_aggregates(result)
       # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
-      result[:aggregates] = result[:columns].each_with_index.filter_map do |col, idx|
+      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
+        col = col_info[:original]
         m = col.match(AggregateUtils::AGGREGATE_REGEX)
         next unless m
 

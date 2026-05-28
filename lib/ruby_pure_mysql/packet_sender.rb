@@ -32,7 +32,7 @@ module RubyPureMysql
       send_packet(client, sequence, payload)
     end
 
-    def send_result_set(client, rows, columns = nil)
+    def send_result_set(client, rows, columns = nil, original_columns = nil)
       cols = resolve_columns(rows, columns)
       return unless valid_row_width?(client, rows, cols)
 
@@ -40,7 +40,7 @@ module RubyPureMysql
       send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, 2, cols, rows.first)
+      seq = send_column_definitions(client, 2, cols, rows.first, original_columns)
 
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
@@ -88,12 +88,13 @@ module RubyPureMysql
       send_eof(client, current_seq & 0xFF)
     end
 
-    def send_column_definitions(client, start_seq, column_names, sample_row)
+    def send_column_definitions(client, start_seq, column_names, sample_row, original_names = nil)
       seq = start_seq
       column_names.each_with_index do |name, index|
         val = sample_row ? sample_row[index] : nil
         type = determine_column_type(val)
-        send_packet(client, seq & 0xFF, pack_column_definition(type, name))
+        org_name = original_names ? original_names[index] : name
+        send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end
       seq
@@ -123,9 +124,9 @@ module RubyPureMysql
     #   - flags: 2 bytes
     #   - decimals: 1 byte
     #   - filler: 2 bytes
-    def pack_column_definition(type, name)
+    def pack_column_definition(type, name, org_name)
       data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(name), 0x0c, 0x0021, 0, type, 0, 0, 0]
+              lenenc_str(name), lenenc_str(org_name), 0x0c, 0x0021, 0, type, 0, 0, 0]
       data.pack('a*a*a*a*a*a*C v V C v C v')
     end
 

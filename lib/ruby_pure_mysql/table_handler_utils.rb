@@ -71,9 +71,9 @@ module RubyPureMysql
     end
 
     def project_rows(client, rows, columns, selected_columns, table_map = {})
-      return [rows, columns] if selected_columns.nil? || selected_columns.include?('*')
+      return [rows, columns] if selected_columns.nil? || selected_columns.any? { |c| c[:original] == '*' }
 
-      indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
+      indices = selected_columns.map { |c| get_column_index(client, columns, c[:original], table_map) }
       return nil if indices.any?(&:nil?)
 
       [project_data(rows, indices), project_column_names(selected_columns)]
@@ -84,7 +84,7 @@ module RubyPureMysql
     end
 
     def project_column_names(selected_columns)
-      selected_columns.map { |col| col.split('.').last }
+      selected_columns.map { |c| c[:alias] || c[:original].split('.').last }
     end
 
     def get_group_column_indices(client, columns, group_by_str)
