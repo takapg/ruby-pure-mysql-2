@@ -33,18 +33,18 @@ module RubyPureMysql
       return nil unless cols2
 
       table_map[result[:join][:table2]] = cols2
+      perform_inner_join(client, build_join_params(result, columns, cols2, table_map))
+    end
 
-      rows1 = @storage_engine.select(result[:table_name])
-      rows2 = @storage_engine.select(result[:join][:table2])
-
-      perform_inner_join(client, {
-        rows1: rows1,
+    def build_join_params(result, columns, cols2, table_map)
+      {
+        rows1: @storage_engine.select(result[:table_name]),
         cols1: columns,
-        rows2: rows2,
+        rows2: @storage_engine.select(result[:join][:table2]),
         cols2: cols2,
         on: result[:join][:on],
         table_map: table_map
-      })
+      }
     end
 
     def dispatch_select_type(client, columns, result, table_map)
