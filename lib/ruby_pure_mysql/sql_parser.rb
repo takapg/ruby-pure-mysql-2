@@ -312,8 +312,8 @@ module RubyPureMysql
 
     def parse_single_where_condition(condition, allow_aggregates: false)
       # カラム名にドットが含まれる場合や、集計関数が含まれる場合に対応するため、
-      # 演算子の開始文字を含まないパターンを使用する
-      column_pattern = '[^=<>!]+'
+      # 記号演算子を含まない非強欲マッチを使用する
+      column_pattern = '[^=<>!]+?'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
