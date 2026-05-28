@@ -303,14 +303,17 @@ module RubyPureMysql
           condition_tokens << token
           state[:pos] += 1
         end
-        parse_single_where_condition(condition_tokens.join(' ').strip, allow_aggregates: allow_aggregates)
+        condition = condition_tokens.join(' ').strip
+        return { error: 'Invalid WHERE clause' } if condition.empty?
+
+        parse_single_where_condition(condition, allow_aggregates: allow_aggregates)
       end
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
       # カラム名にドットが含まれる場合や、集計関数が含まれる場合に対応するため、
-      # 演算子の直前までを非強欲にマッチさせる
-      column_pattern = '.+?'
+      # 演算子の開始文字を含まないパターンを使用する
+      column_pattern = '[^=<>!]+'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
