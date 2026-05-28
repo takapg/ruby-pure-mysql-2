@@ -255,6 +255,7 @@ module RubyPureMysql
         state[:pos] += 1
         right = parse_and(state, allow_aggregates)
         return { error: 'Invalid WHERE clause' } if right.is_a?(Hash) && right[:error]
+
         node = { op: :or, left: node, right: right }
       end
       node
@@ -268,6 +269,7 @@ module RubyPureMysql
         state[:pos] += 1
         right = parse_primary(state, allow_aggregates)
         return { error: 'Invalid WHERE clause' } if right.is_a?(Hash) && right[:error]
+
         node = { op: :and, left: node, right: right }
       end
       node
@@ -304,12 +306,17 @@ module RubyPureMysql
         token = state[:tokens][state[:pos]]
         break if depth.zero? && (token == ')' || %w[AND OR].include?(token.upcase))
 
-        depth += 1 if token == '('
-        depth -= 1 if token == ')'
+        depth = update_depth(depth, token)
         tokens << token
         state[:pos] += 1
       end
       tokens.join(' ').strip
+    end
+
+    def update_depth(depth, token)
+      depth += 1 if token == '('
+      depth -= 1 if token == ')'
+      depth
     end
 
     def parse_single_where_condition(condition)
