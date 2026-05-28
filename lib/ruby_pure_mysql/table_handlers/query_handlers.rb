@@ -30,7 +30,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return {} unless columns
 
-      { (result[:table_alias] || result[:table_name]) => columns }
+      { result[:table_alias] || result[:table_name] => columns }
     end
 
     def handle_join_logic(client, result, columns, table_map)

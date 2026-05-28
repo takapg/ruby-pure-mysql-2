@@ -3,11 +3,31 @@
 require_relative 'packet_io'
 
 module RubyPureMysql
+  # カラム定義パケットの構築を支援するユーティリティ
+  module PacketDefinitionUtils
+    def determine_column_type(val)
+      if val.is_a?(Integer)
+        MYSQL_TYPE_LONGLONG
+      elsif val.is_a?(Float)
+        MYSQL_TYPE_DOUBLE
+      else
+        MYSQL_TYPE_VAR_STRING
+      end
+    end
+
+    def pack_column_definition(type, name, org_name)
+      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
+              lenenc_str(name), lenenc_str(org_name), 0x0c, 0x0021, 0, type, 0, 0, 0]
+      data.pack('a*a*a*a*a*a*C v V C v C v')
+    end
+  end
+
   # MySQLプロトコルのパケット送信を支援するモジュール
   module PacketSender
     include Constants
     include PacketBuilder
     include PacketIO
+    include PacketDefinitionUtils
 
     def send_handshake(client)
       send_packet(client, 0, build_handshake_payload)
@@ -98,45 +118,16 @@ module RubyPureMysql
       column_names.each_with_index do |name, index|
         val = sample_row ? sample_row[index] : nil
         type = determine_column_type(val)
-        
+
         raw_org_name = original_names ? original_names[index] : name
         org_name = raw_org_name.is_a?(Hash) ? raw_org_name[:original] : raw_org_name
-        
+
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end
       seq
     end
 
-    def determine_column_type(val)
-      if val.is_a?(Integer)
-        MYSQL_TYPE_LONGLONG
-      elsif val.is_a?(Float)
-        MYSQL_TYPE_DOUBLE
-      else
-        MYSQL_TYPE_VAR_STRING
-      end
-    end
-
-    # MySQL Column Definition Packet (COM_QUERY response):
-    #   - catalog: lenenc_str "def"
-    #   - schema: lenenc_str (empty)
-    #   - table: lenenc_str (empty)
-    #   - org_table: lenenc_str (empty)
-    #   - name: lenenc_str column name
-    #   - org_name: lenenc_str column name
-    #   - fixed_fields_length: 0x0c (12 bytes follow)
-    #   - character_set: 2 bytes (0x21, 0x00 = utf8_general_ci)
-    #   - column_length: 4 bytes
-    #   - column_type: 1 byte
-    #   - flags: 2 bytes
-    #   - decimals: 1 byte
-    #   - filler: 2 bytes
-    def pack_column_definition(type, name, org_name)
-      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(org_name), 0x0c, 0x0021, 0, type, 0, 0, 0]
-      data.pack('a*a*a*a*a*a*C v V C v C v')
-    end
 
     def send_row_data(client, seq, values)
       row_payload = values.map do |v|
