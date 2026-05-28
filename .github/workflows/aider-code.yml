@@ -102,9 +102,7 @@ jobs:
                   --no-detect-urls \
                   --message "$INSTRUCTION (attempt: $RETRY_COUNT)"
 
-            # リモートの最新状態を取得して差分をチェック
-            git fetch origin HEAD
-            if ! git diff --quiet origin/HEAD HEAD; then
+            if ! git diff --quiet "origin/${{ github.ref_name }}"; then
               echo "✅ 変更が検出されました！ループを抜けます。"
               SUCCESS=true
               break
