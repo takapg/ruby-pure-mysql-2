@@ -39,11 +39,12 @@ module RubyPureMysql
 
       alias_name = result[:join][:alias2] || result[:join][:table2]
       table_map[alias_name] = cols2
-      perform_inner_join(client, build_join_params(result, columns, cols2, table_map))
+      perform_join(client, build_join_params(result, columns, cols2, table_map))
     end
 
     def build_join_params(result, columns, cols2, table_map)
       {
+        join_type: result[:join][:type],
         rows1: @storage_engine.select(result[:table_name]),
         cols1: columns,
         rows2: @storage_engine.select(result[:join][:table2]),
