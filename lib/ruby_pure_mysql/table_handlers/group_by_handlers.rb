@@ -18,18 +18,24 @@ module RubyPureMysql
     def evaluate_group_having(group_val, group_rows, node, group_ctx)
       return true if node.nil?
 
-      if node.is_a?(Hash) && node[:op]
-        if node[:op] == :and
-          evaluate_group_having(group_val, group_rows, node[:left], group_ctx) &&
-            evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
-        elsif node[:op] == :or
-          evaluate_group_having(group_val, group_rows, node[:left], group_ctx) ||
-            evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
+      if node.is_a?(Hash)
+        if node[:op]
+          if node[:op] == :and
+            evaluate_group_having(group_val, group_rows, node[:left], group_ctx) &&
+              evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
+          elsif node[:op] == :or
+            evaluate_group_having(group_val, group_rows, node[:left], group_ctx) ||
+              evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
+          else
+            false
+          end
         else
-          false
+          # 演算子がない場合は単一の条件式として評価
+          evaluate_having_condition(group_val, group_rows, node, group_ctx)
         end
       else
-        evaluate_having_condition(group_val, group_rows, node, group_ctx)
+        # ASTが不正な場合はフィルタリング対象外とする
+        false
       end
     end
 

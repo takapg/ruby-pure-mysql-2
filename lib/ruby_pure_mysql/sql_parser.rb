@@ -295,7 +295,9 @@ module RubyPureMysql
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
-      column_pattern = allow_aggregates ? '.+?' : '[^=\s<>!]+'
+      # カラム名にドットが含まれる場合や、集計関数が含まれる場合に対応するため、
+      # 演算子の直前までを非強欲にマッチさせる
+      column_pattern = '.+?'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
