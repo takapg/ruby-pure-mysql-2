@@ -17,7 +17,7 @@ module RubyPureMysql
         join_res = handle_join_logic(client, result, columns, table_map)
         return unless join_res
 
-        columns, result[:joined_rows] = join_res
+        result[:joined_rows], columns = join_res
       end
 
       dispatch_select_type(client, columns, result, table_map)
@@ -145,7 +145,12 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, where, table_map)
       return nil if where_clauses.nil?
 
-      rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }
+      rows.select do |row|
+        where_clauses.all? do |c|
+          target = c[:regex] || c[:value]
+          apply_filter(row[c[:col_idx]], c[:operator], target)
+        end
+      end
     end
   end
 end
