@@ -35,7 +35,10 @@ module RubyPureMysql
 
     def prepare_group_by_data(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
-      indices = rows ? (result[:group_by] ? get_group_column_indices(client, columns, result[:group_by]) : []) : nil
+      indices = nil
+      if rows
+        indices = result[:group_by] ? get_group_column_indices(client, columns, result[:group_by]) : []
+      end
       [rows, indices]
     end
 
