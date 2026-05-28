@@ -193,7 +193,7 @@ module RubyPureMysql
       # "a + b" のような式を誤って分割しないよう、直前が演算子で終わっていないことを確認する
       if (m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/))
         original = m[1].strip
-        return { original: col, alias: nil } if original.match?(/[\+\-\*\/%]\z/)
+        return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
 
         return { original: original, alias: m[2] }
       end
