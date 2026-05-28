@@ -3,13 +3,13 @@
 module RubyPureMysql
   # JOIN操作の実行を支援するモジュール
   module JoinUtils
-    def perform_inner_join(client, params)
+    def perform_join(client, params)
       left_idx, right_idx, all_cols = resolve_join_indices(
         client, params[:cols1], params[:cols2], params[:on], params[:table_map]
       )
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
-      [execute_join_loop(params[:rows1], params[:rows2], left_idx, right_idx), all_cols]
+      [execute_join_loop(params[:rows1], params[:rows2], left_idx, right_idx, params[:join_type], params[:cols2].size), all_cols]
     end
 
     def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
@@ -22,14 +22,21 @@ module RubyPureMysql
       ]
     end
 
-    def execute_join_loop(rows1, rows2, left_idx, right_idx)
+    def execute_join_loop(rows1, rows2, left_idx, right_idx, join_type, right_col_count)
       joined_rows = []
       rows1.each do |r1|
+        matched = false
         rows2.each do |r2|
           row = r1 + r2
           next if row[left_idx].nil? || row[right_idx].nil?
 
-          joined_rows << row if row[left_idx] == row[right_idx]
+          if row[left_idx] == row[right_idx]
+            joined_rows << row
+            matched = true
+          end
+        end
+        if !matched && join_type == 'LEFT'
+          joined_rows << (r1 + Array.new(right_col_count, nil))
         end
       end
       joined_rows

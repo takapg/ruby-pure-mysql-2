@@ -82,7 +82,7 @@ module RubyPureMysql
     SELECT_REGEX = Regexp.new(
       [
         '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)(?:\s+(?:AS\s+)?(?<alias1>\w+))?',
-        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
+        '(?:\s+(?<join_type>INNER|LEFT)\s+JOIN\s+(?<table2>\w+)(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
@@ -177,6 +177,7 @@ module RubyPureMysql
       return unless match[:table2]
 
       result[:join] = {
+        type: match[:join_type] || 'INNER',
         table2: match[:table2],
         alias2: match[:alias2],
         on: match[:on_condition]
