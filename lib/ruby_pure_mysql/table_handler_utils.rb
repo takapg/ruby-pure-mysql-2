@@ -20,7 +20,28 @@ module RubyPureMysql
       columns
     end
 
-    def get_column_index(client, columns, column_name)
+    def get_column_index(client, columns, column_name, table_map = {})
+      if column_name.include?('.')
+        table, col = column_name.split('.')
+        unless table_map.key?(table)
+          send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
+          return nil
+        end
+
+        offset = 0
+        table_map.each do |t, cols|
+          break if t == table
+          offset += cols.size
+        end
+
+        idx = table_map[table].index(col)
+        unless idx
+          send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
+          return nil
+        end
+        return offset + idx
+      end
+
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
@@ -29,10 +50,10 @@ module RubyPureMysql
       idx
     end
 
-    def find_matching_indices(client, rows, table_columns, where_clauses)
+    def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
-      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses)
+      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses, table_map)
       return nil unless compiled_clauses
 
       rows.each_with_index.select do |row, _idx|
@@ -70,16 +91,37 @@ module RubyPureMysql
       direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
+    def perform_inner_join(rows1, cols1, rows2, cols2, on_condition)
+      left_expr, right_expr = on_condition.split('=').map(&:strip)
+      left_col = left_expr.split('.').last
+      right_col = right_expr.split('.').last
+
+      left_idx = cols1.index(left_col)
+      right_idx = cols2.index(right_col)
+
+      return [[], cols1 + cols2] if left_idx.nil? || right_idx.nil?
+
+      joined_rows = []
+      rows1.each do |r1|
+        rows2.each do |r2|
+          joined_rows << (r1 + r2) if r1[left_idx] == r2[right_idx]
+        end
+      end
+      [joined_rows, cols1 + cols2]
+    end
+
     def apply_offset_and_limit(rows, result)
       rows = rows.drop(result[:offset] || 0)
       result[:limit] ? rows.first(result[:limit]) : rows
     end
 
-    def project_rows(client, rows, columns, selected_columns)
+    def project_rows(client, rows, columns, selected_columns, table_map = {})
       if selected_columns && !selected_columns.include?('*')
-        return nil unless validate_selected_columns?(client, columns, selected_columns)
+        return nil unless validate_selected_columns?(client, columns, selected_columns, table_map)
 
-        selected_indices = selected_columns.map { |col| columns.index(col) }
+        selected_indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }.compact
+        return nil if selected_indices.size != selected_columns.size
+
         projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
         [projected_rows, selected_columns]
       else
@@ -87,11 +129,8 @@ module RubyPureMysql
       end
     end
 
-    def validate_selected_columns?(client, columns, selected_columns)
-      return true if selected_columns.all? { |col| columns.include?(col) }
-
-      send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
-      false
+    def validate_selected_columns?(client, columns, selected_columns, table_map = {})
+      selected_columns.all? { |col| !get_column_index(client, columns, col, table_map).nil? }
     end
 
     def get_group_column_indices(client, columns, group_by_str)

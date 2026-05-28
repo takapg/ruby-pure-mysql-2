@@ -8,15 +8,31 @@ module RubyPureMysql
     include GroupByHandlers
 
     def handle_select(client, result)
+      table_map = {}
       columns = validate_table(client, result[:table_name])
       return unless columns
+      table_map[result[:table_name]] = columns
+
+      if result[:join]
+        cols2 = validate_table(client, result[:join][:table2])
+        return unless cols2
+        table_map[result[:join][:table2]] = cols2
+
+        rows1 = @storage_engine.select(result[:table_name])
+        rows2 = @storage_engine.select(result[:join][:table2])
+        
+        joined_rows, joined_cols = perform_inner_join(rows1, columns, rows2, cols2, result[:join][:on])
+        
+        result[:joined_rows] = joined_rows
+        columns = joined_cols
+      end
 
       if result[:group_by] || result[:having]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
       else
-        handle_standard_select(client, columns, result)
+        handle_standard_select(client, columns, result, table_map)
       end
     end
 
@@ -93,11 +109,11 @@ module RubyPureMysql
       end
     end
 
-    def handle_standard_select(client, columns, result)
-      rows = fetch_and_filter_rows(client, columns, result)
+    def handle_standard_select(client, columns, result, table_map = {})
+      rows = fetch_and_filter_rows(client, columns, result, table_map)
       return if rows.nil?
 
-      rows, final_columns = project_rows(client, rows, columns, result[:columns])
+      rows, final_columns = project_rows(client, rows, columns, result[:columns], table_map)
       return if rows.nil?
 
       rows.uniq! if result[:distinct]
@@ -109,16 +125,16 @@ module RubyPureMysql
       send_result_set(client, rows, final_columns)
     end
 
-    def fetch_and_filter_rows(client, columns, result)
-      rows = @storage_engine.select(result[:table_name])
-      rows = filter_rows(client, columns, rows, result[:where]) if result[:where]
+    def fetch_and_filter_rows(client, columns, result, table_map = {})
+      rows = result[:joined_rows] || @storage_engine.select(result[:table_name])
+      rows = filter_rows(client, columns, rows, result[:where], table_map) if result[:where]
       return nil if rows.nil?
 
       rows
     end
 
-    def filter_rows(client, columns, rows, where)
-      where_clauses = prepare_where_clauses(client, columns, where)
+    def filter_rows(client, columns, rows, where, table_map = {})
+      where_clauses = prepare_where_clauses(client, columns, where, table_map)
       return nil if where_clauses.nil?
 
       rows.select { |row| @storage_engine.send(:match_row?, row, columns, where_clauses) }

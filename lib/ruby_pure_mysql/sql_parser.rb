@@ -81,7 +81,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table_name>\w+)',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)',
+        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
@@ -99,9 +100,17 @@ module RubyPureMysql
       result = {
         type: :select_from,
         distinct: !match[:distinct].nil?,
-        table_name: match[:table_name],
+        table_name: match[:table1],
         columns: match[:columns].split(',').map(&:strip)
       }
+
+      if match[:table2]
+        result[:join] = {
+          table2: match[:table2],
+          on: match[:on_condition]
+        }
+      end
+
       detect_aggregates(result)
       parse_select_clauses(result, match)
     end

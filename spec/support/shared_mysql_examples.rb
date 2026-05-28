@@ -260,6 +260,43 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'INNER JOIN support' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('DROP TABLE IF EXISTS orders;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query('CREATE TABLE orders (id INT, user_id INT, amount INT);')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO orders VALUES (101, 1, 1000);")
+      client.query("INSERT INTO orders VALUES (102, 1, 2000);")
+      client.query("INSERT INTO orders VALUES (103, 2, 3000);")
+    end
+
+    it 'executes a simple INNER JOIN' do
+      results = client.query('SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id;')
+      expect(results.count).to eq(3)
+      
+      data = results.to_a.map { |r| [r['users.name'], r['orders.amount']] }
+      expect(data).to include(['alice', 1000], ['alice', 2000], ['bob', 3000])
+    end
+
+    it 'filters joined results using WHERE' do
+      results = client.query('SELECT users.name FROM users INNER JOIN orders ON users.id = orders.user_id WHERE orders.amount > 2000;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq('bob')
+    end
+
+    it 'returns empty result set when no rows match JOIN condition' do
+      client.query('DROP TABLE IF EXISTS orders;')
+      client.query('CREATE TABLE orders (id INT, user_id INT, amount INT);')
+      client.query("INSERT INTO orders VALUES (101, 99, 1000);") # user_id 99 は存在しない
+      
+      results = client.query('SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id;')
+      expect(results.count).to eq(0)
+    end
+  end
+
   describe 'SELECT DISTINCT' do
     before do
       client.query('DROP TABLE IF EXISTS distinct_test;')

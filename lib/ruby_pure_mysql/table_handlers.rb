@@ -13,10 +13,10 @@ module RubyPureMysql
     include DmlHandlers
     include QueryHandlers
 
-    def prepare_where_clauses(client, columns, where)
+    def prepare_where_clauses(client, columns, where, table_map = {})
       return [] if where.nil?
 
-      compile_where_clauses(client, columns, where)
+      compile_where_clauses(client, columns, where, table_map)
     end
 
     def get_column_index(client, columns, column_name)
