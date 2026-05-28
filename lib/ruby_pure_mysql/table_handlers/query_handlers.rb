@@ -26,7 +26,13 @@ module RubyPureMysql
       return if rows.nil? || group_indices.nil?
 
       grouped = group_rows_by_indices(rows, group_indices)
-      grouped = filter_grouped_by_having(columns, grouped, result[:having], group_indices) if result[:having]
+      if result[:having]
+        grouped = filter_grouped_by_having(columns, grouped, result[:having], group_indices)
+        if grouped == :error
+          send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
+          return
+        end
+      end
 
       res_rows = compute_grouped_rows(columns, result, grouped, group_indices)
 

@@ -106,7 +106,7 @@ module RubyPureMysql
 
     def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
       val = resolve_having_value(columns, group_val, group_rows, group_indices, clause[:column])
-      return false if val == :no_column
+      return :error if val == :no_column
 
       apply_filter(val, clause[:operator], clause[:value])
     end

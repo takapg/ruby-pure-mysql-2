@@ -10,11 +10,21 @@ module RubyPureMysql
     end
 
     def filter_grouped_by_having(columns, grouped, having_clauses, group_indices)
-      grouped.select do |group_val, group_rows|
-        having_clauses.all? do |clause|
-          evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+      filtered = []
+      grouped.each do |group_val, group_rows|
+        match = true
+        having_clauses.each do |clause|
+          res = evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+          return :error if res == :error
+
+          if !res
+            match = false
+            break
+          end
         end
+        filtered << [group_val, group_rows] if match
       end
+      filtered
     end
 
     def finalize_and_send_group_results(client, result, res_rows)
