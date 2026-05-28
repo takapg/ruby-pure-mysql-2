@@ -169,6 +169,10 @@ module RubyPureMysql
   module SqlParserResultBuilder
   end
 
+  # WHERE句のパースを支援するモジュール
+  module SqlParserWhereUtils
+  end
+
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
     def split_columns(definition)
@@ -318,6 +322,7 @@ module RubyPureMysql
     extend SqlParserQueryParsers
     extend SqlParserOptionalClauseParsers
     extend SqlParserResultBuilder
+    extend SqlParserWhereUtils
     extend SqlParserUtils
 
     PARSERS = {
