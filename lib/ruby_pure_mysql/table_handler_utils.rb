@@ -2,6 +2,8 @@
 
 require_relative 'aggregate_utils'
 require_relative 'filter_utils'
+require_relative 'column_utils'
+require_relative 'join_utils'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
@@ -10,6 +12,8 @@ module RubyPureMysql
 
     include AggregateUtils
     include FilterUtils
+    include ColumnUtils
+    include JoinUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -20,58 +24,6 @@ module RubyPureMysql
       columns
     end
 
-    def get_column_index(client, columns, column_name, table_map = {})
-      column_name = column_name.to_s.strip
-      return resolve_qualified_column(client, column_name, table_map) if column_name.include?('.')
-      return resolve_unqualified_column(client, columns, column_name, table_map) if table_map && !table_map.empty?
-
-      resolve_from_all_columns(client, columns, column_name)
-    end
-
-    def resolve_qualified_column(client, column_name, table_map)
-      table, col = column_name.split('.')
-      unless table_map&.key?(table)
-        send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
-        return nil
-      end
-
-      offset = calculate_table_offset(table, table_map)
-      col_idx = table_map[table].find_index { |c| c.casecmp?(col) }
-      unless col_idx
-        send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
-        return nil
-      end
-      offset + col_idx
-    end
-
-    def resolve_unqualified_column(client, columns, column_name, table_map)
-      table_map.each do |t, cols|
-        idx = cols.find_index { |c| c.casecmp?(column_name) }
-        next unless idx
-
-        return calculate_table_offset(t, table_map) + idx
-      end
-      resolve_from_all_columns(client, columns, column_name)
-    end
-
-    def resolve_from_all_columns(client, columns, column_name)
-      idx = columns.find_index { |c| c.casecmp?(column_name) }
-      unless idx
-        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
-        return nil
-      end
-      idx
-    end
-
-    def calculate_table_offset(table, table_map)
-      offset = 0
-      table_map.each do |t, cols|
-        break if t == table
-
-        offset += cols.size
-      end
-      offset
-    end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
@@ -114,35 +66,6 @@ module RubyPureMysql
       direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
-    def perform_inner_join(client, rows1, cols1, rows2, cols2, on_condition, table_map)
-      left_idx, right_idx, all_cols = resolve_join_indices(client, cols1, cols2, on_condition, table_map)
-      return [[], all_cols] if left_idx.nil? || right_idx.nil?
-
-      [execute_join_loop(rows1, rows2, left_idx, right_idx), all_cols]
-    end
-
-    def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
-      left_expr, right_expr = on_condition.split('=').map(&:strip)
-      all_cols = cols1 + cols2
-      [
-        get_column_index(client, all_cols, left_expr, table_map),
-        get_column_index(client, all_cols, right_expr, table_map),
-        all_cols
-      ]
-    end
-
-    def execute_join_loop(rows1, rows2, left_idx, right_idx)
-      joined_rows = []
-      rows1.each do |r1|
-        rows2.each do |r2|
-          row = r1 + r2
-          next if row[left_idx].nil? || row[right_idx].nil?
-
-          joined_rows << row if row[left_idx] == row[right_idx]
-        end
-      end
-      joined_rows
-    end
 
     def apply_offset_and_limit(rows, result)
       rows = rows.drop(result[:offset] || 0)
@@ -150,17 +73,22 @@ module RubyPureMysql
     end
 
     def project_rows(client, rows, columns, selected_columns, table_map = {})
-      if selected_columns && !selected_columns.include?('*')
-        return nil unless validate_selected_columns?(client, columns, selected_columns, table_map)
+      return [rows, columns] if selected_columns.nil? || selected_columns.include?('*')
 
-        selected_indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
-        return nil if selected_indices.any?(&:nil?)
+      return nil unless validate_selected_columns?(client, columns, selected_columns, table_map)
 
-        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        [projected_rows, selected_columns.map { |col| col.split('.').last }]
-      else
-        [rows, columns]
-      end
+      indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
+      return nil if indices.any?(&:nil?)
+
+      [project_data(rows, indices), project_column_names(selected_columns)]
+    end
+
+    def project_data(rows, indices)
+      rows.map { |row| indices.map { |idx| row[idx] } }
+    end
+
+    def project_column_names(selected_columns)
+      selected_columns.map { |col| col.split('.').last }
     end
 
     def validate_selected_columns?(client, columns, selected_columns, table_map = {})

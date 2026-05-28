@@ -97,22 +97,28 @@ module RubyPureMysql
       match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
-      result = {
+      result = build_select_result(match)
+      apply_join_to_result(result, match)
+      detect_aggregates(result)
+      parse_select_clauses(result, match)
+    end
+
+    def build_select_result(match)
+      {
         type: :select_from,
         distinct: !match[:distinct].nil?,
         table_name: match[:table1],
         columns: match[:columns].split(',').map(&:strip)
       }
+    end
 
-      if match[:table2]
-        result[:join] = {
-          table2: match[:table2],
-          on: match[:on_condition]
-        }
-      end
+    def apply_join_to_result(result, match)
+      return unless match[:table2]
 
-      detect_aggregates(result)
-      parse_select_clauses(result, match)
+      result[:join] = {
+        table2: match[:table2],
+        on: match[:on_condition]
+      }
     end
 
     def detect_aggregates(result)
