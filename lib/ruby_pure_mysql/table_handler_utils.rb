@@ -111,6 +111,18 @@ module RubyPureMysql
       end
     end
 
+    def evaluate_having_ast(group_val, group_rows, node, group_ctx)
+      if node.is_a?(Hash) && node[:op] == :and
+        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) &&
+          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
+      elsif node.is_a?(Hash) && node[:op] == :or
+        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) ||
+          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
+      else
+        evaluate_having_condition(group_val, group_rows, node, group_ctx)
+      end
+    end
+
     def evaluate_having_condition(group_val, group_rows, clause, group_ctx)
       val = resolve_having_value(group_val, group_rows, clause[:column], group_ctx)
       raise HavingError, 'Unknown column' if val == :no_column

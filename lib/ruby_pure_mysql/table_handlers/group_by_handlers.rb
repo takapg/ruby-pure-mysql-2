@@ -21,17 +21,6 @@ module RubyPureMysql
       evaluate_having_ast(group_val, group_rows, having_clauses, group_ctx)
     end
 
-    def evaluate_having_ast(group_val, group_rows, node, group_ctx)
-      if node.is_a?(Hash) && node[:op] == :and
-        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) &&
-          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
-      elsif node.is_a?(Hash) && node[:op] == :or
-        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) ||
-          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
-      else
-        evaluate_having_condition(group_val, group_rows, node, group_ctx)
-      end
-    end
 
     def finalize_and_send_group_results(client, result, res_rows)
       res_rows = apply_order_by(client, result[:order], result[:columns], res_rows) if result[:order]
