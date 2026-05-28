@@ -274,43 +274,43 @@ module RubyPureMysql
     end
 
     def parse_primary(state, allow_aggregates)
-      if state[:pos] >= state[:tokens].size
-        return { error: 'Unexpected end of clause' }
-      end
+      return { error: 'Unexpected end of clause' } if state[:pos] >= state[:tokens].size
 
       if state[:tokens][state[:pos]] == '('
         # グループ化の括弧
         state[:pos] += 1
         node = parse_or(state, allow_aggregates)
-        if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
-          state[:pos] += 1
-        end
+        state[:pos] += 1 if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
         node
       else
         # 条件式 (COUNT(*) などの関数呼び出しを含む可能性がある)
-        condition_tokens = []
-        depth = 0
-        while state[:pos] < state[:tokens].size
-          token = state[:tokens][state[:pos]]
-          if token == '('
-            depth += 1
-          elsif token == ')'
-            break if depth == 0
-            depth -= 1
-          elsif depth == 0 && ['AND', 'OR'].include?(token.upcase)
-            break
-          end
-          condition_tokens << token
-          state[:pos] += 1
-        end
-        condition = condition_tokens.join(' ').strip
+        condition = collect_condition_tokens(state)
         return { error: 'Invalid WHERE clause' } if condition.empty?
 
-        parse_single_where_condition(condition, allow_aggregates: allow_aggregates)
+        parse_single_where_condition(condition)
       end
     end
 
-    def parse_single_where_condition(condition, allow_aggregates: false)
+    def collect_condition_tokens(state)
+      condition_tokens = []
+      depth = 0
+      while state[:pos] < state[:tokens].size
+        token = state[:tokens][state[:pos]]
+        if token == '('
+          depth += 1
+        elsif token == ')'
+          break if depth.zero?
+          depth -= 1
+        elsif depth.zero? && %w[AND OR].include?(token.upcase)
+          break
+        end
+        condition_tokens << token
+        state[:pos] += 1
+      end
+      condition_tokens.join(' ').strip
+    end
+
+    def parse_single_where_condition(condition)
       # カラム名や集計関数（COUNT(*)など）に対応するため、
       # 最初の演算子が出現するまでをカラム/式として取得する
       where_match = condition.match(/\A(.+?)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)

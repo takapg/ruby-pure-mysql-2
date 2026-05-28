@@ -12,7 +12,6 @@ module RubyPureMysql
     def create_table(name, columns)
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
-
         @tables[name] = columns
         @data[name] = []
         true
@@ -22,7 +21,6 @@ module RubyPureMysql
     def drop_table(name)
       @tables_mutex.synchronize do
         return false unless @tables.key?(name)
-
         @tables.delete(name)
         @data.delete(name)
         true
@@ -32,9 +30,7 @@ module RubyPureMysql
     def insert(table_name, values)
       @tables_mutex.synchronize do
         columns = @tables[table_name]
-        return false unless columns
-        return false unless values.size == columns.size
-
+        return false unless columns && values.size == columns.size
         @data[table_name] << values.dup
         true
       end
@@ -92,15 +88,20 @@ module RubyPureMysql
       return true if node.nil?
 
       if node.is_a?(Hash) && node[:op]
-        if node[:op] == :and
-          evaluate_ast(node[:left], row, columns) && evaluate_ast(node[:right], row, columns)
-        elsif node[:op] == :or
-          evaluate_ast(node[:left], row, columns) || evaluate_ast(node[:right], row, columns)
-        else
-          false
-        end
+        evaluate_logical_node(node, row, columns)
       else
         match_clause?(row, columns, node)
+      end
+    end
+
+    def evaluate_logical_node(node, row, columns)
+      left = evaluate_ast(node[:left], row, columns)
+      right = evaluate_ast(node[:right], row, columns)
+
+      case node[:op]
+      when :and then left && right
+      when :or  then left || right
+      else false
       end
     end
 

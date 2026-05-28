@@ -13,18 +13,26 @@ module RubyPureMysql
       return nil if ast.nil?
 
       if ast.is_a?(Hash) && ast[:op]
-        left = compile_where_clauses(client, table_columns, ast[:left], table_map)
-        right = compile_where_clauses(client, table_columns, ast[:right], table_map)
-        return nil if left.nil? || right.nil?
-
-        { op: ast[:op], left: left, right: right }
+        compile_logical_clause(client, table_columns, ast, table_map)
       else
-        col_idx = get_column_index(client, table_columns, ast[:column], table_map)
-        return nil unless col_idx
-
-        regex = ast[:operator] == 'LIKE' ? build_like_regex(ast[:value]) : nil
-        { col_idx: col_idx, operator: ast[:operator], value: ast[:value], regex: regex }
+        compile_single_clause(client, table_columns, ast, table_map)
       end
+    end
+
+    def compile_logical_clause(client, table_columns, ast, table_map)
+      left = compile_where_clauses(client, table_columns, ast[:left], table_map)
+      right = compile_where_clauses(client, table_columns, ast[:right], table_map)
+      return nil if left.nil? || right.nil?
+
+      { op: ast[:op], left: left, right: right }
+    end
+
+    def compile_single_clause(client, table_columns, ast, table_map)
+      col_idx = get_column_index(client, table_columns, ast[:column], table_map)
+      return nil unless col_idx
+
+      regex = ast[:operator] == 'LIKE' ? build_like_regex(ast[:value]) : nil
+      { col_idx: col_idx, operator: ast[:operator], value: ast[:value], regex: regex }
     end
   end
 end
