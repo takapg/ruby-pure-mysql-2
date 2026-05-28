@@ -11,7 +11,7 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if result[:group_by]
+      if result[:group_by] || result[:having]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
@@ -35,7 +35,7 @@ module RubyPureMysql
 
     def prepare_group_by_data(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result)
-      indices = rows ? get_group_column_indices(client, columns, result[:group_by]) : nil
+      indices = rows ? (result[:group_by] ? get_group_column_indices(client, columns, result[:group_by]) : []) : nil
       [rows, indices]
     end
 
@@ -51,6 +51,8 @@ module RubyPureMysql
     end
 
     def group_rows_by_indices(rows, indices)
+      return { [] => rows } if indices.empty?
+
       rows.group_by { |row| indices.map { |idx| row[idx] } }
     end
 

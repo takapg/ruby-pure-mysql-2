@@ -154,7 +154,7 @@ module RubyPureMysql
     end
 
     def parse_having_clause(result, clause)
-      having = parse_where_clause(clause)
+      having = parse_where_clause(clause, allow_aggregates: true)
       return having if having.is_a?(Hash) && having[:error]
 
       result[:having] = having
@@ -216,9 +216,9 @@ module RubyPureMysql
       end
     end
 
-    def parse_where_clause(clause)
+    def parse_where_clause(clause, allow_aggregates: false)
       parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p) }
+      results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
       error = results.find { |r| r.is_a?(Hash) && r[:error] }
       error || results
     end
@@ -260,8 +260,9 @@ module RubyPureMysql
       in_quote
     end
 
-    def parse_single_where_condition(condition)
-      where_match = condition.match(/\A(.+?)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+    def parse_single_where_condition(condition, allow_aggregates: false)
+      column_pattern = allow_aggregates ? '.+?' : '\w+'
+      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
