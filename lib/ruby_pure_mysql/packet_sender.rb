@@ -20,6 +20,16 @@ module RubyPureMysql
               lenenc_str(name), lenenc_str(org_name), 0x0c, 0x0021, 0, type, 0, 0, 0]
       data.pack('a*a*a*a*a*a*C v V C v C v')
     end
+
+    def resolve_column_names(name_info, index, original_names)
+      name = name_info.is_a?(Hash) ? (name_info[:alias] || name_info[:original].split('.').last) : name_info
+      org_name = name_info.is_a?(Hash) ? name_info[:original].split('.').last : name
+      if original_names
+        raw_org = original_names[index]
+        org_name = raw_org.is_a?(Hash) ? raw_org[:original].split('.').last : raw_org
+      end
+      [name, org_name]
+    end
   end
 
   # MySQLプロトコルのパケット送信を支援するモジュール
@@ -116,17 +126,8 @@ module RubyPureMysql
     def send_column_definitions(client, start_seq, column_names, sample_row, original_names = nil)
       seq = start_seq
       column_names.each_with_index do |name_info, index|
-        name = name_info.is_a?(Hash) ? (name_info[:alias] || name_info[:original].split('.').last) : name_info
-        org_name = name_info.is_a?(Hash) ? name_info[:original].split('.').last : name
-
-        if original_names
-          raw_org = original_names[index]
-          org_name = raw_org.is_a?(Hash) ? raw_org[:original].split('.').last : raw_org
-        end
-
-        val = sample_row ? sample_row[index] : nil
-        type = determine_column_type(val)
-
+        name, org_name = resolve_column_names(name_info, index, original_names)
+        type = determine_column_type(sample_row ? sample_row[index] : nil)
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end

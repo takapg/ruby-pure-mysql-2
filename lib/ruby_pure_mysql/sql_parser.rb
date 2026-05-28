@@ -107,59 +107,6 @@ module RubyPureMysql
       parse_select_clauses(result, match)
     end
 
-    def build_select_result(match)
-      {
-        type: :select_from,
-        distinct: !match[:distinct].nil?,
-        table_name: match[:table1],
-        table_alias: match[:alias1],
-        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
-      }
-    end
-
-    def apply_join_to_result(result, match)
-      return unless match[:table2]
-
-      result[:join] = {
-        table2: match[:table2],
-        alias2: match[:alias2],
-        on: match[:on_condition]
-      }
-    end
-
-    def parse_column_alias(col)
-      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
-        { original: m[1].strip, alias: m[2] }
-      else
-        { original: col, alias: nil }
-      end
-    end
-
-    def detect_aggregates(result)
-      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
-      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
-        col = col_info[:original]
-        m = col.match(AggregateUtils::AGGREGATE_REGEX)
-        next unless m
-
-        parse_aggregate_column(m, idx)
-      end
-
-      return if result[:aggregates].empty?
-
-      assign_first_aggregate(result)
-    end
-
-    def parse_aggregate_column(match, idx)
-      { type: match[1].downcase.to_sym, column: match[2], index: idx }
-    end
-
-    def assign_first_aggregate(result)
-      first = result[:aggregates].first
-      result[:aggregate] = first[:type]
-      result[:aggregate_column] = first[:column]
-      result[:aggregate_index] = first[:index]
-    end
 
     def parse_select_clauses(result, match)
       if match[:where]
@@ -303,6 +250,60 @@ module RubyPureMysql
       return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
       { column: column, operator: operator, value: value }
+    end
+
+    def build_select_result(match)
+      {
+        type: :select_from,
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table1],
+        table_alias: match[:alias1],
+        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
+      }
+    end
+
+    def apply_join_to_result(result, match)
+      return unless match[:table2]
+
+      result[:join] = {
+        table2: match[:table2],
+        alias2: match[:alias2],
+        on: match[:on_condition]
+      }
+    end
+
+    def parse_column_alias(col)
+      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
+        { original: m[1].strip, alias: m[2] }
+      else
+        { original: col, alias: nil }
+      end
+    end
+
+    def detect_aggregates(result)
+      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
+      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
+        col = col_info[:original]
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
+        next unless m
+
+        parse_aggregate_column(m, idx)
+      end
+
+      return if result[:aggregates].empty?
+
+      assign_first_aggregate(result)
+    end
+
+    def parse_aggregate_column(match, idx)
+      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+    end
+
+    def assign_first_aggregate(result)
+      first = result[:aggregates].first
+      result[:aggregate] = first[:type]
+      result[:aggregate_column] = first[:column]
+      result[:aggregate_index] = first[:index]
     end
   end
 
