@@ -91,23 +91,23 @@ module RubyPureMysql
       direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
 
-    def perform_inner_join(rows1, cols1, rows2, cols2, on_condition)
+    def perform_inner_join(client, rows1, cols1, rows2, cols2, on_condition, table_map)
       left_expr, right_expr = on_condition.split('=').map(&:strip)
-      left_col = left_expr.split('.').last
-      right_col = right_expr.split('.').last
+      
+      all_cols = cols1 + cols2
+      left_idx = get_column_index(client, all_cols, left_expr, table_map)
+      right_idx = get_column_index(client, all_cols, right_expr, table_map)
 
-      left_idx = cols1.index(left_col)
-      right_idx = cols2.index(right_col)
-
-      return [[], cols1 + cols2] if left_idx.nil? || right_idx.nil?
+      return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
       joined_rows = []
       rows1.each do |r1|
         rows2.each do |r2|
-          joined_rows << (r1 + r2) if r1[left_idx] == r2[right_idx]
+          row = r1 + r2
+          joined_rows << row if row[left_idx] == row[right_idx]
         end
       end
-      [joined_rows, cols1 + cols2]
+      [joined_rows, all_cols]
     end
 
     def apply_offset_and_limit(rows, result)

@@ -21,7 +21,7 @@ module RubyPureMysql
         rows1 = @storage_engine.select(result[:table_name])
         rows2 = @storage_engine.select(result[:join][:table2])
         
-        joined_rows, joined_cols = perform_inner_join(rows1, columns, rows2, cols2, result[:join][:on])
+        joined_rows, joined_cols = perform_inner_join(client, rows1, columns, rows2, cols2, result[:join][:on], table_map)
         
         result[:joined_rows] = joined_rows
         columns = joined_cols
