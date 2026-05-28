@@ -480,16 +480,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # electronics: count=2, sum=300 -> match
       # books: count=2, sum=200 -> match
       # clothing: count=1, sum=300 -> no match (count <= 1)
-      results = client.query('SELECT category, COUNT(*) FROM products GROUP BY category HAVING COUNT(*) > 1 AND SUM(price) > 100;')
+      query = 'SELECT category, COUNT(*) FROM products ' \
+              'GROUP BY category HAVING COUNT(*) > 1 AND SUM(price) > 100;'
+      results = client.query(query)
       expect(results.count).to eq(2)
       categories = results.map { |r| r['category'] }
       expect(categories).to contain_exactly('electronics', 'books')
     end
 
     it 'returns an error when HAVING clause contains an unknown column' do
-      expect {
+      expect do
         client.query('SELECT category FROM products GROUP BY category HAVING unknown_col > 1;')
-      }.to raise_error(Mysql2::Error)
+      end.to raise_error(Mysql2::Error)
     end
   end
 
