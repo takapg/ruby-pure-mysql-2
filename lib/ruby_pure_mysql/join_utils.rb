@@ -9,7 +9,12 @@ module RubyPureMysql
       )
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
-      options = { left_idx: left_idx, right_idx: right_idx, join_type: params[:join_type], right_col_count: params[:cols2].size }
+      options = {
+        left_idx: left_idx,
+        right_idx: right_idx,
+        join_type: params[:join_type],
+        right_col_count: params[:cols2].size
+      }
       [execute_join_loop(params[:rows1], params[:rows2], options), all_cols]
     end
 
