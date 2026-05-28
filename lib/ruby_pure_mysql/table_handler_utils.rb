@@ -28,6 +28,7 @@ module RubyPureMysql
           return nil
         end
 
+        # table_map の挿入順に基づいてオフセットを計算
         offset = 0
         table_map.each do |t, cols|
           break if t == table
@@ -42,7 +43,7 @@ module RubyPureMysql
         return offset + col_idx
       end
 
-      # テーブル指定がない場合、table_map があればそこから解決を試みる（結合クエリでの曖昧さ回避）
+      # テーブル指定がない場合、table_map から解決を試みる
       if table_map && !table_map.empty?
         table_map.each do |t, cols|
           if (idx = cols.find_index { |c| c.casecmp?(column_name) })
