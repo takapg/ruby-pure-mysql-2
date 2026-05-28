@@ -77,10 +77,6 @@ module RubyPureMysql
     end
   end
 
-  # オプショナルな句（HAVING, ORDER BY, LIMIT）のパースロジック
-  module SqlParserOptionalClauseParsers
-  end
-
   # クエリパースロジック
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
@@ -318,7 +314,6 @@ module RubyPureMysql
     extend SqlParserDdlParsers
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
-    extend SqlParserOptionalClauseParsers
     extend SqlParserResultBuilder
     extend SqlParserWhereUtils
     extend SqlParserUtils
@@ -394,7 +389,7 @@ module RubyPureMysql
 
       col_strs = match[1].split(',').map(&:strip)
       columns = col_strs.map { |col| parse_column_alias(col) }
-      values = col_strs.map { |col| evaluator.evaluate_expression(col) }
+      values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
       { result: values, columns: columns }
