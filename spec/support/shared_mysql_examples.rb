@@ -334,8 +334,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'filters LEFT JOIN results using WHERE' do
-      query = 'SELECT users.name FROM users LEFT JOIN orders ON users.id = orders.user_id WHERE orders.amount IS NULL;'
-      # Note: Our current implementation of WHERE doesn't support 'IS NULL', 
+      # NOTE: Our current implementation of WHERE doesn't support 'IS NULL', 
       # but we can test with a value that doesn't match.
       # Instead, let's test a simple filter.
       query = 'SELECT users.name FROM users LEFT JOIN orders ON users.id = orders.user_id WHERE users.name = ' \

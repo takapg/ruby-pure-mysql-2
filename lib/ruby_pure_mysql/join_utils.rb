@@ -9,7 +9,7 @@ module RubyPureMysql
       )
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
-      [execute_join_loop(params[:rows1], params[:rows2], left_idx, right_idx, params[:join_type], params[:cols2].size), all_cols]
+      [execute_join_loop(params[:rows1], params[:rows2], { left_idx: left_idx, right_idx: right_idx, join_type: params[:join_type], right_col_count: params[:cols2].size }), all_cols]
     end
 
     def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
@@ -22,24 +22,24 @@ module RubyPureMysql
       ]
     end
 
-    def execute_join_loop(rows1, rows2, left_idx, right_idx, join_type, right_col_count)
-      joined_rows = []
-      rows1.each do |r1|
-        matched = false
-        rows2.each do |r2|
-          row = r1 + r2
-          next if row[left_idx].nil? || row[right_idx].nil?
-
-          if row[left_idx] == row[right_idx]
-            joined_rows << row
-            matched = true
-          end
-        end
-        if !matched && join_type == 'LEFT'
-          joined_rows << (r1 + Array.new(right_col_count, nil))
+    def execute_join_loop(rows1, rows2, options)
+      rows1.flat_map do |r1|
+        matches = find_matches(r1, rows2, options)
+        if matches.empty? && options[:join_type] == 'LEFT'
+          [r1 + Array.new(options[:right_col_count], nil)]
+        else
+          matches
         end
       end
-      joined_rows
+    end
+
+    def find_matches(r1, rows2, options)
+      rows2.each_with_object([]) do |r2, acc|
+        row = r1 + r2
+        if row[options[:left_idx]] == row[options[:right_idx]] && !row[options[:left_idx]].nil?
+          acc << row
+        end
+      end
     end
   end
 end
