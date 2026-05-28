@@ -97,14 +97,18 @@ module RubyPureMysql
       end
     end
 
-    def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause, table_map = {})
-      val = resolve_having_value(columns, group_val, group_rows, group_indices, clause[:column], table_map)
+    def evaluate_having_condition(group_val, group_rows, clause, group_ctx)
+      val = resolve_having_value(group_val, group_rows, clause[:column], group_ctx)
       raise HavingError, 'Unknown column' if val == :no_column
 
       apply_filter(val, clause[:operator], clause[:value])
     end
 
-    def resolve_having_value(columns, group_val, group_rows, group_indices, col_expr, table_map = {})
+    def resolve_having_value(group_val, group_rows, col_expr, group_ctx)
+      columns = group_ctx[:columns]
+      indices = group_ctx[:indices]
+      table_map = group_ctx[:table_map]
+
       if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
         agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
         return compute_single_aggregate_value(group_rows, columns, agg)
@@ -113,7 +117,7 @@ module RubyPureMysql
       col_idx = get_column_index(nil, columns, col_expr, table_map)
       return :no_column unless col_idx
 
-      group_idx = group_indices.index(col_idx)
+      group_idx = indices.index(col_idx)
       msg = "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function"
       raise HavingError, msg if group_idx.nil?
 

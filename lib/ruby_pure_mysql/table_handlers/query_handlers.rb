@@ -68,7 +68,8 @@ module RubyPureMysql
       return if rows.nil? || indices.nil?
 
       grouped = group_rows_by_indices(rows, indices)
-      grouped = apply_having_filter(client, columns, grouped, result, indices, table_map) || return
+      group_ctx = { columns: columns, indices: indices, table_map: table_map }
+      grouped = apply_having_filter(client, grouped, result, group_ctx) || return
 
       res_rows = compute_grouped_rows(columns, result, grouped, indices)
       return handle_group_by_error(client) if group_computation_failed?(res_rows)
@@ -85,11 +86,11 @@ module RubyPureMysql
       [rows, indices]
     end
 
-    def apply_having_filter(client, columns, grouped, result, indices, table_map)
+    def apply_having_filter(client, grouped, result, group_ctx)
       return grouped unless result[:having]
 
       begin
-        filter_grouped_by_having(columns, grouped, result[:having], indices, table_map)
+        filter_grouped_by_having(grouped, result[:having], group_ctx)
       rescue TableHandlerUtils::HavingError
         send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
         nil
