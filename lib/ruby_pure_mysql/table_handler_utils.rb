@@ -42,6 +42,12 @@ module RubyPureMysql
         compiled_regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
         compiled_regex.match?(val.to_s)
       else
+        # 数値比較の場合、型を揃えて比較する
+        if val.is_a?(Numeric) && target_value.is_a?(Numeric)
+          val = val.to_f
+          target_value = target_value.to_f
+        end
+
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
