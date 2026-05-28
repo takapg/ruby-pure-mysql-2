@@ -21,17 +21,27 @@ module RubyPureMysql
       group_indices = rows ? get_group_column_indices(client, columns, result[:group_by]) : nil
       return if rows.nil? || group_indices.nil?
 
-      grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
+      grouped = group_rows_by_indices(rows, group_indices)
       res_rows = compute_grouped_rows(columns, result, grouped, group_indices)
 
-      if res_rows.nil? || res_rows.any? { |row| row.include?(:error) }
-        return send_err_packet(client, 1, 'Error executing GROUP BY query', 1105)
-      end
+      return handle_group_by_error(client) if group_computation_failed?(res_rows)
 
       res_rows = filter_having_rows(columns, res_rows, grouped, result[:having], group_indices) if result[:having]
       return if res_rows.nil?
 
       finalize_and_send_group_results(client, result, res_rows)
+    end
+
+    def group_rows_by_indices(rows, indices)
+      rows.group_by { |row| indices.map { |idx| row[idx] } }
+    end
+
+    def group_computation_failed?(res_rows)
+      res_rows.nil? || res_rows.any? { |row| row.include?(:error) }
+    end
+
+    def handle_group_by_error(client)
+      send_err_packet(client, 1, 'Error executing GROUP BY query', 1105)
     end
 
     def compute_grouped_rows(columns, result, grouped, group_indices)
