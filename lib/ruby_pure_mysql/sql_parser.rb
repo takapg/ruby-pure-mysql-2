@@ -167,39 +167,63 @@ module RubyPureMysql
 
   # 結果セットの構築を支援するモジュール
   module SqlParserResultBuilder
+    def build_select_result(match)
+      {
+        type: :select_from,
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table1],
+        table_alias: match[:alias1],
+        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
+      }
+    end
+
+    def apply_join_to_result(result, match)
+      return unless match[:table2]
+
+      result[:join] = {
+        table2: match[:table2],
+        alias2: match[:alias2],
+        on: match[:on_condition]
+      }
+    end
+
+    def parse_column_alias(col)
+      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
+        { original: m[1].strip, alias: m[2] }
+      else
+        { original: col, alias: nil }
+      end
+    end
+
+    def detect_aggregates(result)
+      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
+      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
+        col = col_info[:original]
+        m = col.match(AggregateUtils::AGGREGATE_REGEX)
+        next unless m
+
+        parse_aggregate_column(m, idx)
+      end
+
+      return if result[:aggregates].empty?
+
+      assign_first_aggregate(result)
+    end
+
+    def parse_aggregate_column(match, idx)
+      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+    end
+
+    def assign_first_aggregate(result)
+      first = result[:aggregates].first
+      result[:aggregate] = first[:type]
+      result[:aggregate_column] = first[:column]
+      result[:aggregate_index] = first[:index]
+    end
   end
 
   # WHERE句のパースを支援するモジュール
   module SqlParserWhereUtils
-  end
-
-  # ユーティリティメソッドをまとめたモジュール
-  module SqlParserUtils
-    def split_columns(definition)
-      cols = []
-      buf = +''
-      depth = 0
-      definition.each_char { |char| depth, buf = SqlParser.process_char(char, depth, buf, cols) }
-      cols << buf.strip unless buf.strip.empty?
-      cols
-    end
-
-    def split_insert_values(values_str)
-      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
-    end
-
-    def convert_value(val)
-      if (m = val.match(/\A(['"])(.*?)\1\z/))
-        m[2]
-      elsif val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
-      end
-    end
-
     def parse_where_clause(clause, allow_aggregates: false)
       parts = split_where_clause(clause)
       results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
@@ -258,60 +282,35 @@ module RubyPureMysql
 
       { column: column, operator: operator, value: value }
     end
+  end
 
-    def build_select_result(match)
-      {
-        type: :select_from,
-        distinct: !match[:distinct].nil?,
-        table_name: match[:table1],
-        table_alias: match[:alias1],
-        columns: match[:columns].split(',').map { |c| parse_column_alias(c.strip) }
-      }
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
+    def split_columns(definition)
+      cols = []
+      buf = +''
+      depth = 0
+      definition.each_char { |char| depth, buf = SqlParser.process_char(char, depth, buf, cols) }
+      cols << buf.strip unless buf.strip.empty?
+      cols
     end
 
-    def apply_join_to_result(result, match)
-      return unless match[:table2]
-
-      result[:join] = {
-        table2: match[:table2],
-        alias2: match[:alias2],
-        on: match[:on_condition]
-      }
+    def split_insert_values(values_str)
+      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
     end
 
-    def parse_column_alias(col)
-      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
-        { original: m[1].strip, alias: m[2] }
+    def convert_value(val)
+      if (m = val.match(/\A(['"])(.*?)\1\z/))
+        m[2]
+      elsif val.casecmp?('NULL')
+        nil
+      elsif val.match?(/\A-?\d+\z/)
+        val.to_i
       else
-        { original: col, alias: nil }
+        { error: "Invalid INSERT value: #{val}" }
       end
     end
 
-    def detect_aggregates(result)
-      # 緩和: カラム数が1つでなくても、集計関数が含まれていればマークする
-      result[:aggregates] = result[:columns].each_with_index.filter_map do |col_info, idx|
-        col = col_info[:original]
-        m = col.match(AggregateUtils::AGGREGATE_REGEX)
-        next unless m
-
-        parse_aggregate_column(m, idx)
-      end
-
-      return if result[:aggregates].empty?
-
-      assign_first_aggregate(result)
-    end
-
-    def parse_aggregate_column(match, idx)
-      { type: match[1].downcase.to_sym, column: match[2], index: idx }
-    end
-
-    def assign_first_aggregate(result)
-      first = result[:aggregates].first
-      result[:aggregate] = first[:type]
-      result[:aggregate_column] = first[:column]
-      result[:aggregate_index] = first[:index]
-    end
   end
 
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
