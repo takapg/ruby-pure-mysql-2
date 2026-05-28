@@ -48,7 +48,6 @@ module RubyPureMysql
       send_err_packet(client, 1, 'Error executing GROUP BY query', 1105)
     end
 
-
     def handle_aggregate(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
       return if rows.nil?

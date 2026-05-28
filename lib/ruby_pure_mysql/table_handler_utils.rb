@@ -123,6 +123,5 @@ module RubyPureMysql
       group_idx = group_indices.index(col_idx)
       group_idx ? group_val[group_idx] : nil
     end
-
   end
 end
