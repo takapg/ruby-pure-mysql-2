@@ -393,7 +393,7 @@ module RubyPureMysql
       return { error: 'Invalid SQL' } unless match
 
       col_strs = match[1].split(',').map(&:strip)
-      columns = col_strs.map { |col| { original: col, alias: nil } }
+      columns = col_strs.map { |col| parse_column_alias(col) }
       values = col_strs.map { |col| evaluator.evaluate_expression(col) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 

@@ -9,15 +9,15 @@ module RubyPureMysql
       end
     end
 
-    def filter_grouped_by_having(columns, grouped, having_clauses, group_indices)
+    def filter_grouped_by_having(columns, grouped, having_clauses, group_indices, table_map = {})
       grouped.select do |group_val, group_rows|
-        evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
+        evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses, table_map)
       end.to_a
     end
 
-    def evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
+    def evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses, table_map = {})
       having_clauses.all? do |clause|
-        evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+        evaluate_having_condition(columns, group_val, group_rows, group_indices, clause, table_map)
       end
     end
 

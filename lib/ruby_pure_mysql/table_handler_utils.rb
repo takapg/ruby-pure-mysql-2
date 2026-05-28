@@ -87,30 +87,30 @@ module RubyPureMysql
       selected_columns.map { |c| c[:alias] || c[:original].split('.').last }
     end
 
-    def get_group_column_indices(client, columns, group_by_str)
+    def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
         name = col_name.strip
-        idx = get_column_index(client, columns, name)
+        idx = get_column_index(client, columns, name, table_map)
         return nil unless idx
 
         idx
       end
     end
 
-    def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
-      val = resolve_having_value(columns, group_val, group_rows, group_indices, clause[:column])
+    def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause, table_map = {})
+      val = resolve_having_value(columns, group_val, group_rows, group_indices, clause[:column], table_map)
       raise HavingError, 'Unknown column' if val == :no_column
 
       apply_filter(val, clause[:operator], clause[:value])
     end
 
-    def resolve_having_value(columns, group_val, group_rows, group_indices, col_expr)
+    def resolve_having_value(columns, group_val, group_rows, group_indices, col_expr, table_map = {})
       if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
         agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
         return compute_single_aggregate_value(group_rows, columns, agg)
       end
 
-      col_idx = get_column_index(nil, columns, col_expr)
+      col_idx = get_column_index(nil, columns, col_expr, table_map)
       return :no_column unless col_idx
 
       group_idx = group_indices.index(col_idx)
