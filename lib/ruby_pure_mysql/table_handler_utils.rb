@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
 require_relative 'aggregate_utils'
+require_relative 'filter_utils'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
   module TableHandlerUtils
+    class HavingError < StandardError; end
+
     include AggregateUtils
+    include FilterUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -49,12 +53,6 @@ module RubyPureMysql
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
-    end
-
-    def build_like_regex(target_value)
-      escaped = Regexp.escape(target_value.to_s)
-      pattern = escaped.gsub('%', '.*').tr('_', '.')
-      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
@@ -108,18 +106,27 @@ module RubyPureMysql
       end
     end
 
-    private
+    def evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
+      val = resolve_having_value(columns, group_val, group_rows, group_indices, clause[:column])
+      raise HavingError, 'Unknown column' if val == :no_column
 
-    def compile_where_clauses(client, table_columns, where_clauses)
-      where_clauses.map do |clause|
-        col_idx = table_columns.index(clause[:column])
-        unless col_idx
-          send_err_packet(client, 1, "Unknown column '#{clause[:column]}'", 1054)
-          return nil
-        end
-        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
-        { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
+      apply_filter(val, clause[:operator], clause[:value])
+    end
+
+    def resolve_having_value(columns, group_val, group_rows, group_indices, col_expr)
+      if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
+        agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
+        return compute_single_aggregate_value(group_rows, columns, agg)
       end
+
+      col_idx = columns.index(col_expr)
+      return :no_column unless col_idx
+
+      group_idx = group_indices.index(col_idx)
+      msg = "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function"
+      raise HavingError, msg if group_idx.nil?
+
+      group_val[group_idx]
     end
   end
 end

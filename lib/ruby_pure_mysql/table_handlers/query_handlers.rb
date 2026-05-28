@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
+require_relative 'group_by_handlers'
+
 module RubyPureMysql
   # クエリ操作に関連するハンドラメソッド
   module QueryHandlers
+    include GroupByHandlers
+
     def handle_select(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if result[:group_by]
+      if result[:group_by] || result[:having]
         handle_group_by_select(client, columns, result)
       elsif result[:aggregates] && !result[:aggregates].empty?
         handle_aggregate(client, columns, result)
@@ -17,44 +21,50 @@ module RubyPureMysql
     end
 
     def handle_group_by_select(client, columns, result)
-      rows = fetch_and_filter_rows(client, columns, result)
-      return if rows.nil?
+      rows, indices = prepare_group_by_data(client, columns, result)
+      return if rows.nil? || indices.nil?
 
-      group_indices = get_group_column_indices(client, columns, result[:group_by])
-      return if group_indices.nil?
+      grouped = group_rows_by_indices(rows, indices)
+      grouped = apply_having_filter(client, columns, grouped, result, indices) || return
 
-      res_rows = compute_grouped_results(columns, result, rows, group_indices)
-      return send_err_packet(client, 1, 'Error executing GROUP BY query', 1105) if res_rows.nil?
+      res_rows = compute_grouped_rows(columns, result, grouped, indices)
+      return handle_group_by_error(client) if group_computation_failed?(res_rows)
 
       finalize_and_send_group_results(client, result, res_rows)
     end
 
-    def compute_grouped_results(columns, result, rows, group_indices)
-      grouped = rows.group_by { |row| group_indices.map { |idx| row[idx] } }
-      res_rows = grouped.map do |group_val, group_rows|
-        compute_group_row(columns, result, group_val, group_rows, group_indices)
+    def prepare_group_by_data(client, columns, result)
+      rows = fetch_and_filter_rows(client, columns, result)
+      indices = nil
+      if rows
+        indices = result[:group_by] ? get_group_column_indices(client, columns, result[:group_by]) : []
       end
-
-      res_rows.any? { |row| row.include?(:error) } ? nil : res_rows
+      [rows, indices]
     end
 
-    def finalize_and_send_group_results(client, result, res_rows)
-      res_rows = apply_order_by(client, result[:order], result[:columns], res_rows) if result[:order]
-      return if res_rows.nil?
+    def apply_having_filter(client, columns, grouped, result, indices)
+      return grouped unless result[:having]
 
-      res_rows = apply_offset_and_limit(res_rows, result)
-      send_result_set(client, res_rows, result[:columns])
+      begin
+        filter_grouped_by_having(columns, grouped, result[:having], indices)
+      rescue TableHandlerUtils::HavingError
+        send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
+        nil
+      end
     end
 
-    def compute_group_row(columns, result, group_val, group_rows, group_indices)
-      result[:columns].each_with_index.map do |col, idx|
-        agg = result[:aggregates]&.find { |a| a[:index] == idx }
-        if agg
-          compute_aggregate_for_group(columns, agg, group_rows)
-        else
-          resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
-        end
-      end
+    def group_rows_by_indices(rows, indices)
+      return { [] => rows } if indices.empty?
+
+      rows.group_by { |row| indices.map { |idx| row[idx] } }
+    end
+
+    def group_computation_failed?(res_rows)
+      res_rows.nil? || res_rows.any? { |row| row.include?(:error) }
+    end
+
+    def handle_group_by_error(client)
+      send_err_packet(client, 1, 'Error executing GROUP BY query', 1105)
     end
 
     def handle_aggregate(client, columns, result)

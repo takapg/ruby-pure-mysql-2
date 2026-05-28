@@ -80,10 +80,15 @@ module RubyPureMysql
   # クエリパースロジック
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
-      '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
-      '(?:\s+GROUP\s+BY\s+(.+?))?' \
-      '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?' \
-      '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
+      [
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table_name>\w+)',
+        '(?:\s+WHERE\s+(?<where>.+?))?',
+        '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
+        '(?:\s+HAVING\s+(?<having>.+?))?',
+        '(?:\s+ORDER\s+BY\s+(?<order_col>.+?)(?:\s+(?<order_dir>ASC|DESC))?)?',
+        '(?:\s+LIMIT\s+(?<limit>\d+)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
+        '\s*;?\s*\z'
+      ].join,
       Regexp::IGNORECASE
     )
 
@@ -93,9 +98,9 @@ module RubyPureMysql
 
       result = {
         type: :select_from,
-        distinct: !match[1].nil?,
-        table_name: match[3],
-        columns: match[2].split(',').map(&:strip)
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table_name],
+        columns: match[:columns].split(',').map(&:strip)
       }
       detect_aggregates(result)
       parse_select_clauses(result, match)
@@ -127,14 +132,32 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      if match[4]
-        where_res = parse_where_clause_into(result, match[4])
-        return where_res if where_res.is_a?(Hash) && where_res[:error]
+      if match[:where]
+        res = parse_where_clause_into(result, match[:where])
+        return res if res.is_a?(Hash) && res[:error]
       end
-      result[:group_by] = match[5] if match[5]
-      parse_order_by_clause(result, match[6], match[7]) if match[6]
-      parse_limit_offset_clause(result, match[8], match[9])
-      result
+
+      res = apply_optional_clauses(result, match)
+      res || result
+    end
+
+    def apply_optional_clauses(result, match)
+      result[:group_by] = match[:group_by] if match[:group_by]
+      if match[:having]
+        res = parse_having_clause(result, match[:having])
+        return res if res.is_a?(Hash) && res[:error]
+      end
+
+      parse_order_by_clause(result, match[:order_col], match[:order_dir]) if match[:order_col]
+      parse_limit_offset_clause(result, match[:limit], match[:offset])
+      nil
+    end
+
+    def parse_having_clause(result, clause)
+      having = parse_where_clause(clause, allow_aggregates: true)
+      return having if having.is_a?(Hash) && having[:error]
+
+      result[:having] = having
     end
 
     def parse_order_by_clause(result, column, direction)
@@ -193,9 +216,9 @@ module RubyPureMysql
       end
     end
 
-    def parse_where_clause(clause)
+    def parse_where_clause(clause, allow_aggregates: false)
       parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p) }
+      results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
       error = results.find { |r| r.is_a?(Hash) && r[:error] }
       error || results
     end
@@ -237,8 +260,9 @@ module RubyPureMysql
       in_quote
     end
 
-    def parse_single_where_condition(condition)
-      where_match = condition.match(/\A(\w+)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+    def parse_single_where_condition(condition, allow_aggregates: false)
+      column_pattern = allow_aggregates ? '.+?' : '\w+'
+      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
