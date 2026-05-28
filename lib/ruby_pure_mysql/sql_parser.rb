@@ -244,7 +244,7 @@ module RubyPureMysql
     end
 
     def tokenize(clause)
-      clause.scan(/\s*(\(|\)|AND|OR|'[^']*'|"[^"]*"|[^\s()]+)\s*/i).flatten
+      clause.scan(/\s*(\(|\)|\bAND\b|\bOR\b|'[^']*'|"[^"]*"|[^\s()]+)\s*/i).flatten
     end
 
     def parse_or(state, allow_aggregates)
