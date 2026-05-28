@@ -13,7 +13,7 @@ module RubyPureMysql
 
     def resolve_qualified_column(client, column_name, table_map)
       table, col = column_name.split('.')
-      return nil unless validate_table_exists(client, table, table_map)
+      return nil unless validate_table_exists?(client, table, table_map)
 
       offset = calculate_table_offset(table, table_map)
       col_idx = find_column_index(client, table, col, table_map)
@@ -22,7 +22,7 @@ module RubyPureMysql
       offset + col_idx
     end
 
-    def validate_table_exists(client, table, table_map)
+    def validate_table_exists?(client, table, table_map)
       return true if table_map&.key?(table)
 
       send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
