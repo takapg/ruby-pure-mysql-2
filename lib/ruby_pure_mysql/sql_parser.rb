@@ -184,7 +184,8 @@ module RubyPureMysql
     end
 
     def parse_column_alias(col)
-      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?(\w+))?\z/i))
+      # エイリアスは英字またはアンダースコアで始まる必要がある（数値のみのエイリアスを避けて数式を正しくパースするため）
+      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?\z/i))
         { original: m[1].strip, alias: m[2] }
       else
         { original: col, alias: nil }
