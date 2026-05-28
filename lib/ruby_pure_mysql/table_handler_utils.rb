@@ -31,10 +31,7 @@ module RubyPureMysql
       return nil unless compiled_clauses
 
       rows.each_with_index.select do |row, _idx|
-        compiled_clauses.all? do |c|
-          target = c[:regex] || c[:value]
-          apply_filter(row[c[:col_idx]], c[:operator], target)
-        end
+        @storage_engine.match_row?(row, table_columns, compiled_clauses)
       end.map(&:last)
     end
 
