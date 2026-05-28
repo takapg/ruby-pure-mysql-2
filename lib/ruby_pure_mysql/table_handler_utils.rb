@@ -30,12 +30,26 @@ module RubyPureMysql
       compiled_clauses = compile_where_clauses(client, table_columns, where_clauses, table_map)
       return nil unless compiled_clauses
 
-      rows.each_with_index.select do |row, _idx|
-        compiled_clauses.all? do |c|
-          target = c[:regex] || c[:value]
-          apply_filter(row[c[:col_idx]], c[:operator], target)
-        end
+      rows.each_with_index.select do |row, idx|
+        evaluate_ast_filter(row, table_columns, compiled_clauses)
       end.map(&:last)
+    end
+
+    def evaluate_ast_filter(row, columns, node)
+      if node.is_a?(Hash) && node[:op] == :and
+        evaluate_ast_filter(row, columns, node[:left]) && evaluate_ast_filter(row, columns, node[:right])
+      elsif node.is_a?(Hash) && node[:op] == :or
+        evaluate_ast_filter(row, columns, node[:left]) || evaluate_ast_filter(row, columns, node[:right])
+      else
+        c_idx = node[:col_idx] || columns.index(node[:column])
+        return false unless c_idx
+
+        val = row[c_idx]
+        return false if val.nil?
+
+        target = node[:regex] || node[:value]
+        apply_filter(val, node[:operator], target)
+      end
     end
 
     def apply_filter(val, operator, target_value)

@@ -16,8 +16,20 @@ module RubyPureMysql
     end
 
     def evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
-      having_clauses.all? do |clause|
-        evaluate_having_condition(group_val, group_rows, clause, group_ctx)
+      return true if having_clauses.nil? || having_clauses.empty?
+
+      evaluate_having_ast(group_val, group_rows, having_clauses, group_ctx)
+    end
+
+    def evaluate_having_ast(group_val, group_rows, node, group_ctx)
+      if node.is_a?(Hash) && node[:op] == :and
+        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) &&
+          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
+      elsif node.is_a?(Hash) && node[:op] == :or
+        evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) ||
+          evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
+      else
+        evaluate_having_condition(group_val, group_rows, node, group_ctx)
       end
     end
 

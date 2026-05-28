@@ -126,12 +126,7 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, where, table_map)
       return nil if where_clauses.nil?
 
-      rows.select do |row|
-        where_clauses.all? do |c|
-          target = c[:regex] || c[:value]
-          apply_filter(row[c[:col_idx]], c[:operator], target)
-        end
-      end
+      rows.select { |row| @storage_engine.match_row?(row, columns, where_clauses) }
     end
   end
 end
