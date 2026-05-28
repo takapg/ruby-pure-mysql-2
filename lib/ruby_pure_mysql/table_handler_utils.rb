@@ -123,7 +123,9 @@ module RubyPureMysql
       return :no_column unless col_idx
 
       group_idx = group_indices.index(col_idx)
-      raise HavingError, "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function" unless group_idx
+      unless group_idx
+        raise HavingError, "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function"
+      end
 
       group_val[group_idx]
     end
