@@ -277,7 +277,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id;')
       expect(results.count).to eq(3)
       
-      data = results.to_a.map { |r| [r['users.name'], r['orders.amount']] }
+      data = results.to_a.map { |r| [r['name'], r['amount']] }
       expect(data).to include(['alice', 1000], ['alice', 2000], ['bob', 3000])
     end
 

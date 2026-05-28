@@ -21,6 +21,7 @@ module RubyPureMysql
     end
 
     def get_column_index(client, columns, column_name, table_map = {})
+      column_name = column_name.to_s.strip
       if column_name.include?('.')
         table, col = column_name.split('.')
         unless table_map && table_map.key?(table)
@@ -141,7 +142,7 @@ module RubyPureMysql
         return nil if selected_indices.any?(&:nil?)
 
         projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        [projected_rows, selected_columns]
+        [projected_rows, selected_columns.map { |col| col.split('.').last }]
       else
         [rows, columns]
       end
