@@ -81,12 +81,12 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)',
-        '(?:\s+WHERE\s+(.+?))?',
-        '(?:\s+GROUP\s+BY\s+(.+?))?',
-        '(?:\s+HAVING\s+(.+?))?',
-        '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?',
-        '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table_name>\w+)',
+        '(?:\s+WHERE\s+(?<where>.+?))?',
+        '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
+        '(?:\s+HAVING\s+(?<having>.+?))?',
+        '(?:\s+ORDER\s+BY\s+(?<order_col>.+?)(?:\s+(?<order_dir>ASC|DESC))?)?',
+        '(?:\s+LIMIT\s+(?<limit>\d+)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
         '\s*;?\s*\z'
       ].join,
       Regexp::IGNORECASE
@@ -98,9 +98,9 @@ module RubyPureMysql
 
       result = {
         type: :select_from,
-        distinct: !match[1].nil?,
-        table_name: match[3],
-        columns: match[2].split(',').map(&:strip)
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table_name],
+        columns: match[:columns].split(',').map(&:strip)
       }
       detect_aggregates(result)
       parse_select_clauses(result, match)
@@ -132,8 +132,8 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      if match[4]
-        res = parse_where_clause_into(result, match[4])
+      if match[:where]
+        res = parse_where_clause_into(result, match[:where])
         return res if res.is_a?(Hash) && res[:error]
       end
 
@@ -142,14 +142,14 @@ module RubyPureMysql
     end
 
     def apply_optional_clauses(result, match)
-      result[:group_by] = match[5] if match[5]
-      if match[6]
-        res = parse_having_clause(result, match[6])
+      result[:group_by] = match[:group_by] if match[:group_by]
+      if match[:having]
+        res = parse_having_clause(result, match[:having])
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      parse_order_by_clause(result, match[7], match[8]) if match[7]
-      parse_limit_offset_clause(result, match[9], match[10])
+      parse_order_by_clause(result, match[:order_col], match[:order_dir]) if match[:order_col]
+      parse_limit_offset_clause(result, match[:limit], match[:offset])
       nil
     end
 
