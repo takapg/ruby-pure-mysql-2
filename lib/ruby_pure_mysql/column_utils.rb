@@ -13,18 +13,28 @@ module RubyPureMysql
 
     def resolve_qualified_column(client, column_name, table_map)
       table, col = column_name.split('.')
-      unless table_map&.key?(table)
-        send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
-        return nil
-      end
+      return nil unless validate_table_exists(client, table, table_map)
 
       offset = calculate_table_offset(table, table_map)
-      col_idx = table_map[table].find_index { |c| c.casecmp?(col) }
-      unless col_idx
-        send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
-        return nil
-      end
+      col_idx = find_column_index(client, table, col, table_map)
+      return nil unless col_idx
+
       offset + col_idx
+    end
+
+    def validate_table_exists(client, table, table_map)
+      return true if table_map&.key?(table)
+
+      send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
+      false
+    end
+
+    def find_column_index(client, table, col, table_map)
+      idx = table_map[table].find_index { |c| c.casecmp?(col) }
+      return idx if idx
+
+      send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
+      nil
     end
 
     def resolve_unqualified_column(client, columns, column_name, table_map)

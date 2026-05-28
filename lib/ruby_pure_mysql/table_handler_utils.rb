@@ -24,7 +24,6 @@ module RubyPureMysql
       columns
     end
 
-
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
@@ -65,7 +64,6 @@ module RubyPureMysql
       end
       direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
     end
-
 
     def apply_offset_and_limit(rows, result)
       rows = rows.drop(result[:offset] || 0)

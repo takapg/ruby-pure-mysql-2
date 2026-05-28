@@ -3,11 +3,13 @@
 module RubyPureMysql
   # JOIN操作の実行を支援するモジュール
   module JoinUtils
-    def perform_inner_join(client, rows1, cols1, rows2, cols2, on_condition, table_map)
-      left_idx, right_idx, all_cols = resolve_join_indices(client, cols1, cols2, on_condition, table_map)
+    def perform_inner_join(client, params)
+      left_idx, right_idx, all_cols = resolve_join_indices(
+        client, params[:cols1], params[:cols2], params[:on], params[:table_map]
+      )
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
-      [execute_join_loop(rows1, rows2, left_idx, right_idx), all_cols]
+      [execute_join_loop(params[:rows1], params[:rows2], left_idx, right_idx), all_cols]
     end
 
     def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
