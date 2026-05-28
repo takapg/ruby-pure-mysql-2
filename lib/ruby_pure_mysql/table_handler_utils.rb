@@ -23,11 +23,12 @@ module RubyPureMysql
     def get_column_index(client, columns, column_name, table_map = {})
       if column_name.include?('.')
         table, col = column_name.split('.')
-        unless table_map.key?(table)
+        unless table_map && table_map.key?(table)
           send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
           return nil
         end
 
+        # table_map の登録順（table1, table2...）に基づいてオフセットを計算
         offset = 0
         table_map.each do |t, cols|
           break if t == table
@@ -42,6 +43,7 @@ module RubyPureMysql
         return offset + idx
       end
 
+      # テーブル指定がない場合は、全カラムリストから最初に見つかったものを返す
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
