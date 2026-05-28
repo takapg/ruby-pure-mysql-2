@@ -17,25 +17,24 @@ module RubyPureMysql
 
     def evaluate_group_having(group_val, group_rows, node, group_ctx)
       return true if node.nil?
+      return false unless node.is_a?(Hash)
 
-      if node.is_a?(Hash)
-        if node[:op]
-          if node[:op] == :and
-            evaluate_group_having(group_val, group_rows, node[:left], group_ctx) &&
-              evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
-          elsif node[:op] == :or
-            evaluate_group_having(group_val, group_rows, node[:left], group_ctx) ||
-              evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
-          else
-            false
-          end
-        else
-          # 演算子がない場合は単一の条件式として評価
-          evaluate_having_condition(group_val, group_rows, node, group_ctx)
-        end
+      if node[:op]
+        evaluate_logical_node(group_val, group_rows, node, group_ctx)
       else
-        # ASTが不正な場合はフィルタリング対象外とする
-        false
+        # 演算子がない場合は単一の条件式として評価
+        evaluate_having_condition(group_val, group_rows, node, group_ctx)
+      end
+    end
+
+    def evaluate_logical_node(group_val, group_rows, node, group_ctx)
+      left = evaluate_group_having(group_val, group_rows, node[:left], group_ctx)
+      right = evaluate_group_having(group_val, group_rows, node[:right], group_ctx)
+
+      case node[:op]
+      when :and then left && right
+      when :or  then left || right
+      else false
       end
     end
 

@@ -266,7 +266,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'filters rows using OR operator' do
-      results = client.query("SELECT * FROM users WHERE id = 1 OR id = 3;")
+      results = client.query('SELECT * FROM users WHERE id = 1 OR id = 3;')
       expect(results.count).to eq(2)
       ids = results.map { |r| r['id'] }
       expect(ids).to contain_exactly(1, 3)
