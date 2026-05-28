@@ -33,6 +33,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate basic arithmetic with an alias (SELECT 1 + 1 AS total;)' do
+      results = client.query('SELECT 1 + 1 AS total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
     it 'handles queries with extra spaces and semicolons' do
       results = client.query('  SELECT   42  ;  ')
       expect(results.first.values.first).to eq(42)

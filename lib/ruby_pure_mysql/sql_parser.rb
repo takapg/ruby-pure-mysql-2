@@ -184,12 +184,21 @@ module RubyPureMysql
     end
 
     def parse_column_alias(col)
-      # エイリアスは英字またはアンダースコアで始まる必要がある（数値のみのエイリアスを避けて数式を正しくパースするため）
-      if (m = col.match(/(.+?)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?\z/i))
-        { original: m[1].strip, alias: m[2] }
-      else
-        { original: col, alias: nil }
+      # 1. 明示的な AS: "expr AS alias"
+      if (m = col.match(/(.+)\s+AS\s+([a-zA-Z_]\w*)\z/i))
+        return { original: m[1].strip, alias: m[2] }
       end
+
+      # 2. 暗黙的な AS: "expr alias"
+      # "a + b" のような式を誤って分割しないよう、直前が演算子で終わっていないことを確認する
+      if (m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/))
+        original = m[1].strip
+        return { original: col, alias: nil } if original.match?(/[\+\-\*\/%]\z/)
+
+        return { original: original, alias: m[2] }
+      end
+
+      { original: col, alias: nil }
     end
 
     def detect_aggregates(result)
