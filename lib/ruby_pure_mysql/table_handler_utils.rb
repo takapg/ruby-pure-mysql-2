@@ -73,8 +73,6 @@ module RubyPureMysql
     def project_rows(client, rows, columns, selected_columns, table_map = {})
       return [rows, columns] if selected_columns.nil? || selected_columns.include?('*')
 
-      return nil unless validate_selected_columns?(client, columns, selected_columns, table_map)
-
       indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
       return nil if indices.any?(&:nil?)
 
@@ -87,10 +85,6 @@ module RubyPureMysql
 
     def project_column_names(selected_columns)
       selected_columns.map { |col| col.split('.').last }
-    end
-
-    def validate_selected_columns?(client, columns, selected_columns, table_map = {})
-      selected_columns.all? { |col| !get_column_index(client, columns, col, table_map).nil? }
     end
 
     def get_group_column_indices(client, columns, group_by_str)
