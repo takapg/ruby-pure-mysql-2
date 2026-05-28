@@ -28,14 +28,12 @@ module RubyPureMysql
           return nil
         end
 
-        # table_map の登録順に基づいてオフセットを計算
         offset = 0
         table_map.each do |t, cols|
           break if t == table
           offset += cols.size
         end
 
-        # 指定されたテーブル内でのカラムインデックスを取得
         col_idx = table_map[table].index(col)
         unless col_idx
           send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
@@ -44,7 +42,21 @@ module RubyPureMysql
         return offset + col_idx
       end
 
-      # テーブル指定がない場合は、全カラムリストから最初に見つかったものを返す
+      # テーブル指定がない場合、table_map があればそこから解決を試みる（結合クエリでの曖昧さ回避）
+      if table_map && !table_map.empty?
+        table_map.each do |t, cols|
+          if (idx = cols.index(column_name))
+            offset = 0
+            table_map.each do |t2, cols2|
+              break if t2 == t
+              offset += cols2.size
+            end
+            return offset + idx
+          end
+        end
+      end
+
+      # 最終手段として全カラムリストから検索
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
@@ -122,8 +134,8 @@ module RubyPureMysql
       if selected_columns && !selected_columns.include?('*')
         return nil unless validate_selected_columns?(client, columns, selected_columns, table_map)
 
-        selected_indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }.compact
-        return nil if selected_indices.size != selected_columns.size
+        selected_indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
+        return nil if selected_indices.any?(&:nil?)
 
         projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
         [projected_rows, selected_columns]
