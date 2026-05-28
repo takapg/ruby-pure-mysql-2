@@ -304,7 +304,8 @@ module RubyPureMysql
         token = state[:tokens][state[:pos]]
         break if depth.zero? && (token == ')' || %w[AND OR].include?(token.upcase))
 
-        depth += (token == '(' ? 1 : (token == ')' ? -1 : 0))
+        depth += 1 if token == '('
+        depth -= 1 if token == ')'
         tokens << token
         state[:pos] += 1
       end
