@@ -19,13 +19,5 @@ module RubyPureMysql
       compile_where_clauses(client, columns, where, table_map)
     end
 
-    def get_column_index(client, columns, column_name)
-      col_idx = columns.index(column_name)
-      if col_idx.nil?
-        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
-        return nil
-      end
-      col_idx
-    end
   end
 end
