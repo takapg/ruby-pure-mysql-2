@@ -110,7 +110,9 @@ module RubyPureMysql
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      apply_optional_clauses(result, match)
+      res = apply_optional_clauses(result, match)
+      return res if res.is_a?(Hash) && res[:error]
+
       result
     end
 
@@ -277,6 +279,7 @@ module RubyPureMysql
       end
 
       if state[:tokens][state[:pos]] == '('
+        # グループ化の括弧
         state[:pos] += 1
         node = parse_or(state, allow_aggregates)
         if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
@@ -284,20 +287,29 @@ module RubyPureMysql
         end
         node
       else
+        # 条件式 (COUNT(*) などの関数呼び出しを含む可能性がある)
         condition_tokens = []
-        while state[:pos] < state[:tokens].size &&
-              !['AND', 'OR', ')'].include?(state[:tokens][state[:pos]].upcase)
-          condition_tokens << state[:tokens][state[:pos]]
+        depth = 0
+        while state[:pos] < state[:tokens].size
+          token = state[:tokens][state[:pos]]
+          if token == '('
+            depth += 1
+          elsif token == ')'
+            break if depth == 0
+            depth -= 1
+          elsif depth == 0 && ['AND', 'OR'].include?(token.upcase)
+            break
+          end
+          condition_tokens << token
           state[:pos] += 1
         end
-        parse_single_where_condition(condition_tokens.join(' '), allow_aggregates: allow_aggregates)
+        parse_single_where_condition(condition_tokens.join(' ').strip, allow_aggregates: allow_aggregates)
       end
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
-      # カラム名にドットが含まれる場合や、集計関数が含まれる場合に対応するため、
-      # 演算子の直前までを非強欲にマッチさせる
-      column_pattern = '.+?'
+      # 集計関数が含まれる場合は非強欲マッチ、それ以外は演算子以外の文字にマッチさせる
+      column_pattern = allow_aggregates ? '.+?' : '[^=\s<>!]+'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
