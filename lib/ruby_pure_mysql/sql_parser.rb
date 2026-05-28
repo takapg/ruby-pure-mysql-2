@@ -107,7 +107,6 @@ module RubyPureMysql
       parse_select_clauses(result, match)
     end
 
-
     def parse_select_clauses(result, match)
       if match[:where]
         res = parse_where_clause_into(result, match[:where])
@@ -164,6 +163,10 @@ module RubyPureMysql
 
       { type: :describe, table_name: match[2] }
     end
+  end
+
+  # 結果セットの構築を支援するモジュール
+  module SqlParserResultBuilder
   end
 
   # ユーティリティメソッドをまとめたモジュール
@@ -314,6 +317,7 @@ module RubyPureMysql
     extend SqlParserDmlParsers
     extend SqlParserQueryParsers
     extend SqlParserOptionalClauseParsers
+    extend SqlParserResultBuilder
     extend SqlParserUtils
 
     PARSERS = {

@@ -134,7 +134,6 @@ module RubyPureMysql
       seq
     end
 
-
     def send_row_data(client, seq, values)
       row_payload = values.map do |v|
         if v.nil?
