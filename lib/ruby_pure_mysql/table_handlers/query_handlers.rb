@@ -42,12 +42,12 @@ module RubyPureMysql
     def apply_having_filter(client, columns, grouped, result, indices)
       return grouped unless result[:having]
 
-      filtered = filter_grouped_by_having(columns, grouped, result[:having], indices)
-      if filtered == :error
+      begin
+        filter_grouped_by_having(columns, grouped, result[:having], indices)
+      rescue TableHandlerUtils::HavingError
         send_err_packet(client, 1, "Unknown column in 'having clause'", 1054)
-        return nil
+        nil
       end
-      filtered
     end
 
     def group_rows_by_indices(rows, indices)

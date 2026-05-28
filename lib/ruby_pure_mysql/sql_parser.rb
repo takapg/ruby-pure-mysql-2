@@ -80,11 +80,15 @@ module RubyPureMysql
   # クエリパースロジック
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
-      '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?' \
-      '(?:\s+GROUP\s+BY\s+(.+?))?' \
-      '(?:\s+HAVING\s+(.+?))?' \
-      '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?' \
-      '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?\s*;?\s*\z',
+      [
+        '\ASELECT\s+(DISTINCT\s+)?(.+?)\s+FROM\s+(\w+)',
+        '(?:\s+WHERE\s+(.+?))?',
+        '(?:\s+GROUP\s+BY\s+(.+?))?',
+        '(?:\s+HAVING\s+(.+?))?',
+        '(?:\s+ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?)?',
+        '(?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?',
+        '\s*;?\s*\z'
+      ].join,
       Regexp::IGNORECASE
     )
 

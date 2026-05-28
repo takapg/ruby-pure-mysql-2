@@ -13,8 +13,6 @@ module RubyPureMysql
       filtered = []
       grouped.each do |group_val, group_rows|
         res = evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
-        return :error if res == :error
-
         filtered << [group_val, group_rows] if res
       end
       filtered
@@ -22,10 +20,7 @@ module RubyPureMysql
 
     def evaluate_group_having(columns, group_val, group_rows, group_indices, having_clauses)
       having_clauses.all? do |clause|
-        res = evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
-        return :error if res == :error
-
-        res
+        evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
       end
     end
 
