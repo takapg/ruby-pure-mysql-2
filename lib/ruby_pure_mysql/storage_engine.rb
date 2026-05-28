@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # ストレージエンジンの評価ロジックを分離したモジュール
+  module StorageEngineEvaluator
+  end
+
   # インメモリでテーブル定義を管理するストレージエンジン
   class StorageEngine
+    include StorageEngineEvaluator
+
     def initialize
       @tables = {}
       @data = {}
@@ -12,6 +18,7 @@ module RubyPureMysql
     def create_table(name, columns)
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
+
         @tables[name] = columns
         @data[name] = []
         true
@@ -21,6 +28,7 @@ module RubyPureMysql
     def drop_table(name)
       @tables_mutex.synchronize do
         return false unless @tables.key?(name)
+
         @tables.delete(name)
         @data.delete(name)
         true
@@ -31,6 +39,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         columns = @tables[table_name]
         return false unless columns && values.size == columns.size
+
         @data[table_name] << values.dup
         true
       end

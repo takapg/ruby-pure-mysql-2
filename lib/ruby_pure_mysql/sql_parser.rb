@@ -277,37 +277,38 @@ module RubyPureMysql
       return { error: 'Unexpected end of clause' } if state[:pos] >= state[:tokens].size
 
       if state[:tokens][state[:pos]] == '('
-        # グループ化の括弧
-        state[:pos] += 1
-        node = parse_or(state, allow_aggregates)
-        state[:pos] += 1 if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
-        node
+        parse_grouped_expression(state, allow_aggregates)
       else
-        # 条件式 (COUNT(*) などの関数呼び出しを含む可能性がある)
-        condition = collect_condition_tokens(state)
-        return { error: 'Invalid WHERE clause' } if condition.empty?
-
-        parse_single_where_condition(condition)
+        parse_condition_expression(state)
       end
     end
 
+    def parse_grouped_expression(state, allow_aggregates)
+      state[:pos] += 1
+      node = parse_or(state, allow_aggregates)
+      state[:pos] += 1 if state[:pos] < state[:tokens].size && state[:tokens][state[:pos]] == ')'
+      node
+    end
+
+    def parse_condition_expression(state)
+      condition = collect_condition_tokens(state)
+      return { error: 'Invalid WHERE clause' } if condition.empty?
+
+      parse_single_where_condition(condition)
+    end
+
     def collect_condition_tokens(state)
-      condition_tokens = []
+      tokens = []
       depth = 0
       while state[:pos] < state[:tokens].size
         token = state[:tokens][state[:pos]]
-        if token == '('
-          depth += 1
-        elsif token == ')'
-          break if depth.zero?
-          depth -= 1
-        elsif depth.zero? && %w[AND OR].include?(token.upcase)
-          break
-        end
-        condition_tokens << token
+        break if depth.zero? && (token == ')' || %w[AND OR].include?(token.upcase))
+
+        depth += (token == '(' ? 1 : (token == ')' ? -1 : 0))
+        tokens << token
         state[:pos] += 1
       end
-      condition_tokens.join(' ').strip
+      tokens.join(' ').strip
     end
 
     def parse_single_where_condition(condition)
