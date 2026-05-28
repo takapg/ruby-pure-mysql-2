@@ -70,7 +70,7 @@ jobs:
           done
           echo "MySQL is up and running!"
 
-      - name: Run AI Agent CLI
+      - name: Run AI Agent CLI (With Self-Retry)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -78,20 +78,57 @@ jobs:
           INSTRUCTION: ${{ github.event.inputs.instruction }}
         run: |
           echo "Executing: $INSTRUCTION"
+          
+          MAX_RETRIES=5
+          RETRY_COUNT=1
+          SUCCESS=false
 
-          aider --model gemini/gemma-4-31b-it \
-                --edit-format diff-fenced \
-                --thinking-tokens 1024 \
-                --yes-always \
-                --chat-language japanese \
-                --test-cmd "bundle exec rspec && bundle exec rubocop" \
-                --auto-test \
-                --no-attribute-author \
-                --no-attribute-committer \
-                --no-attribute-co-authored-by \
-                --disable-playwright \
-                --no-detect-urls \
-                --message "$INSTRUCTION"
+          while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
+            echo "--------------------------------------------------"
+            echo "🔄 Aider 実行試行: $RETRY_COUNT / $MAX_RETRIES"
+            echo "--------------------------------------------------"
+
+            aider --model gemini/gemma-4-31b-it \
+                  --edit-format diff-fenced \
+                  --thinking-tokens 1024 \
+                  --yes-always \
+                  --chat-language japanese \
+                  --test-cmd "bundle exec rspec && bundle exec rubocop" \
+                  --auto-test \
+                  --no-attribute-author \
+                  --no-attribute-committer \
+                  --no-attribute-co-authored-by \
+                  --disable-playwright \
+                  --no-detect-urls \
+                  --message "$INSTRUCTION (attempt: $RETRY_COUNT)"
+
+            # リモートの最新状態を取得して差分をチェック
+            git fetch origin HEAD
+            if ! git diff --quiet origin/HEAD HEAD; then
+              echo "✅ 変更が検出されました！ループを抜けます。"
+              SUCCESS=true
+              break
+            else
+              echo "⚠️ 差分がありません。次回の実行に向けて環境をクリアします。"
+              
+              # 書きかけのファイルとチャット履歴だけを掃除
+              git reset --hard HEAD
+              git clean -fd
+              rm -f .aider.chat.history.md
+              rm -f .aider.input.history
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -le $MAX_RETRIES ]; then
+              echo "再試行します..."
+              sleep 3
+            fi
+          done
+
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ $MAX_RETRIES 回試行しましたが、コードの変更を生成できませんでした。"
+            exit 1
+          fi
 
       - name: Push changes
         run: |
