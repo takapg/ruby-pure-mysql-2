@@ -312,12 +312,12 @@ module RubyPureMysql
 
     def parse_single_where_condition(condition, allow_aggregates: false)
       # カラム名にドットが含まれる場合や、集計関数が含まれる場合に対応するため、
-      # 記号演算子を含まない強欲マッチを使用し、演算子の直前までをカラム名として取得する
-      column_pattern = '[^=<>!]+'
+      # 記号演算子および空白を含まないマッチを使用し、演算子の直前までをカラム名として取得する
+      column_pattern = '[^=<>!\s]+'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
-      column = where_match[1]
+      column = where_match[1].strip
       operator = where_match[2].upcase
       operator = '!=' if operator == '<>'
       value_str = where_match[3].strip.delete_suffix(';')
