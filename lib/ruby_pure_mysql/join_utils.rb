@@ -9,13 +9,19 @@ module RubyPureMysql
       )
       return [[], all_cols] if left_idx.nil? || right_idx.nil?
 
-      options = {
+      options = build_join_options(left_idx, right_idx, params)
+      [execute_join_loop(params[:rows1], params[:rows2], options), all_cols]
+    end
+
+    private
+
+    def build_join_options(left_idx, right_idx, params)
+      {
         left_idx: left_idx,
         right_idx: right_idx,
         join_type: params[:join_type],
         right_col_count: params[:cols2].size
       }
-      [execute_join_loop(params[:rows1], params[:rows2], options), all_cols]
     end
 
     def resolve_join_indices(client, cols1, cols2, on_condition, table_map)
