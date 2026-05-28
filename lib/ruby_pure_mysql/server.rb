@@ -43,13 +43,19 @@ module RubyPureMysql
       send_ok_packet(client, 2)
 
       loop do
-        packet = read_packet(client)
-        break unless packet
+        begin
+          packet = read_packet(client)
+          break unless packet
 
-        _, payload = packet
-        command = payload[0].unpack1('C')
+          _, payload = packet
+          command = payload[0].unpack1('C')
 
-        handle_query(client, payload) if command == COM_QUERY
+          handle_query(client, payload) if command == COM_QUERY
+        rescue StandardError => e
+          RubyPureMysql.logger.error "Error handling client: #{e.message}\n#{e.backtrace.join("\n")}"
+          send_err_packet(client, 1, "Internal server error: #{e.message}", 1105)
+          break
+        end
       end
     end
   end
