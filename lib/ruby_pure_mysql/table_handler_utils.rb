@@ -108,7 +108,10 @@ module RubyPureMysql
     end
 
     def resolve_having_value(group_val, group_rows, col_expr, group_ctx)
-      if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
+      # 正規化: 括弧周りの空白を削除して集計関数正規表現にマッチさせやすくする
+      # 例: "COUNT ( * )" -> "COUNT(*)"
+      normalized_expr = col_expr.gsub(/\s*\(\s*/, '(').gsub(/\s*\)\s*/, ')')
+      if (m = normalized_expr.match(AggregateUtils::AGGREGATE_REGEX))
         return resolve_aggregate_having_value(group_rows, m, group_ctx[:columns])
       end
 
