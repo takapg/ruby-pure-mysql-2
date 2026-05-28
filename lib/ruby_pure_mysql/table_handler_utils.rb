@@ -115,14 +115,16 @@ module RubyPureMysql
 
     def resolve_having_value(columns, group_val, group_rows, group_indices, col_expr)
       if (m = col_expr.match(AggregateUtils::AGGREGATE_REGEX))
-        return compute_single_aggregate_value(group_rows, columns, { type: m[1].downcase.to_sym, column: m[2], index: nil })
+        agg = { type: m[1].downcase.to_sym, column: m[2], index: nil }
+        return compute_single_aggregate_value(group_rows, columns, agg)
       end
 
       col_idx = columns.index(col_expr)
       return :no_column unless col_idx
 
       group_idx = group_indices.index(col_idx)
-      raise HavingError, "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function" unless group_idx
+      msg = "Column '#{col_expr}' must appear in the GROUP BY clause or be used in an aggregate function"
+      raise HavingError, msg if group_idx.nil?
 
       group_val[group_idx]
     end
