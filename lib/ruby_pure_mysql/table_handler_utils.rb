@@ -28,23 +28,23 @@ module RubyPureMysql
           return nil
         end
 
-        # table_map の登録順（table1, table2...）に基づいてオフセットを計算
+        # table_map の登録順に基づいてオフセットを計算
         offset = 0
         table_map.each do |t, cols|
           break if t == table
           offset += cols.size
         end
 
-        idx = table_map[table].index(col)
-        unless idx
+        # 指定されたテーブル内でのカラムインデックスを取得
+        col_idx = table_map[table].index(col)
+        unless col_idx
           send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
           return nil
         end
-        return offset + idx
+        return offset + col_idx
       end
 
       # テーブル指定がない場合は、全カラムリストから最初に見つかったものを返す
-      # 結合時は曖昧なカラム名（例: 'id'）が複数存在し得るため、注意が必要
       idx = columns.index(column_name)
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
