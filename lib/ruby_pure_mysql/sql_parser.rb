@@ -128,7 +128,10 @@ module RubyPureMysql
     end
 
     def parse_select_clauses(result, match)
-      return parse_where_clause_into(result, match[4]) if where_error?(result, match[4])
+      if match[4]
+        res = parse_where_clause_into(result, match[4])
+        return res if res.is_a?(Hash) && res[:error]
+      end
 
       res = apply_optional_clauses(result, match)
       res || result
@@ -136,25 +139,14 @@ module RubyPureMysql
 
     def apply_optional_clauses(result, match)
       result[:group_by] = match[5] if match[5]
-      return parse_having_clause(result, match[6]) if having_error?(result, match[6])
+      if match[6]
+        res = parse_having_clause(result, match[6])
+        return res if res.is_a?(Hash) && res[:error]
+      end
 
       parse_order_by_clause(result, match[7], match[8]) if match[7]
       parse_limit_offset_clause(result, match[9], match[10])
       nil
-    end
-
-    def where_error?(result, clause)
-      return false unless clause
-
-      res = parse_where_clause_into(result, clause)
-      res.is_a?(Hash) && res[:error]
-    end
-
-    def having_error?(result, clause)
-      return false unless clause
-
-      res = parse_having_clause(result, clause)
-      res.is_a?(Hash) && res[:error]
     end
 
     def parse_having_clause(result, clause)

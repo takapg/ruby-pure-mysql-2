@@ -26,12 +26,11 @@ module RubyPureMysql
       return if rows.nil? || group_indices.nil?
 
       grouped = group_rows_by_indices(rows, group_indices)
+      grouped = filter_grouped_by_having(columns, grouped, result[:having], group_indices) if result[:having]
+
       res_rows = compute_grouped_rows(columns, result, grouped, group_indices)
 
       return handle_group_by_error(client) if group_computation_failed?(res_rows)
-
-      res_rows = filter_having_rows(columns, res_rows, grouped, result[:having], group_indices) if result[:having]
-      return if res_rows.nil?
 
       finalize_and_send_group_results(client, result, res_rows)
     end

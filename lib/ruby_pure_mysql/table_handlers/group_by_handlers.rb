@@ -9,15 +9,12 @@ module RubyPureMysql
       end
     end
 
-    def filter_having_rows(columns, res_rows, grouped, having_clauses, group_indices)
-      grouped_keys = grouped.keys
-      res_rows.each_with_index.select do |_row, idx|
-        group_val = grouped_keys[idx]
-        group_rows = grouped[group_val]
+    def filter_grouped_by_having(columns, grouped, having_clauses, group_indices)
+      grouped.select do |group_val, group_rows|
         having_clauses.all? do |clause|
           evaluate_having_condition(columns, group_val, group_rows, group_indices, clause)
         end
-      end.map(&:first)
+      end
     end
 
     def finalize_and_send_group_results(client, result, res_rows)
