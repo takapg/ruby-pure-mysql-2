@@ -310,7 +310,6 @@ module RubyPureMysql
         { error: "Invalid INSERT value: #{val}" }
       end
     end
-
   end
 
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
