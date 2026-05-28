@@ -34,7 +34,7 @@ module RubyPureMysql
           offset += cols.size
         end
 
-        col_idx = table_map[table].index(col)
+        col_idx = table_map[table].find_index { |c| c.casecmp?(col) }
         unless col_idx
           send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
           return nil
@@ -45,7 +45,7 @@ module RubyPureMysql
       # テーブル指定がない場合、table_map があればそこから解決を試みる（結合クエリでの曖昧さ回避）
       if table_map && !table_map.empty?
         table_map.each do |t, cols|
-          if (idx = cols.index(column_name))
+          if (idx = cols.find_index { |c| c.casecmp?(column_name) })
             offset = 0
             table_map.each do |t2, cols2|
               break if t2 == t
@@ -57,7 +57,7 @@ module RubyPureMysql
       end
 
       # 最終手段として全カラムリストから検索
-      idx = columns.index(column_name)
+      idx = columns.find_index { |c| c.casecmp?(column_name) }
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
         return nil
