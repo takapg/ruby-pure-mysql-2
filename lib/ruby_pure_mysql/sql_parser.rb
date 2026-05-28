@@ -81,7 +81,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table_name>\w+)',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)',
+        '(?:\s+INNER\s+JOIN\s+(?<table2>\w+)\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
@@ -96,14 +97,28 @@ module RubyPureMysql
       match = query.match(SELECT_REGEX)
       return { error: 'Invalid SELECT syntax' } unless match
 
-      result = {
-        type: :select_from,
-        distinct: !match[:distinct].nil?,
-        table_name: match[:table_name],
-        columns: match[:columns].split(',').map(&:strip)
-      }
+      result = build_select_result(match)
+      apply_join_to_result(result, match)
       detect_aggregates(result)
       parse_select_clauses(result, match)
+    end
+
+    def build_select_result(match)
+      {
+        type: :select_from,
+        distinct: !match[:distinct].nil?,
+        table_name: match[:table1],
+        columns: match[:columns].split(',').map(&:strip)
+      }
+    end
+
+    def apply_join_to_result(result, match)
+      return unless match[:table2]
+
+      result[:join] = {
+        table2: match[:table2],
+        on: match[:on_condition]
+      }
     end
 
     def detect_aggregates(result)
@@ -261,7 +276,7 @@ module RubyPureMysql
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
-      column_pattern = allow_aggregates ? '.+?' : '\w+'
+      column_pattern = allow_aggregates ? '.+?' : '[\w.]+'
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 

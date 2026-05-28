@@ -2,6 +2,8 @@
 
 require_relative 'aggregate_utils'
 require_relative 'filter_utils'
+require_relative 'column_utils'
+require_relative 'join_utils'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
@@ -10,6 +12,8 @@ module RubyPureMysql
 
     include AggregateUtils
     include FilterUtils
+    include ColumnUtils
+    include JoinUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -20,19 +24,10 @@ module RubyPureMysql
       columns
     end
 
-    def get_column_index(client, columns, column_name)
-      idx = columns.index(column_name)
-      unless idx
-        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
-        return nil
-      end
-      idx
-    end
-
-    def find_matching_indices(client, rows, table_columns, where_clauses)
+    def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
-      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses)
+      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses, table_map)
       return nil unless compiled_clauses
 
       rows.each_with_index.select do |row, _idx|
@@ -75,23 +70,21 @@ module RubyPureMysql
       result[:limit] ? rows.first(result[:limit]) : rows
     end
 
-    def project_rows(client, rows, columns, selected_columns)
-      if selected_columns && !selected_columns.include?('*')
-        return nil unless validate_selected_columns?(client, columns, selected_columns)
+    def project_rows(client, rows, columns, selected_columns, table_map = {})
+      return [rows, columns] if selected_columns.nil? || selected_columns.include?('*')
 
-        selected_indices = selected_columns.map { |col| columns.index(col) }
-        projected_rows = rows.map { |row| selected_indices.map { |idx| row[idx] } }
-        [projected_rows, selected_columns]
-      else
-        [rows, columns]
-      end
+      indices = selected_columns.map { |col| get_column_index(client, columns, col, table_map) }
+      return nil if indices.any?(&:nil?)
+
+      [project_data(rows, indices), project_column_names(selected_columns)]
     end
 
-    def validate_selected_columns?(client, columns, selected_columns)
-      return true if selected_columns.all? { |col| columns.include?(col) }
+    def project_data(rows, indices)
+      rows.map { |row| indices.map { |idx| row[idx] } }
+    end
 
-      send_err_packet(client, 1, "Unknown column in 'field list'", 1054)
-      false
+    def project_column_names(selected_columns)
+      selected_columns.map { |col| col.split('.').last }
     end
 
     def get_group_column_indices(client, columns, group_by_str)

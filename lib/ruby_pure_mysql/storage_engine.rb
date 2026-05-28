@@ -114,6 +114,8 @@ module RubyPureMysql
     def match_standard?(val, operator, target_value)
       method = operator == '=' ? :== : operator.to_sym
       val.public_send(method, target_value)
+    rescue StandardError
+      false
     end
   end
 end
