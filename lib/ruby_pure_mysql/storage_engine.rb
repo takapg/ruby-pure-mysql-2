@@ -80,13 +80,13 @@ module RubyPureMysql
       end
     end
 
-    private
-
     def match_row?(row, columns, where_clauses)
       return true if where_clauses.nil? || where_clauses.empty?
 
       evaluate_ast(row, columns, where_clauses)
     end
+
+    private
 
     def evaluate_ast(row, columns, node)
       if node.is_a?(Hash) && node[:op] == :and
