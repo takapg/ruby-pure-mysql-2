@@ -90,11 +90,9 @@ module RubyPureMysql
     def get_group_column_indices(client, columns, group_by_str)
       group_by_str.split(',').map do |col_name|
         name = col_name.strip
-        idx = columns.index(name)
-        unless idx
-          send_err_packet(client, 1, "Unknown column '#{name}' in 'group clause'", 1054)
-          return nil
-        end
+        idx = get_column_index(client, columns, name)
+        return nil unless idx
+
         idx
       end
     end
@@ -112,7 +110,7 @@ module RubyPureMysql
         return compute_single_aggregate_value(group_rows, columns, agg)
       end
 
-      col_idx = columns.index(col_expr)
+      col_idx = get_column_index(nil, columns, col_expr)
       return :no_column unless col_idx
 
       group_idx = group_indices.index(col_idx)

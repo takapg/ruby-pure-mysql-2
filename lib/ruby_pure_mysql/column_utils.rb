@@ -25,7 +25,7 @@ module RubyPureMysql
     def validate_table_exists?(client, table, table_map)
       return true if table_map&.key?(table)
 
-      send_err_packet(client, 1, "Unknown table '#{table}'", 1146)
+      send_err_packet(client, 1, "Unknown table '#{table}'", 1146) if client
       false
     end
 
@@ -33,7 +33,7 @@ module RubyPureMysql
       idx = table_map[table].find_index { |c| c.casecmp?(col) }
       return idx if idx
 
-      send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054)
+      send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054) if client
       nil
     end
 
@@ -53,7 +53,7 @@ module RubyPureMysql
         name.casecmp?(column_name)
       end
       unless idx
-        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054)
+        send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054) if client
         return nil
       end
       idx
