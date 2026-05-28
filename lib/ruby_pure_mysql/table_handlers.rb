@@ -18,6 +18,5 @@ module RubyPureMysql
 
       compile_where_clauses(client, columns, where, table_map)
     end
-
   end
 end

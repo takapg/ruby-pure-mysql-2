@@ -38,7 +38,12 @@ module RubyPureMysql
       rows2 = @storage_engine.select(result[:join][:table2])
 
       perform_inner_join(client, {
-        rows1: rows1, cols1: columns, rows2: rows2, cols2: cols2, on: result[:join][:on], table_map: table_map
+        rows1: rows1,
+        cols1: columns,
+        rows2: rows2,
+        cols2: cols2,
+        on: result[:join][:on],
+        table_map: table_map
       })
     end
 
@@ -84,7 +89,6 @@ module RubyPureMysql
         nil
       end
     end
-
 
     def handle_standard_select(client, columns, result, table_map = {})
       rows = fetch_and_filter_rows(client, columns, result, table_map)

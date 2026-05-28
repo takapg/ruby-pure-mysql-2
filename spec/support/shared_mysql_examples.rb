@@ -295,7 +295,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('DROP TABLE IF EXISTS orders;')
       client.query('CREATE TABLE orders (id INT, user_id INT, amount INT);')
       client.query('INSERT INTO orders VALUES (101, 99, 1000);') # user_id 99 は存在しない
-      
+
       results = client.query('SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id;')
       expect(results.count).to eq(0)
     end

@@ -16,6 +16,7 @@ module RubyPureMysql
           # get_column_index 内で send_err_packet が呼ばれるため、ここでは nil を返すのみ
           return nil
         end
+
         regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
         { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
       end
