@@ -107,6 +107,5 @@ module RubyPureMysql
         idx
       end
     end
-
   end
 end
