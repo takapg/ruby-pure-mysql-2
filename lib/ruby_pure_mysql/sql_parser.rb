@@ -297,14 +297,13 @@ module RubyPureMysql
 
     def parse_condition(condition, allow_aggregates)
       condition = condition.strip
-      # 演算子を長い順に定義して、'>=' が '>' より先にマッチするようにする
-      operators = ['>=', '<=', '!=', '<>', 'LIKE', '=', '>', '<']
-      
-      op = operators.find { |o| condition.match?(/\s*#{Regexp.escape(o)}\s*/i) }
-      return { error: 'Invalid WHERE clause' } unless op
-
-      # 最初の演算子で分割
-      parts = condition.split(/\s*#{Regexp.escape(op)}\s*/i, 2)
+      # 単一の正規表現で演算子を抽出（長い演算子を優先的にマッチさせる）
+      if (m = condition.match(/\s*(>=|<=|!=|<>|LIKE|=|>|<)\s*/i))
+        op = m[1]
+        parts = condition.split(/\s*#{Regexp.escape(op)}\s*/i, 2)
+      else
+        return { error: 'Invalid WHERE clause' }
+      end
       return { error: 'Invalid WHERE clause' } unless parts.size == 2
 
       column = parts[0].strip

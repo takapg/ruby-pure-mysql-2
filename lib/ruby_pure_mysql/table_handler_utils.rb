@@ -44,7 +44,7 @@ module RubyPureMysql
       when :or
         evaluate_ast_filter(row, columns, node[:left]) || evaluate_ast_filter(row, columns, node[:right])
       else
-        c_idx = node[:col_idx] || columns.index(node[:column])
+        c_idx = node[:col_idx]
         return false unless c_idx
 
         val = row[c_idx]
