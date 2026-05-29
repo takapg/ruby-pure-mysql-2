@@ -284,9 +284,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(0)
     end
 
-    it 'returns empty result set for IN with an empty list' do
-      results = client.query('SELECT * FROM users WHERE id IN ();')
-      expect(results.count).to eq(0)
+    it 'returns an error for IN with an empty list' do
+      expect {
+        client.query('SELECT * FROM users WHERE id IN ();')
+      }.to raise_error(Mysql2::Error)
     end
 
     it 'returns empty result set for IN with only NULL' do

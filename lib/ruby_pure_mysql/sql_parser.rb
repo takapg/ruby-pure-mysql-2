@@ -317,6 +317,8 @@ module RubyPureMysql
       return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
 
       list_str = value_str[1...-1]
+      return { error: 'Invalid IN clause syntax' } if list_str.strip.empty?
+
       values = split_insert_values(list_str).map { |v| convert_value(v) }
       return { error: 'Unsupported IN value' } if values.any? { |v| v.is_a?(Hash) && v[:error] }
 
