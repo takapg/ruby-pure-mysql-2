@@ -102,13 +102,14 @@ module RubyPureMysql
       rows = fetch_and_filter_rows(client, columns, result, table_map)
       return if rows.nil?
 
+      # ソートを投影の前に行うことで、SELECTリストに含まれないカラムでのソートを可能にする
+      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
+      return if rows.nil?
+
       rows, final_columns = project_rows(client, rows, columns, result[:columns], table_map)
       return if rows.nil?
 
       rows.uniq! if result[:distinct]
-
-      rows = apply_order_by(client, result[:order], final_columns, rows) if result[:order]
-      return if rows.nil?
 
       rows = apply_offset_and_limit(rows, result)
       send_result_set(client, rows, final_columns)
