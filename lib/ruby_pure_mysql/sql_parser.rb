@@ -272,15 +272,17 @@ module RubyPureMysql
       match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
       return false unless match
 
-      if buffer[:in_between]
-        buffer[:current] << match[0]
-        buffer[:index] += match[0].length
-        buffer[:in_between] = false
-        false
-      else
-        process_and_operator(match, buffer, parts)
-        true
-      end
+      return handle_between_and(match, buffer) if buffer[:in_between]
+
+      process_and_operator(match, buffer, parts)
+      true
+    end
+
+    def handle_between_and(match, buffer)
+      buffer[:current] << match[0]
+      buffer[:index] += match[0].length
+      buffer[:in_between] = false
+      false
     end
 
     def process_and_operator(match, buffer, parts)
@@ -357,6 +359,10 @@ module RubyPureMysql
       { column: column, operator: operator, value: value }
     end
 
+  end
+
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
     def parse_in_value(value_str)
       return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
 
@@ -372,10 +378,7 @@ module RubyPureMysql
 
       values
     end
-  end
 
-  # ユーティリティメソッドをまとめたモジュール
-  module SqlParserUtils
     def split_columns(definition)
       cols = []
       buf = +''
