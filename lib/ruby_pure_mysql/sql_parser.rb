@@ -219,7 +219,7 @@ module RubyPureMysql
     end
 
     def parse_aggregate_column(match, idx)
-      { type: match[1].downcase.to_sym, column: match[2], index: idx }
+      { type: match[1].downcase.to_sym, distinct: !match[2].nil?, column: match[3], index: idx }
     end
 
     def assign_first_aggregate(result)

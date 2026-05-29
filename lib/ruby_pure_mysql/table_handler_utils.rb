@@ -99,7 +99,7 @@ module RubyPureMysql
 
     def evaluate_having_condition(group_val, group_rows, clause, group_ctx)
       val = resolve_having_value(group_val, group_rows, clause[:column], group_ctx)
-      raise HavingError, 'Unknown column' if val == :no_column
+      raise HavingError, 'Unknown column' if %i[no_column error].include?(val)
 
       apply_filter(val, clause[:operator], clause[:value])
     end
@@ -113,7 +113,7 @@ module RubyPureMysql
     end
 
     def resolve_aggregate_having_value(group_rows, match, columns)
-      agg = { type: match[1].downcase.to_sym, column: match[2], index: nil }
+      agg = RubyPureMysql::SqlParser.parse_aggregate_column(match, nil)
       compute_single_aggregate_value(group_rows, columns, agg)
     end
 
