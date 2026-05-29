@@ -63,11 +63,15 @@ module RubyPureMysql
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
-      sort_conditions = order_by.filter_map do |cond|
+      sort_conditions = []
+      order_by.each do |cond|
         idx = get_column_index(client, table_columns, cond[:column])
-        { index: idx, direction: cond[:direction] } if idx
+        if idx.nil?
+          send_err_packet(client, 1, "Unknown column '#{cond[:column]}' in 'order clause'", 1054)
+          return nil
+        end
+        sort_conditions << { index: idx, direction: cond[:direction] }
       end
-      return nil if sort_conditions.empty?
 
       sort_rows(rows, sort_conditions)
     end
