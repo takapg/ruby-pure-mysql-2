@@ -39,6 +39,8 @@ module RubyPureMysql
     end
 
     def apply_filter(val, operator, target_value)
+      return val.nil? if operator == 'IS NULL'
+      return !val.nil? if operator == 'IS NOT NULL'
       return false if val.nil?
 
       if operator == 'LIKE'

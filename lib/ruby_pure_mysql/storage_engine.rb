@@ -93,13 +93,15 @@ module RubyPureMysql
       return false unless c_idx
 
       val = row[c_idx]
-      return false if val.nil?
 
       compare_values?(val, clause)
     end
 
     def compare_values?(val, clause)
-      if clause[:operator] == 'LIKE'
+      case clause[:operator]
+      when 'IS NULL' then val.nil?
+      when 'IS NOT NULL' then !val.nil?
+      when 'LIKE'
         clause[:regex] ? clause[:regex].match?(val.to_s) : match_like?(val, clause[:value])
       else
         match_standard?(val, clause[:operator], clause[:value])

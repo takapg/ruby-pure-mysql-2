@@ -278,6 +278,15 @@ module RubyPureMysql
 
     def parse_single_where_condition(condition, allow_aggregates: false)
       column_pattern = allow_aggregates ? '.+?' : '[\w.]+'
+
+      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+NOT\s+NULL\z/i))
+        return { column: m[1], operator: 'IS NOT NULL', value: nil }
+      end
+
+      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+NULL\z/i))
+        return { column: m[1], operator: 'IS NULL', value: nil }
+      end
+
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
