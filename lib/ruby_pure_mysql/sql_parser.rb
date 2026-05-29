@@ -288,11 +288,12 @@ module RubyPureMysql
 
     def parse_condition(condition, allow_aggregates)
       # カラム名に集計関数やテーブル修飾子が含まれるため、演算子を境界として柔軟にマッチさせる
-      column_pattern = '.+?'
-      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      # 非強欲な .+? ではなく、演算子以外の文字にマッチさせることで安定性を向上させる
+      column_pattern = '[^=<>!]+'
+      where_match = condition.strip.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
-      column = where_match[1]
+      column = where_match[1].strip
       operator = where_match[2].upcase
       operator = '!=' if operator == '<>'
       value_str = where_match[3].strip.delete_suffix(';')

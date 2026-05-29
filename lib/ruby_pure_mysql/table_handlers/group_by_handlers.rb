@@ -16,7 +16,10 @@ module RubyPureMysql
     end
 
     def evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
-      return true if having_clauses.nil? || having_clauses.empty?
+      return true if having_clauses.nil?
+
+      # having_clauses が空の配列や空の文字列である場合に true を返さないよう厳格にチェック
+      return true if having_clauses.respond_to?(:empty?) && having_clauses.empty?
 
       evaluate_having_ast(group_val, group_rows, having_clauses, group_ctx)
     end

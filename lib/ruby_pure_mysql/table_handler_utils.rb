@@ -60,7 +60,11 @@ module RubyPureMysql
         compiled_regex.match?(val.to_s)
       else
         method = operator == '=' ? :== : operator.to_sym
-        val.public_send(method, target_value)
+        begin
+          val.public_send(method, target_value)
+        rescue ArgumentError, TypeError
+          false
+        end
       end
     end
 
