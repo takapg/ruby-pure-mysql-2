@@ -53,7 +53,7 @@ module RubyPureMysql
         regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
         regex.match?(val.to_s)
       elsif operator == 'IN'
-        target_value.include?(val)
+        val.nil? ? false : target_value.include?(val)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)

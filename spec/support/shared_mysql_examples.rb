@@ -283,6 +283,22 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM users WHERE id IN (99, 100);')
       expect(results.count).to eq(0)
     end
+
+    it 'returns empty result set for IN with an empty list' do
+      results = client.query('SELECT * FROM users WHERE id IN ();')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns empty result set for IN with only NULL' do
+      results = client.query('SELECT * FROM users WHERE id IN (NULL);')
+      expect(results.count).to eq(0)
+    end
+
+    it 'filters correctly when IN list contains NULL' do
+      results = client.query('SELECT * FROM users WHERE id IN (1, NULL);')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do
@@ -633,6 +649,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
               'GROUP BY category HAVING COUNT(*) > 1 AND SUM(price) > 100;'
       results = client.query(query)
       expect(results.count).to eq(2)
+      categories = results.map { |r| r['category'] }
+      expect(categories).to contain_exactly('electronics', 'books')
+    end
+
+    it 'filters groups using HAVING with IN operator' do
+      results = client.query("SELECT category FROM products GROUP BY category HAVING category IN ('electronics', 'books');")
       categories = results.map { |r| r['category'] }
       expect(categories).to contain_exactly('electronics', 'books')
     end
