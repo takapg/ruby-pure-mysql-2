@@ -325,6 +325,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(2)
     end
 
+    it 'filters rows by NOT BETWEEN operator' do
+      results = client.query('SELECT * FROM users WHERE id NOT BETWEEN 1 AND 2;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(3)
+    end
+
     it 'handles BETWEEN combined with other AND conditions' do
       results = client.query("SELECT * FROM users WHERE id BETWEEN 1 AND 3 AND name = 'alice';")
       expect(results.count).to eq(1)

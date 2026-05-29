@@ -56,6 +56,7 @@ module RubyPureMysql
         target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : build_like_regex(target_value).match?(val.to_s)
       when 'IN' then val.nil? ? false : target_value.include?(val)
       when 'BETWEEN' then val.between?(*target_value)
+      when 'NOT BETWEEN' then !val.between?(*target_value)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)

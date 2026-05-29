@@ -269,13 +269,15 @@ module RubyPureMysql
     end
 
     def handle_and_operator?(clause, buffer, parts)
-      return false unless clause[buffer[:index]..].match?(/\A\s+AND\s+/i)
+      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
+      return false unless match
 
       if buffer[:in_between]
+        buffer[:current] << match[0]
+        buffer[:index] += match[0].length
         buffer[:in_between] = false
         false
       else
-        match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
         process_and_operator(match, buffer, parts)
         true
       end
@@ -330,16 +332,17 @@ module RubyPureMysql
     end
 
     def parse_between_condition(condition, column_pattern)
-      match = condition.match(/\A(#{column_pattern})\s+BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i)
+      match = condition.match(/\A(#{column_pattern})\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i)
       return nil unless match
 
       column = match[1]
-      val1 = convert_value(match[2].strip)
-      val2 = convert_value(match[3].strip.delete_suffix(';'))
+      operator = match[2] ? 'NOT BETWEEN' : 'BETWEEN'
+      val1 = convert_value(match[3].strip)
+      val2 = convert_value(match[4].strip.delete_suffix(';'))
       return val1 if val1.is_a?(Hash) && val1[:error]
       return val2 if val2.is_a?(Hash) && val2[:error]
 
-      { column: column, operator: 'BETWEEN', value: [val1, val2] }
+      { column: column, operator: operator, value: [val1, val2] }
     end
 
     def build_standard_condition(match)
