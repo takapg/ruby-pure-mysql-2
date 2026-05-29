@@ -626,6 +626,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'GROUP BY with DISTINCT' do
+    before do
+      client.query('DROP TABLE IF EXISTS sales;')
+      client.query('CREATE TABLE sales (category VARCHAR(255), user_id INT);')
+      client.query("INSERT INTO sales VALUES ('electronics', 1);")
+      client.query("INSERT INTO sales VALUES ('electronics', 1);")
+      client.query("INSERT INTO sales VALUES ('electronics', 2);")
+      client.query("INSERT INTO sales VALUES ('books', 3);")
+      client.query("INSERT INTO sales VALUES ('books', 3);")
+      client.query("INSERT INTO sales VALUES ('books', 4);")
+      client.query("INSERT INTO sales VALUES ('books', 4);")
+    end
+
+    it 'calculates COUNT(DISTINCT col) with GROUP BY' do
+      results = client.query('SELECT category, COUNT(DISTINCT user_id) FROM sales GROUP BY category;')
+      expect(results.count).to eq(2)
+      data = results.to_h { |r| [r['category'], r['COUNT(DISTINCT user_id)']] }
+      expect(data['electronics']).to eq(2)
+      expect(data['books']).to eq(2)
+    end
+  end
+
   describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
     before do
       client.query('DROP TABLE IF EXISTS products;')

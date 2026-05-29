@@ -113,12 +113,7 @@ module RubyPureMysql
     end
 
     def resolve_aggregate_having_value(group_rows, match, columns)
-      agg = {
-        type: match[1].downcase.to_sym,
-        distinct: !match[2].nil?,
-        column: match[3],
-        index: nil
-      }
+      agg = RubyPureMysql::SqlParser.parse_aggregate_column(match, nil)
       compute_single_aggregate_value(group_rows, columns, agg)
     end
 
