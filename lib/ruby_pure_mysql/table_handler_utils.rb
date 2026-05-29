@@ -25,7 +25,7 @@ module RubyPureMysql
     end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
-      return (0...rows.size).to_a unless where_clauses
+      return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
       compiled_clauses = compile_where_clauses(client, table_columns, where_clauses, table_map)
       return nil unless compiled_clauses
@@ -36,9 +36,12 @@ module RubyPureMysql
     end
 
     def evaluate_ast_filter(row, columns, node)
-      if node.is_a?(Hash) && node[:op] == :and
+      return false unless node.is_a?(Hash)
+
+      case node[:op]
+      when :and
         evaluate_ast_filter(row, columns, node[:left]) && evaluate_ast_filter(row, columns, node[:right])
-      elsif node.is_a?(Hash) && node[:op] == :or
+      when :or
         evaluate_ast_filter(row, columns, node[:left]) || evaluate_ast_filter(row, columns, node[:right])
       else
         c_idx = node[:col_idx] || columns.index(node[:column])
