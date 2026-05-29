@@ -92,7 +92,7 @@ module RubyPureMysql
       return res unless res.zero?
 
       begin
-        val_a <=> val_b
+        (val_a <=> val_b) || 0
       rescue StandardError
         0
       end

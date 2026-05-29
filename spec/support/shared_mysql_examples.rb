@@ -826,6 +826,48 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[2].values).to eq(['electronics', 200])
       expect(rows[3].values).to eq(['electronics', 100])
     end
+
+    it 'defaults to ASC when direction is omitted' do
+      results = client.query('SELECT category, price FROM products ORDER BY category, price;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['books', 50])
+      expect(rows[1].values).to eq(['books', 150])
+      expect(rows[2].values).to eq(['electronics', 100])
+      expect(rows[3].values).to eq(['electronics', 200])
+    end
+
+    it 'sorts by mixed directions (category DESC, price ASC)' do
+      results = client.query('SELECT category, price FROM products ORDER BY category DESC, price ASC;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['electronics', 100])
+      expect(rows[1].values).to eq(['electronics', 200])
+      expect(rows[2].values).to eq(['books', 50])
+      expect(rows[3].values).to eq(['books', 150])
+    end
+
+    it 'sorts NULL values correctly (NULLs first for ASC, last for DESC)' do
+      client.query('DROP TABLE IF EXISTS null_sort;')
+      client.query('CREATE TABLE null_sort (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO null_sort VALUES (1, NULL);")
+      client.query("INSERT INTO null_sort VALUES (2, 'A');")
+      client.query("INSERT INTO null_sort VALUES (3, NULL);")
+
+      # ASC: NULLs first
+      results_asc = client.query('SELECT id FROM null_sort ORDER BY val ASC;')
+      expect(results_asc.map { |r| r['id'] }).to include(1, 3)
+      expect(results_asc.last['id']).to eq(2)
+
+      # DESC: NULLs last
+      results_desc = client.query('SELECT id FROM null_sort ORDER BY val DESC;')
+      expect(results_desc.first['id']).to eq(2)
+      expect(results_desc.map { |r| r['id'] }).to include(1, 3)
+    end
+
+    it 'ignores non-existent columns in ORDER BY' do
+      results = client.query('SELECT category FROM products ORDER BY non_existent, category ASC;')
+      expect(results.count).to eq(4)
+      expect(results.first['category']).to eq('books')
+    end
   end
 
   describe 'Alias support' do
