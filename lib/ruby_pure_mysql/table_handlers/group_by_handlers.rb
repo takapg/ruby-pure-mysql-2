@@ -12,7 +12,7 @@ module RubyPureMysql
     def filter_grouped_by_having(grouped, having_clauses, group_ctx)
       grouped.select do |group_val, group_rows|
         evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
-      end.to_a
+      end
     end
 
     def evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
