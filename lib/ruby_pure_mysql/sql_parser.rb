@@ -248,7 +248,7 @@ module RubyPureMysql
 
     def split_where_clause(clause)
       parts = []
-      buffer = { current: +'', in_quote: nil, index: 0 }
+      buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
 
       handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
       parts << buffer[:current].strip
@@ -257,14 +257,23 @@ module RubyPureMysql
     def handle_where_char(clause, buffer, parts)
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
 
-      match = nil
-      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i) if buffer[:in_quote].nil?
+      if buffer[:in_quote].nil?
+        if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
+          buffer[:in_between] = true
+        end
 
-      if match
-        process_and_operator(match, buffer, parts)
-      else
-        process_normal_char(clause, buffer)
+        if clause[buffer[:index]..].match?(/\A\s+AND\s+/i)
+          if buffer[:in_between]
+            buffer[:in_between] = false
+          else
+            match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
+            process_and_operator(match, buffer, parts)
+            return
+          end
+        end
       end
+
+      process_normal_char(clause, buffer)
     end
 
     def process_and_operator(match, buffer, parts)
@@ -306,6 +315,16 @@ module RubyPureMysql
     end
 
     def parse_standard_where_condition(condition, column_pattern)
+      if (between_match = condition.match(/\A(#{column_pattern})\s+BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i))
+        column = between_match[1]
+        val1 = convert_value(between_match[2].strip)
+        val2 = convert_value(between_match[3].strip.delete_suffix(';'))
+        return val1 if val1.is_a?(Hash) && val1[:error]
+        return val2 if val2.is_a?(Hash) && val2[:error]
+
+        return { column: column, operator: 'BETWEEN', value: [val1, val2] }
+      end
+
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 

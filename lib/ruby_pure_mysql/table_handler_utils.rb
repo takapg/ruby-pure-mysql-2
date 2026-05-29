@@ -56,6 +56,9 @@ module RubyPureMysql
         regex.match?(val.to_s)
       elsif operator == 'IN'
         val.nil? ? false : target_value.include?(val)
+      elsif operator == 'BETWEEN'
+        low, high = target_value
+        val >= low && val <= high
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
