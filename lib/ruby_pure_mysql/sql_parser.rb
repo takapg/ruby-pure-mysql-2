@@ -110,7 +110,9 @@ module RubyPureMysql
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      apply_optional_clauses(result, match)
+      res = apply_optional_clauses(result, match)
+      return res if res.is_a?(Hash) && res[:error]
+
       result
     end
 
@@ -239,7 +241,9 @@ module RubyPureMysql
     end
 
     def tokenize(clause)
-      clause.scan(/\s*(\(|\)|AND|OR|'[^']*'|"[^"]*"|[^\s()]+)\s*/i).flatten
+      # 集計関数 (COUNT, SUM, AVG, MIN, MAX) とその括弧を一つのトークンとして抽出する
+      pattern = /\s*(\(|\)|AND|OR|'[^']*'|"[^"]*"|(?:COUNT|SUM|AVG|MIN|MAX)\s*\([^)]*\)|[^\s()]+)\s*/i
+      clause.scan(pattern).flatten
     end
 
     def parse_or(tokens, state, allow_aggregates)
