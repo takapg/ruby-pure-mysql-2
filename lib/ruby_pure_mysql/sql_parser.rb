@@ -292,8 +292,9 @@ module RubyPureMysql
     end
 
     def parse_condition(condition, allow_aggregates)
-      # allow_aggregates が false の場合は、集計関数を許可しない厳格なパターン ([\w.]+) を使用する
-      col_pattern = allow_aggregates ? '.+?' : '[\w.]+'
+      # allow_aggregates が false の場合は、集計関数を許可しないパターンを使用する
+      # 演算子や空白以外の文字を許容することで、テーブル修飾名 (table.col) に対応させる
+      col_pattern = allow_aggregates ? '.+?' : '[^=<>! \t\n\r\f\v]+'
       regex = Regexp.new("\\A(#{col_pattern})\\s*(=|!=|<>|>=|<=|>|<|LIKE)\\s*(.+)\\z", Regexp::IGNORECASE)
       where_match = condition.strip.match(regex)
       return { error: 'Invalid WHERE clause' } unless where_match

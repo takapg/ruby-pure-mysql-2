@@ -116,10 +116,12 @@ module RubyPureMysql
     end
 
     def evaluate_having_ast(group_val, group_rows, node, group_ctx)
-      if node.is_a?(Hash) && node[:op] == :and
+      return false unless node.is_a?(Hash)
+
+      if node[:op] == :and
         evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) &&
           evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
-      elsif node.is_a?(Hash) && node[:op] == :or
+      elsif node[:op] == :or
         evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) ||
           evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
       else
