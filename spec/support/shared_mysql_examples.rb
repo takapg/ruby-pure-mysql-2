@@ -855,7 +855,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # ASC: NULLs first
       results_asc = client.query('SELECT id FROM null_sort ORDER BY val ASC;')
       expect(results_asc.map { |r| r['id'] }).to include(1, 3)
-      expect(results_asc.last['id']).to eq(2)
+      expect(results_asc.to_a.last['id']).to eq(2)
 
       # DESC: NULLs last
       results_desc = client.query('SELECT id FROM null_sort ORDER BY val DESC;')
@@ -863,10 +863,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results_desc.map { |r| r['id'] }).to include(1, 3)
     end
 
-    it 'ignores non-existent columns in ORDER BY' do
-      results = client.query('SELECT category FROM products ORDER BY non_existent, category ASC;')
-      expect(results.count).to eq(4)
-      expect(results.first['category']).to eq('books')
+    it 'returns an error for non-existent columns in ORDER BY' do
+      expect {
+        client.query('SELECT category FROM products ORDER BY non_existent, category ASC;')
+      }.to raise_error(Mysql2::Error)
     end
   end
 
