@@ -300,14 +300,13 @@ module RubyPureMysql
       # 単一の正規表現で演算子を抽出（長い演算子を優先的にマッチさせる）
       if (m = condition.match(/\s*(>=|<=|!=|<>|LIKE|=|>|<)\s*/i))
         op = m[1]
-        parts = condition.split(/\s*#{Regexp.escape(op)}\s*/i, 2)
+        # splitではなくマッチした位置を利用して分割し、精度を高める
+        column = condition[0...m.begin(0)].strip
+        value_str = condition[m.end(0)...].strip.delete_suffix(';')
       else
         return { error: 'Invalid WHERE clause' }
       end
-      return { error: 'Invalid WHERE clause' } unless parts.size == 2
-
-      column = parts[0].strip
-      value_str = parts[1].strip.delete_suffix(';')
+      return { error: 'Invalid WHERE clause' } if column.empty? || value_str.empty?
 
       # allow_aggregates が false の場合、集計関数が含まれていないかチェック
       if !allow_aggregates && column.match?(AggregateUtils::AGGREGATE_REGEX)
