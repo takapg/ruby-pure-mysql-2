@@ -272,13 +272,13 @@ module RubyPureMysql
       match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
       return false unless match
 
-      return handle_between_and(match, buffer) if buffer[:in_between]
+      return process_between_and(match, buffer) if buffer[:in_between]
 
       process_and_operator(match, buffer, parts)
       true
     end
 
-    def handle_between_and(match, buffer)
+    def process_between_and(match, buffer)
       buffer[:current] << match[0]
       buffer[:index] += match[0].length
       buffer[:in_between] = false
@@ -358,7 +358,6 @@ module RubyPureMysql
 
       { column: column, operator: operator, value: value }
     end
-
   end
 
   # ユーティリティメソッドをまとめたモジュール
