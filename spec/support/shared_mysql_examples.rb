@@ -605,9 +605,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     before do
       client.query('DROP TABLE IF EXISTS distinct_test;')
       client.query('CREATE TABLE distinct_test (id INT, val INT);')
-      client.query("INSERT INTO distinct_test VALUES (1, 10);")
-      client.query("INSERT INTO distinct_test VALUES (2, 10);")
-      client.query("INSERT INTO distinct_test VALUES (3, 20);")
+      client.query('INSERT INTO distinct_test VALUES (1, 10);')
+      client.query('INSERT INTO distinct_test VALUES (2, 10);')
+      client.query('INSERT INTO distinct_test VALUES (3, 20);')
     end
 
     it 'calculates COUNT(DISTINCT col) correctly' do
