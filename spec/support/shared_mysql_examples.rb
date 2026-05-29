@@ -601,6 +601,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Aggregate Functions with DISTINCT' do
+    before do
+      client.query('DROP TABLE IF EXISTS distinct_test;')
+      client.query('CREATE TABLE distinct_test (id INT, val INT);')
+      client.query("INSERT INTO distinct_test VALUES (1, 10);")
+      client.query("INSERT INTO distinct_test VALUES (2, 10);")
+      client.query("INSERT INTO distinct_test VALUES (3, 20);")
+    end
+
+    it 'calculates COUNT(DISTINCT col) correctly' do
+      results = client.query('SELECT COUNT(DISTINCT val) FROM distinct_test;')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'calculates SUM(DISTINCT col) correctly' do
+      results = client.query('SELECT SUM(DISTINCT val) FROM distinct_test;')
+      expect(results.first.values.first).to eq(30.0)
+    end
+
+    it 'calculates AVG(DISTINCT col) correctly' do
+      results = client.query('SELECT AVG(DISTINCT val) FROM distinct_test;')
+      expect(results.first.values.first).to eq(15.0)
+    end
+  end
+
   describe 'Aggregate Functions (SUM, AVG, MIN, MAX)' do
     before do
       client.query('DROP TABLE IF EXISTS products;')

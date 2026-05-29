@@ -3,9 +3,10 @@
 module RubyPureMysql
   # 集計関数の計算ロジックを提供するモジュール
   module AggregateUtils
-    AGGREGATE_REGEX = /\A(COUNT|SUM|AVG|MIN|MAX)\((.*)\)\z/i
+    AGGREGATE_REGEX = /\A(COUNT|SUM|AVG|MIN|MAX)\((DISTINCT\s+)?(.*)\)\z/i
 
-    def calculate_aggregate_value(values, type)
+    def calculate_aggregate_value(values, type, distinct: false)
+      values = values.uniq if distinct
       return values.size if type == :count
       return nil if values.empty?
 
@@ -29,7 +30,7 @@ module RubyPureMysql
       return :error unless agg_idx
 
       values = group_rows.filter_map { |r| r[agg_idx] }.map(&:to_f)
-      calculate_aggregate_value(values, agg_type)
+      calculate_aggregate_value(values, agg_type, distinct: agg[:distinct])
     end
 
     def resolve_aggregate_non_col(rows, columns, col)
@@ -44,7 +45,7 @@ module RubyPureMysql
       return :error unless col_idx
 
       values = rows.filter_map { |r| r[col_idx] }.map(&:to_f)
-      calculate_aggregate_value(values, agg[:type])
+      calculate_aggregate_value(values, agg[:type], distinct: agg[:distinct])
     end
   end
 end
