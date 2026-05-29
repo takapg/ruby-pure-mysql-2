@@ -51,14 +51,14 @@ module RubyPureMysql
     end
 
     def compare_value(val, operator, target_value)
-      if operator == 'LIKE'
+      case operator
+      when 'LIKE'
         regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
         regex.match?(val.to_s)
-      elsif operator == 'IN'
+      when 'IN'
         val.nil? ? false : target_value.include?(val)
-      elsif operator == 'BETWEEN'
-        low, high = target_value
-        val >= low && val <= high
+      when 'BETWEEN'
+        val.between?(*target_value)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)

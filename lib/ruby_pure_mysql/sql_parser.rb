@@ -256,24 +256,29 @@ module RubyPureMysql
 
     def handle_where_char(clause, buffer, parts)
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+      return process_normal_char(clause, buffer) if buffer[:in_quote]
 
-      if buffer[:in_quote].nil?
-        if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
-          buffer[:in_between] = true
-        end
-
-        if clause[buffer[:index]..].match?(/\A\s+AND\s+/i)
-          if buffer[:in_between]
-            buffer[:in_between] = false
-          else
-            match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
-            process_and_operator(match, buffer, parts)
-            return
-          end
-        end
-      end
+      update_between_state(clause, buffer)
+      return if handle_and_operator(clause, buffer, parts)
 
       process_normal_char(clause, buffer)
+    end
+
+    def update_between_state(clause, buffer)
+      buffer[:in_between] = true if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
+    end
+
+    def handle_and_operator(clause, buffer, parts)
+      return false unless clause[buffer[:index]..].match?(/\A\s+AND\s+/i)
+
+      if buffer[:in_between]
+        buffer[:in_between] = false
+        false
+      else
+        match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
+        process_and_operator(match, buffer, parts)
+        true
+      end
     end
 
     def process_and_operator(match, buffer, parts)
@@ -315,23 +320,33 @@ module RubyPureMysql
     end
 
     def parse_standard_where_condition(condition, column_pattern)
-      if (between_match = condition.match(/\A(#{column_pattern})\s+BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i))
-        column = between_match[1]
-        val1 = convert_value(between_match[2].strip)
-        val2 = convert_value(between_match[3].strip.delete_suffix(';'))
-        return val1 if val1.is_a?(Hash) && val1[:error]
-        return val2 if val2.is_a?(Hash) && val2[:error]
-
-        return { column: column, operator: 'BETWEEN', value: [val1, val2] }
-      end
+      res = parse_between_condition(condition, column_pattern)
+      return res if res
 
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
-      column = where_match[1]
-      operator = where_match[2].upcase
+      build_standard_condition(where_match)
+    end
+
+    def parse_between_condition(condition, column_pattern)
+      match = condition.match(/\A(#{column_pattern})\s+BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i)
+      return nil unless match
+
+      column = match[1]
+      val1 = convert_value(match[2].strip)
+      val2 = convert_value(match[3].strip.delete_suffix(';'))
+      return val1 if val1.is_a?(Hash) && val1[:error]
+      return val2 if val2.is_a?(Hash) && val2[:error]
+
+      { column: column, operator: 'BETWEEN', value: [val1, val2] }
+    end
+
+    def build_standard_condition(match)
+      column = match[1]
+      operator = match[2].upcase
       operator = '!=' if operator == '<>'
-      value_str = where_match[3].strip.delete_suffix(';')
+      value_str = match[3].strip.delete_suffix(';')
 
       value = operator == 'IN' ? parse_in_value(value_str) : convert_value(value_str)
       return value if value.is_a?(Hash) && value[:error]
