@@ -848,9 +848,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'sorts NULL values correctly (NULLs first for ASC, last for DESC)' do
       client.query('DROP TABLE IF EXISTS null_sort;')
       client.query('CREATE TABLE null_sort (id INT, val VARCHAR(255));')
-      client.query("INSERT INTO null_sort VALUES (1, NULL);")
+      client.query('INSERT INTO null_sort VALUES (1, NULL);')
       client.query("INSERT INTO null_sort VALUES (2, 'A');")
-      client.query("INSERT INTO null_sort VALUES (3, NULL);")
+      client.query('INSERT INTO null_sort VALUES (3, NULL);')
 
       # ASC: NULLs first
       results_asc = client.query('SELECT id FROM null_sort ORDER BY val ASC;')
@@ -864,9 +864,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'returns an error for non-existent columns in ORDER BY' do
-      expect {
+      expect do
         client.query('SELECT category FROM products ORDER BY non_existent, category ASC;')
-      }.to raise_error(Mysql2::Error)
+      end.to raise_error(Mysql2::Error)
     end
   end
 
