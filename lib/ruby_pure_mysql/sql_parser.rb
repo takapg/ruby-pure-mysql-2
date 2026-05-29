@@ -187,13 +187,13 @@ module RubyPureMysql
 
     def parse_column_alias(col)
       # 1. 明示的な AS: "expr AS alias"
-      if (m = col.match(/(.+)\s+AS\s+([a-zA-Z_]\w*)\z/i))
-        return { original: m[1].strip, alias: m[2] }
-      end
+      m = col.match(/(.+)\s+AS\s+([a-zA-Z_]\w*)\z/i)
+      return { original: m[1].strip, alias: m[2] } if m
 
       # 2. 暗黙的な AS: "expr alias"
       # "a + b" のような式を誤って分割しないよう、直前が演算子で終わっていないことを確認する
-      if (m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/))
+      m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/)
+      if m
         original = m[1].strip
         return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
 
@@ -250,7 +250,12 @@ module RubyPureMysql
     def handle_where_char(clause, buffer, parts)
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
 
-      if buffer[:in_quote].nil? && (match = clause[buffer[:index]..].match(/\A\s+AND\s+/i))
+      match = nil
+      if buffer[:in_quote].nil?
+        match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
+      end
+
+      if match
         process_and_operator(match, buffer, parts)
       else
         process_normal_char(clause, buffer)
@@ -279,15 +284,15 @@ module RubyPureMysql
     def parse_single_where_condition(condition, allow_aggregates: false)
       column_pattern = allow_aggregates ? '.+?' : '[\w.]+'
 
-      if (res = parse_is_null_condition(condition, column_pattern))
-        return res
-      end
+      res = parse_is_null_condition(condition, column_pattern)
+      return res if res
 
       parse_standard_where_condition(condition, column_pattern)
     end
 
     def parse_is_null_condition(condition, column_pattern)
-      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i))
+      m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
+      if m
         operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
         return { column: m[1], operator: operator, value: nil }
       end
@@ -326,9 +331,10 @@ module RubyPureMysql
     end
 
     def convert_value(val)
-      if (m = val.match(/\A(['"])(.*?)\1\z/))
-        m[2]
-      elsif val.casecmp?('NULL')
+      m = val.match(/\A(['"])(.*?)\1\z/)
+      return m[2] if m
+
+      if val.casecmp?('NULL')
         nil
       elsif val.match?(/\A-?\d+\z/)
         val.to_i
