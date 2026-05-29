@@ -285,9 +285,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'returns an error for IN with an empty list' do
-      expect {
+      expect do
         client.query('SELECT * FROM users WHERE id IN ();')
-      }.to raise_error(Mysql2::Error)
+      end.to raise_error(Mysql2::Error)
     end
 
     it 'returns empty result set for IN with only NULL' do
@@ -655,7 +655,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'filters groups using HAVING with IN operator' do
-      results = client.query("SELECT category FROM products GROUP BY category HAVING category IN ('electronics', 'books');")
+      query = "SELECT category FROM products GROUP BY category HAVING category IN ('electronics', 'books');"
+      results = client.query(query)
       categories = results.map { |r| r['category'] }
       expect(categories).to contain_exactly('electronics', 'books')
     end

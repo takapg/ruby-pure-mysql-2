@@ -319,6 +319,10 @@ module RubyPureMysql
       list_str = value_str[1...-1]
       return { error: 'Invalid IN clause syntax' } if list_str.strip.empty?
 
+      extract_in_values(list_str)
+    end
+
+    def extract_in_values(list_str)
       values = split_insert_values(list_str).map { |v| convert_value(v) }
       return { error: 'Unsupported IN value' } if values.any? { |v| v.is_a?(Hash) && v[:error] }
 
