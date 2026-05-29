@@ -4,6 +4,7 @@ require_relative 'aggregate_utils'
 require_relative 'filter_utils'
 require_relative 'column_utils'
 require_relative 'join_utils'
+require_relative 'projection_utils'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
@@ -14,6 +15,7 @@ module RubyPureMysql
     include FilterUtils
     include ColumnUtils
     include JoinUtils
+    include ProjectionUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -82,9 +84,9 @@ module RubyPureMysql
       end
     end
 
-    def compare_values(a, b, cond)
-      val_a = a[cond[:index]]
-      val_b = b[cond[:index]]
+    def compare_values(row_a, row_b, cond)
+      val_a = row_a[cond[:index]]
+      val_b = row_b[cond[:index]]
 
       res = (val_a.nil? ? 0 : 1) <=> (val_b.nil? ? 0 : 1)
       return res unless res.zero?
@@ -96,26 +98,6 @@ module RubyPureMysql
       end
     end
 
-    def apply_offset_and_limit(rows, result)
-      rows.drop(result[:offset] || 0).then { |r| result[:limit] ? r.first(result[:limit]) : r }
-    end
-
-    def project_rows(client, rows, columns, selected_columns, table_map = {})
-      return [rows, columns] if selected_columns.nil? || selected_columns.any? { |c| c[:original] == '*' }
-
-      indices = selected_columns.map { |c| get_column_index(client, columns, c[:original], table_map) }
-      return nil if indices.any?(&:nil?)
-
-      [project_data(rows, indices), selected_columns]
-    end
-
-    def project_data(rows, indices)
-      rows.map { |row| indices.map { |idx| row[idx] } }
-    end
-
-    def project_column_names(selected_columns)
-      selected_columns.map { |c| c[:alias] || c[:original].split('.').last }
-    end
 
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
