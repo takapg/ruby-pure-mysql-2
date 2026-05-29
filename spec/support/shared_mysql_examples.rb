@@ -808,6 +808,68 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Multi-column ORDER BY support' do
+    before do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 200);")
+      client.query("INSERT INTO products VALUES (3, 'books', 50);")
+      client.query("INSERT INTO products VALUES (4, 'books', 150);")
+    end
+
+    it 'sorts by multiple columns (category ASC, price DESC)' do
+      results = client.query('SELECT category, price FROM products ORDER BY category ASC, price DESC;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['books', 150])
+      expect(rows[1].values).to eq(['books', 50])
+      expect(rows[2].values).to eq(['electronics', 200])
+      expect(rows[3].values).to eq(['electronics', 100])
+    end
+
+    it 'defaults to ASC when direction is omitted' do
+      results = client.query('SELECT category, price FROM products ORDER BY category, price;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['books', 50])
+      expect(rows[1].values).to eq(['books', 150])
+      expect(rows[2].values).to eq(['electronics', 100])
+      expect(rows[3].values).to eq(['electronics', 200])
+    end
+
+    it 'sorts by mixed directions (category DESC, price ASC)' do
+      results = client.query('SELECT category, price FROM products ORDER BY category DESC, price ASC;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['electronics', 100])
+      expect(rows[1].values).to eq(['electronics', 200])
+      expect(rows[2].values).to eq(['books', 50])
+      expect(rows[3].values).to eq(['books', 150])
+    end
+
+    it 'sorts NULL values correctly (NULLs first for ASC, last for DESC)' do
+      client.query('DROP TABLE IF EXISTS null_sort;')
+      client.query('CREATE TABLE null_sort (id INT, val VARCHAR(255));')
+      client.query('INSERT INTO null_sort VALUES (1, NULL);')
+      client.query("INSERT INTO null_sort VALUES (2, 'A');")
+      client.query('INSERT INTO null_sort VALUES (3, NULL);')
+
+      # ASC: NULLs first
+      results_asc = client.query('SELECT id FROM null_sort ORDER BY val ASC;')
+      expect(results_asc.map { |r| r['id'] }).to include(1, 3)
+      expect(results_asc.to_a.last['id']).to eq(2)
+
+      # DESC: NULLs last
+      results_desc = client.query('SELECT id FROM null_sort ORDER BY val DESC;')
+      expect(results_desc.first['id']).to eq(2)
+      expect(results_desc.map { |r| r['id'] }).to include(1, 3)
+    end
+
+    it 'returns an error for non-existent columns in ORDER BY' do
+      expect do
+        client.query('SELECT category FROM products ORDER BY non_existent, category ASC;')
+      end.to raise_error(Mysql2::Error)
+    end
+  end
+
   describe 'Alias support' do
     it 'supports column aliases with AS' do
       results = client.query('SELECT 1 AS total;')
