@@ -264,6 +264,42 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([2, 'bob'])
     end
+
+    it 'filters rows by IN operator with integers' do
+      results = client.query('SELECT * FROM users WHERE id IN (1, 3);')
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by IN operator with strings' do
+      results = client.query("SELECT * FROM users WHERE name IN ('alice', 'cory');")
+      expect(results.count).to eq(2)
+      names = results.map { |r| r['name'] }
+      expect(names).to contain_exactly('alice', 'cory')
+    end
+
+    it 'returns empty result set when IN list contains no matches' do
+      results = client.query('SELECT * FROM users WHERE id IN (99, 100);')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns an error for IN with an empty list' do
+      expect do
+        client.query('SELECT * FROM users WHERE id IN ();')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns empty result set for IN with only NULL' do
+      results = client.query('SELECT * FROM users WHERE id IN (NULL);')
+      expect(results.count).to eq(0)
+    end
+
+    it 'filters correctly when IN list contains NULL' do
+      results = client.query('SELECT * FROM users WHERE id IN (1, NULL);')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do
@@ -614,6 +650,13 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
               'GROUP BY category HAVING COUNT(*) > 1 AND SUM(price) > 100;'
       results = client.query(query)
       expect(results.count).to eq(2)
+      categories = results.map { |r| r['category'] }
+      expect(categories).to contain_exactly('electronics', 'books')
+    end
+
+    it 'filters groups using HAVING with IN operator' do
+      query = "SELECT category FROM products GROUP BY category HAVING category IN ('electronics', 'books');"
+      results = client.query(query)
       categories = results.map { |r| r['category'] }
       expect(categories).to contain_exactly('electronics', 'books')
     end
