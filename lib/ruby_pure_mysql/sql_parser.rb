@@ -272,17 +272,19 @@ module RubyPureMysql
       match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
       return false unless match
 
-      return consume_between_and(match, buffer) if buffer[:in_between]
+      if buffer[:in_between]
+        consume_between_and_token(match, buffer)
+        return false
+      end
 
       process_and_operator(match, buffer, parts)
       true
     end
 
-    def consume_between_and(match, buffer)
+    def consume_between_and_token(match, buffer)
       buffer[:current] << match[0]
       buffer[:index] += match[0].length
       buffer[:in_between] = false
-      false
     end
 
     def process_and_operator(match, buffer, parts)
