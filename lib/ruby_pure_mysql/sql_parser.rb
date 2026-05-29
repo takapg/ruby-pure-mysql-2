@@ -287,12 +287,9 @@ module RubyPureMysql
     end
 
     def parse_is_null_condition(condition, column_pattern)
-      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+NOT\s+NULL\z/i))
-        return { column: m[1], operator: 'IS NOT NULL', value: nil }
-      end
-
-      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+NULL\z/i))
-        return { column: m[1], operator: 'IS NULL', value: nil }
+      if (m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i))
+        operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
+        return { column: m[1], operator: operator, value: nil }
       end
 
       nil

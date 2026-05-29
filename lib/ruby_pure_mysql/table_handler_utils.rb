@@ -50,6 +50,8 @@ module RubyPureMysql
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
+    rescue StandardError
+      false
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
