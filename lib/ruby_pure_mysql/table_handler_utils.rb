@@ -52,7 +52,8 @@ module RubyPureMysql
 
     def compare_value(val, operator, target_value)
       case operator
-      when 'LIKE' then build_like_regex(target_value).match?(val.to_s) unless target_value.is_a?(Regexp)
+      when 'LIKE'
+        target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : build_like_regex(target_value).match?(val.to_s)
       when 'IN' then val.nil? ? false : target_value.include?(val)
       when 'BETWEEN' then val.between?(*target_value)
       else
