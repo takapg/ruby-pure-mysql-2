@@ -118,10 +118,11 @@ module RubyPureMysql
     def evaluate_having_ast(group_val, group_rows, node, group_ctx)
       return false unless node.is_a?(Hash)
 
-      if node[:op] == :and
+      case node[:op]
+      when :and
         evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) &&
           evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
-      elsif node[:op] == :or
+      when :or
         evaluate_having_ast(group_val, group_rows, node[:left], group_ctx) ||
           evaluate_having_ast(group_val, group_rows, node[:right], group_ctx)
       else

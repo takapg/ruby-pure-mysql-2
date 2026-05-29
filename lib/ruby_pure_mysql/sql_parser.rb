@@ -292,20 +292,30 @@ module RubyPureMysql
     end
 
     def parse_condition(condition, allow_aggregates)
-      # allow_aggregates が false の場合は、集計関数を許可しないパターンを使用する
-      # 演算子や空白以外の文字を許容することで、テーブル修飾名 (table.col) に対応させる
-      col_pattern = allow_aggregates ? '.+?' : '[^=<>! \t\n\r\f\v]+'
-      regex = Regexp.new("\\A(#{col_pattern})\\s*(=|!=|<>|>=|<=|>|<|LIKE)\\s*(.+)\\z", Regexp::IGNORECASE)
-      where_match = condition.strip.match(regex)
-      return { error: 'Invalid WHERE clause' } unless where_match
+      condition = condition.strip
+      # 演算子を長い順に定義して、'>=' が '>' より先にマッチするようにする
+      operators = ['>=', '<=', '!=', '<>', 'LIKE', '=', '>', '<']
+      
+      op = operators.find { |o| condition.match?(/\s*#{Regexp.escape(o)}\s*/i) }
+      return { error: 'Invalid WHERE clause' } unless op
 
-      column = where_match[1].strip
-      operator = where_match[2].upcase
-      operator = '!=' if operator == '<>'
-      value_str = where_match[3].strip.delete_suffix(';')
+      # 最初の演算子で分割
+      parts = condition.split(/\s*#{Regexp.escape(op)}\s*/i, 2)
+      return { error: 'Invalid WHERE clause' } unless parts.size == 2
+
+      column = parts[0].strip
+      value_str = parts[1].strip.delete_suffix(';')
+
+      # allow_aggregates が false の場合、集計関数が含まれていないかチェック
+      if !allow_aggregates && column.match?(AggregateUtils::AGGREGATE_REGEX)
+        return { error: 'Invalid WHERE clause' }
+      end
+
       value = convert_value(value_str)
       return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
 
+      operator = op.upcase
+      operator = '!=' if operator == '<>'
       { column: column, operator: operator, value: value }
     end
   end
