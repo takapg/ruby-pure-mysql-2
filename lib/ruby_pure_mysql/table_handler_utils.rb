@@ -43,15 +43,19 @@ module RubyPureMysql
       return !val.nil? if operator == 'IS NOT NULL'
       return false if val.nil?
 
+      compare_value(val, operator, target_value)
+    rescue StandardError
+      false
+    end
+
+    def compare_value(val, operator, target_value)
       if operator == 'LIKE'
-        compiled_regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
-        compiled_regex.match?(val.to_s)
+        regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
+        regex.match?(val.to_s)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
-    rescue StandardError
-      false
     end
 
     def apply_order_by(client, order_by, table_columns, rows)

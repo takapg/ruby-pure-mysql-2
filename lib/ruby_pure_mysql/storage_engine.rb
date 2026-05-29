@@ -6,6 +6,7 @@ module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
   class StorageEngine
     include TableHandlerUtils
+
     def initialize
       @tables = {}
       @data = {}
@@ -99,6 +100,5 @@ module RubyPureMysql
 
       apply_filter(val, clause[:operator], clause[:value])
     end
-
   end
 end
