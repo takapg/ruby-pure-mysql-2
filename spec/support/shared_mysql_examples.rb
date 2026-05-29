@@ -271,7 +271,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('DROP TABLE IF EXISTS null_test;')
       client.query('CREATE TABLE null_test (id INT, val VARCHAR(255));')
       client.query("INSERT INTO null_test VALUES (1, 'hello');")
-      client.query("INSERT INTO null_test VALUES (2, NULL);")
+      client.query('INSERT INTO null_test VALUES (2, NULL);')
     end
 
     it 'filters rows by IS NULL' do
@@ -300,7 +300,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('CREATE TABLE orders (id INT, user_id INT);')
       client.query("INSERT INTO users VALUES (1, 'alice');")
       client.query("INSERT INTO users VALUES (2, 'bob');")
-      client.query("INSERT INTO orders VALUES (101, 1);")
+      client.query('INSERT INTO orders VALUES (101, 1);')
     end
 
     it 'extracts users who have no orders' do
