@@ -274,7 +274,12 @@ module RubyPureMysql
         state[:index] += 1
         ast = parse_or(tokens, state, allow_aggregates)
         return ast if ast.is_a?(Hash) && ast[:error]
-        state[:index] += 1 # consume ')'
+
+        if tokens[state[:index]] == ')'
+          state[:index] += 1 # consume ')'
+        else
+          return { error: 'Missing closing parenthesis' }
+        end
         ast
       else
         condition_tokens = []
@@ -287,9 +292,10 @@ module RubyPureMysql
     end
 
     def parse_condition(condition, allow_aggregates)
-      # カラム名に集計関数やテーブル修飾子が含まれるため、演算子を境界として柔軟にマッチさせる
-      # 非強欲なマッチ (.+?) を使用して、演算子部分を正しく切り出す
-      where_match = condition.strip.match(/\A(.+?)\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      # allow_aggregates が false の場合は、集計関数を許可しない厳格なパターン ([\w.]+) を使用する
+      col_pattern = allow_aggregates ? '.+?' : '[\w.]+'
+      regex = Regexp.new("\\A(#{col_pattern})\\s*(=|!=|<>|>=|<=|>|<|LIKE)\\s*(.+)\\z", Regexp::IGNORECASE)
+      where_match = condition.strip.match(regex)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1].strip
