@@ -259,7 +259,7 @@ module RubyPureMysql
       return process_normal_char(clause, buffer) if buffer[:in_quote]
 
       update_between_state(clause, buffer)
-      return if handle_and_operator(clause, buffer, parts)
+      return if handle_and_operator?(clause, buffer, parts)
 
       process_normal_char(clause, buffer)
     end
@@ -268,7 +268,7 @@ module RubyPureMysql
       buffer[:in_between] = true if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
     end
 
-    def handle_and_operator(clause, buffer, parts)
+    def handle_and_operator?(clause, buffer, parts)
       return false unless clause[buffer[:index]..].match?(/\A\s+AND\s+/i)
 
       if buffer[:in_between]
