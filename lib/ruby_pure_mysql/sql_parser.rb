@@ -299,15 +299,25 @@ module RubyPureMysql
     end
 
     def parse_standard_where_condition(condition, column_pattern)
-      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE)\s*(.+)\z/i)
+      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       column = where_match[1]
       operator = where_match[2].upcase
       operator = '!=' if operator == '<>'
       value_str = where_match[3].strip.delete_suffix(';')
-      value = convert_value(value_str)
-      return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+
+      if operator == 'IN'
+        unless value_str.start_with?('(') && value_str.end_with?(')')
+          return { error: 'Invalid IN clause syntax' }
+        end
+        list_str = value_str[1...-1]
+        value = list_str.split(',').map { |v| convert_value(v.strip) }
+        return { error: 'Unsupported IN value' } if value.any? { |v| v.is_a?(Hash) && v[:error] }
+      else
+        value = convert_value(value_str)
+        return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
+      end
 
       { column: column, operator: operator, value: value }
     end

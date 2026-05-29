@@ -264,6 +264,25 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([2, 'bob'])
     end
+
+    it 'filters rows by IN operator with integers' do
+      results = client.query('SELECT * FROM users WHERE id IN (1, 3);')
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by IN operator with strings' do
+      results = client.query("SELECT * FROM users WHERE name IN ('alice', 'cory');")
+      expect(results.count).to eq(2)
+      names = results.map { |r| r['name'] }
+      expect(names).to contain_exactly('alice', 'cory')
+    end
+
+    it 'returns empty result set when IN list contains no matches' do
+      results = client.query('SELECT * FROM users WHERE id IN (99, 100);')
+      expect(results.count).to eq(0)
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do
