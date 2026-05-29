@@ -251,9 +251,7 @@ module RubyPureMysql
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
 
       match = nil
-      if buffer[:in_quote].nil?
-        match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
-      end
+      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i) if buffer[:in_quote].nil?
 
       if match
         process_and_operator(match, buffer, parts)
