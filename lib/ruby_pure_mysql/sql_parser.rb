@@ -307,19 +307,20 @@ module RubyPureMysql
       operator = '!=' if operator == '<>'
       value_str = where_match[3].strip.delete_suffix(';')
 
-      if operator == 'IN'
-        unless value_str.start_with?('(') && value_str.end_with?(')')
-          return { error: 'Invalid IN clause syntax' }
-        end
-        list_str = value_str[1...-1]
-        value = list_str.split(',').map { |v| convert_value(v.strip) }
-        return { error: 'Unsupported IN value' } if value.any? { |v| v.is_a?(Hash) && v[:error] }
-      else
-        value = convert_value(value_str)
-        return { error: 'Unsupported WHERE value' } if value.is_a?(Hash) && value[:error]
-      end
+      value = operator == 'IN' ? parse_in_value(value_str) : convert_value(value_str)
+      return value if value.is_a?(Hash) && value[:error]
 
       { column: column, operator: operator, value: value }
+    end
+
+    def parse_in_value(value_str)
+      return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
+
+      list_str = value_str[1...-1]
+      values = list_str.split(',').map { |v| convert_value(v.strip) }
+      return { error: 'Unsupported IN value' } if values.any? { |v| v.is_a?(Hash) && v[:error] }
+
+      values
     end
   end
 

@@ -68,16 +68,12 @@ module RubyPureMysql
     end
 
     def sort_rows(rows, col_idx, direction)
-      sorted_rows = rows.sort_by do |row|
-        val = row[col_idx]
-        [val.nil? ? 0 : 1, val]
-      end
-      direction.to_s.upcase.strip == 'DESC' ? sorted_rows.reverse : sorted_rows
+      sorted = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
+      direction.to_s.upcase.strip == 'DESC' ? sorted.reverse : sorted
     end
 
     def apply_offset_and_limit(rows, result)
-      rows = rows.drop(result[:offset] || 0)
-      result[:limit] ? rows.first(result[:limit]) : rows
+      rows.drop(result[:offset] || 0).then { |r| result[:limit] ? r.first(result[:limit]) : r }
     end
 
     def project_rows(client, rows, columns, selected_columns, table_map = {})
