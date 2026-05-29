@@ -61,12 +61,10 @@ module RubyPureMysql
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
-      sort_conditions = order_by.map do |cond|
+      sort_conditions = order_by.filter_map do |cond|
         idx = get_column_index(client, table_columns, cond[:column])
-        next nil unless idx
-
-        { index: idx, direction: cond[:direction] }
-      end.compact
+        { index: idx, direction: cond[:direction] } if idx
+      end
       return nil if sort_conditions.empty?
 
       sort_rows(rows, sort_conditions)
@@ -76,18 +74,25 @@ module RubyPureMysql
       rows.sort do |a, b|
         comparison = 0
         sort_conditions.each do |cond|
-          val_a = a[cond[:index]]
-          val_b = b[cond[:index]]
-
-          res = (val_a.nil? ? 0 : 1) <=> (val_b.nil? ? 0 : 1)
-          if res == 0
-            res = (val_a <=> val_b) rescue 0
-          end
-
+          res = compare_values(a, b, cond)
           comparison = res * (cond[:direction] == :DESC ? -1 : 1)
           break if comparison != 0
         end
         comparison
+      end
+    end
+
+    def compare_values(a, b, cond)
+      val_a = a[cond[:index]]
+      val_b = b[cond[:index]]
+
+      res = (val_a.nil? ? 0 : 1) <=> (val_b.nil? ? 0 : 1)
+      return res unless res.zero?
+
+      begin
+        val_a <=> val_b
+      rescue StandardError
+        0
       end
     end
 
