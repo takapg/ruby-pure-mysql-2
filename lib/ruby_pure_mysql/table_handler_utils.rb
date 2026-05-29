@@ -61,15 +61,34 @@ module RubyPureMysql
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
-      col_idx = get_column_index(client, table_columns, order_by[:column])
-      return nil unless col_idx
+      sort_conditions = order_by.map do |cond|
+        idx = get_column_index(client, table_columns, cond[:column])
+        next nil unless idx
 
-      sort_rows(rows, col_idx, order_by[:direction])
+        { index: idx, direction: cond[:direction] }
+      end.compact
+      return nil if sort_conditions.empty?
+
+      sort_rows(rows, sort_conditions)
     end
 
-    def sort_rows(rows, col_idx, direction)
-      sorted = rows.sort_by { |row| [row[col_idx].nil? ? 0 : 1, row[col_idx]] }
-      direction.to_s.upcase.strip == 'DESC' ? sorted.reverse : sorted
+    def sort_rows(rows, sort_conditions)
+      rows.sort do |a, b|
+        comparison = 0
+        sort_conditions.each do |cond|
+          val_a = a[cond[:index]]
+          val_b = b[cond[:index]]
+
+          res = (val_a.nil? ? 0 : 1) <=> (val_b.nil? ? 0 : 1)
+          if res == 0
+            res = (val_a <=> val_b) rescue 0
+          end
+
+          comparison = res * (cond[:direction] == :DESC ? -1 : 1)
+          break if comparison != 0
+        end
+        comparison
+      end
     end
 
     def apply_offset_and_limit(rows, result)

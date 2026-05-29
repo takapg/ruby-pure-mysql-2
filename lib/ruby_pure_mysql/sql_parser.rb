@@ -87,7 +87,7 @@ module RubyPureMysql
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
-        '(?:\s+ORDER\s+BY\s+(?<order_col>.+?)(?:\s+(?<order_dir>ASC|DESC))?)?',
+        '(?:\s+ORDER\s+BY\s+(?<order_clause>.+?))?',
         '(?:\s+LIMIT\s+(?<limit>\d+)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
         '\s*;?\s*\z'
       ].join,
@@ -121,7 +121,7 @@ module RubyPureMysql
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      parse_order_by_clause(result, match[:order_col], match[:order_dir]) if match[:order_col]
+      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
       parse_limit_offset_clause(result, match[:limit], match[:offset])
       nil
     end
@@ -133,9 +133,16 @@ module RubyPureMysql
       result[:having] = having
     end
 
-    def parse_order_by_clause(result, column, direction)
-      # 修正: table_handlers.rb が期待するキー :order に合わせる
-      result[:order] = { column: column, direction: (direction || 'ASC').upcase.to_sym }
+    def parse_order_by_clause(result, clause)
+      result[:order] = clause.split(',').map do |part|
+        part = part.strip
+        m = part.match(/(.+?)\s+(ASC|DESC)\z/i)
+        if m
+          { column: m[1].strip, direction: m[2].upcase.to_sym }
+        else
+          { column: part, direction: :ASC }
+        end
+      end
     end
 
     def parse_limit_offset_clause(result, limit, offset)

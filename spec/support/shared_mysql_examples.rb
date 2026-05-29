@@ -808,6 +808,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Multi-column ORDER BY support' do
+    before do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 200);")
+      client.query("INSERT INTO products VALUES (3, 'books', 50);")
+      client.query("INSERT INTO products VALUES (4, 'books', 150);")
+    end
+
+    it 'sorts by multiple columns (category ASC, price DESC)' do
+      results = client.query('SELECT category, price FROM products ORDER BY category ASC, price DESC;')
+      rows = results.to_a
+      expect(rows[0].values).to eq(['books', 150])
+      expect(rows[1].values).to eq(['books', 50])
+      expect(rows[2].values).to eq(['electronics', 200])
+      expect(rows[3].values).to eq(['electronics', 100])
+    end
+  end
+
   describe 'Alias support' do
     it 'supports column aliases with AS' do
       results = client.query('SELECT 1 AS total;')
