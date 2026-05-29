@@ -266,6 +266,51 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'IS NULL / IS NOT NULL support' do
+    before do
+      client.query('DROP TABLE IF EXISTS null_test;')
+      client.query('CREATE TABLE null_test (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO null_test VALUES (1, 'hello');")
+      client.query('INSERT INTO null_test VALUES (2, NULL);')
+    end
+
+    it 'filters rows by IS NULL' do
+      results = client.query('SELECT * FROM null_test WHERE val IS NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([2, nil])
+    end
+
+    it 'filters rows by IS NOT NULL' do
+      results = client.query('SELECT * FROM null_test WHERE val IS NOT NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'hello'])
+    end
+
+    it 'returns empty result set when IS NULL finds nothing' do
+      results = client.query('SELECT * FROM null_test WHERE id IS NULL;')
+      expect(results.count).to eq(0)
+    end
+  end
+
+  describe 'LEFT JOIN with IS NULL' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('DROP TABLE IF EXISTS orders;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query('CREATE TABLE orders (id INT, user_id INT);')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query('INSERT INTO orders VALUES (101, 1);')
+    end
+
+    it 'extracts users who have no orders' do
+      query = 'SELECT users.name FROM users LEFT JOIN orders ON users.id = orders.user_id WHERE orders.id IS NULL;'
+      results = client.query(query)
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq('bob')
+    end
+  end
+
   describe 'INNER JOIN support' do
     before do
       client.query('DROP TABLE IF EXISTS users;')

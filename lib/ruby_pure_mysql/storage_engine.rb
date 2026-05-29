@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require_relative 'table_handler_utils'
+
 module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
   class StorageEngine
+    include TableHandlerUtils
+
     def initialize
       @tables = {}
       @data = {}
@@ -93,29 +97,8 @@ module RubyPureMysql
       return false unless c_idx
 
       val = row[c_idx]
-      return false if val.nil?
 
-      compare_values?(val, clause)
-    end
-
-    def compare_values?(val, clause)
-      if clause[:operator] == 'LIKE'
-        clause[:regex] ? clause[:regex].match?(val.to_s) : match_like?(val, clause[:value])
-      else
-        match_standard?(val, clause[:operator], clause[:value])
-      end
-    end
-
-    def match_like?(val, pattern_value)
-      pattern = Regexp.escape(pattern_value.to_s).gsub('%', '.*').tr('_', '.')
-      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE).match?(val.to_s)
-    end
-
-    def match_standard?(val, operator, target_value)
-      method = operator == '=' ? :== : operator.to_sym
-      val.public_send(method, target_value)
-    rescue StandardError
-      false
+      apply_filter(val, clause[:operator], clause[:value])
     end
   end
 end
