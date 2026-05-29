@@ -99,7 +99,7 @@ module RubyPureMysql
 
     def evaluate_having_condition(group_val, group_rows, clause, group_ctx)
       val = resolve_having_value(group_val, group_rows, clause[:column], group_ctx)
-      raise HavingError, 'Unknown column' if [:no_column, :error].include?(val)
+      raise HavingError, 'Unknown column' if %i[no_column error].include?(val)
 
       apply_filter(val, clause[:operator], clause[:value])
     end
