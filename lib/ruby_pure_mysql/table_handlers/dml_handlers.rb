@@ -8,16 +8,27 @@ module RubyPureMysql
       return unless columns
 
       values = resolve_insert_values(client, columns, result)
-      if values == :column_count_mismatch
-        return send_err_packet(client, 1, "Column count doesn't match value count at row 1", 1136)
-      end
-      return send_err_packet(client, 1, "Unknown column '#{values}'", 1054) if values.is_a?(String)
+      return if insert_value_error?(client, values)
 
       if @storage_engine.insert(result[:table_name], values)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
       end
+    end
+
+    def insert_value_error?(client, values)
+      if values == :column_count_mismatch
+        send_err_packet(client, 1, "Column count doesn't match value count at row 1", 1136)
+        return true
+      end
+
+      if values.is_a?(String)
+        send_err_packet(client, 1, "Unknown column '#{values}'", 1054)
+        return true
+      end
+
+      false
     end
 
     def resolve_insert_values(client, columns, result)
