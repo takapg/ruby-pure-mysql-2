@@ -57,8 +57,7 @@ jobs:
             結果を以下の JSON 形式で 'issue.json' という名前のファイルに保存してください。
             {
               \"title\": \"Issue のタイトル\",
-              \"body\": \"Markdown形式の本文。必ず（#### 概要、#### 実装のポイント、#### 期待される動作、#### 
-              テスト計画）のセクションを含めること\"
+              \"body\": \"Markdown形式の本文。必ず（#### 概要、#### 実装のポイント、#### 期待される動作、#### テスト計画）のセクションを含めること\"
             }"
           else
             # 特定指示モード
@@ -81,6 +80,7 @@ jobs:
 
             aider --model gemini/gemma-4-31b-it \
               --read repomix-output.xml \
+              --add issue.json \
               --chat-language japanese \
               --yes-always \
               --message "$PROMPT"
