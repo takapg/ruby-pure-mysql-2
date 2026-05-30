@@ -30,11 +30,17 @@ module RubyPureMysql
       tokens = col.split(/([+*/-])/).map(&:strip).reject(&:empty?)
       return :error if tokens.empty?
 
-      # 先頭の単項演算子を処理
-      if tokens[0] == '-'
-        tokens.unshift('0')
-      elsif tokens[0] == '+'
-        tokens.shift
+      # 単項演算子（符号）を数値に統合
+      i = 0
+      while i < tokens.size
+        if (tokens[i] == '-' || tokens[i] == '+') && (i == 0 || %w[+*/-].include?(tokens[i - 1]))
+          if tokens[i + 1] && tokens[i + 1] =~ /\A[-+]?\d*\.?\d+\z/
+            tokens[i + 1] = tokens[i] + tokens[i + 1]
+            tokens.delete_at(i)
+            i -= 1
+          end
+        end
+        i += 1
       end
 
       tokens = process_multiplication_division(tokens)
