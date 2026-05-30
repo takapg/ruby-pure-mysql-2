@@ -103,14 +103,16 @@ module RubyPureMysql
       rows = @data[table_name]
 
       deleted_count = 0
-      rows.reject! do |row|
-        if limit && deleted_count >= limit
-          false
-        elsif match_row?(row, columns, where_clauses)
-          deleted_count += 1
-          true
+      @data[table_name] = rows.select do |row|
+        if match_row?(row, columns, where_clauses)
+          if limit && deleted_count >= limit
+            true # 制限に達したため保持する
+          else
+            deleted_count += 1
+            false # 削除対象
+          end
         else
-          false
+          true # 条件に合わないため保持する
         end
       end
     end
