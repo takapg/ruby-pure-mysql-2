@@ -40,33 +40,32 @@ module RubyPureMysql
     private
 
     def process_multiplication_division(tokens)
-      i = 0
-      while i < tokens.size
-        if MD_OPERATORS.include?(tokens[i])
-          result = execute_md_op(tokens, i)
-          return nil if result.nil?
+      index = 0
+      while index < tokens.size
+        if MD_OPERATORS.include?(tokens[index])
+          return nil if (result = execute_md_op(tokens, index)).nil?
 
-          update_tokens_md(tokens, i, result)
-          i -= 1
+          update_tokens_md(tokens, index, result)
+          index -= 1
         end
-        i += 1
+        index += 1
       end
       tokens
     end
 
-    def execute_md_op(tokens, i)
-      op = tokens[i]
-      left = tokens[i - 1].to_f
-      right = tokens[i + 1].to_f
+    def execute_md_op(tokens, index)
+      op = tokens[index]
+      left = tokens[index - 1].to_f
+      right = tokens[index + 1].to_f
       return nil if op == '/' && right.zero?
 
       op == '*' ? left * right : left / right
     end
 
-    def update_tokens_md(tokens, i, result)
-      tokens[i - 1] = result
-      tokens.delete_at(i)
-      tokens.delete_at(i)
+    def update_tokens_md(tokens, index, result)
+      tokens[index - 1] = result
+      tokens.delete_at(index)
+      tokens.delete_at(index)
     end
 
     def process_addition_subtraction(tokens)
