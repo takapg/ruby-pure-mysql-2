@@ -41,7 +41,12 @@ module RubyPureMysql
       values = parse_insert_values(match[3])
       return values if values.is_a?(Hash) && values[:error]
 
-      { type: :insert, table_name: match[1].delete_prefix('`').delete_suffix('`'), columns: parse_insert_columns(match[2]), values: values }
+      {
+        type: :insert,
+        table_name: match[1].delete_prefix('`').delete_suffix('`'),
+        columns: parse_insert_columns(match[2]),
+        values: values
+      }
     end
 
     def parse_insert_columns(col_list)
