@@ -44,24 +44,36 @@ module RubyPureMysql
       end
     end
 
-    def update_rows_with_where(table_name, where_clauses, update_map)
+    def update_rows_with_where(table_name, where_clauses, update_map, limit = nil)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
         columns = @tables[table_name]
+        updated_count = 0
         @data[table_name].each do |row|
-          update_map.each { |idx, val| row[idx] = val } if match_row?(row, columns, where_clauses)
+          if match_row?(row, columns, where_clauses)
+            update_map.each { |idx, val| row[idx] = val }
+            updated_count += 1
+            break if limit && updated_count >= limit
+          end
         end
         true
       end
     end
 
-    def delete_rows_with_where(table_name, where_clauses)
+    def delete_rows_with_where(table_name, where_clauses, limit = nil)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
         columns = @tables[table_name]
-        @data[table_name].reject! { |row| match_row?(row, columns, where_clauses) }
+        indices_to_delete = []
+        @data[table_name].each_with_index do |row, idx|
+          if match_row?(row, columns, where_clauses)
+            indices_to_delete << idx
+            break if limit && indices_to_delete.size >= limit
+          end
+        end
+        indices_to_delete.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
     end
