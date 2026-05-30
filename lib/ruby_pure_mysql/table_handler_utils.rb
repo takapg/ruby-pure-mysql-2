@@ -52,18 +52,25 @@ module RubyPureMysql
 
     def compare_value(val, operator, target_value)
       case operator
-      when 'LIKE'
-        target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : build_like_regex(target_value).match?(val.to_s)
-      when 'REGEXP', 'RLIKE'
-        target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : Regexp.new(target_value.to_s, Regexp::IGNORECASE).match?(val.to_s)
-      when 'IN'
-        val.nil? ? false : target_value.include?(val)
-      when 'BETWEEN', 'NOT BETWEEN'
-        operator == 'BETWEEN' ? val.between?(*target_value) : !val.between?(*target_value)
+      when 'LIKE' then match_pattern(val, target_value, :like)
+      when 'REGEXP', 'RLIKE' then match_pattern(val, target_value, :regexp)
+      when 'IN' then val.nil? ? false : target_value.include?(val)
+      when 'BETWEEN', 'NOT BETWEEN' then match_between(val, operator, target_value)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
+    end
+
+    def match_pattern(val, target, type)
+      return target.match?(val.to_s) if target.is_a?(Regexp)
+
+      regex = type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)
+      regex.match?(val.to_s)
+    end
+
+    def match_between(val, operator, target)
+      operator == 'BETWEEN' ? val.between?(*target) : !val.between?(*target)
     end
 
     def apply_order_by(client, order_by, table_columns, rows, selected_columns = nil)
