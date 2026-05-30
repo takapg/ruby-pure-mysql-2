@@ -3,8 +3,10 @@
 module RubyPureMysql
   # DML操作に関連するハンドラメソッド
   module DmlHandlers
+    # INSERT操作中のエラーを管理する例外クラス
     class InsertError < StandardError
       attr_reader :code
+
       def initialize(message, code)
         @code = code
         super(message)
@@ -15,6 +17,10 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
+      execute_insert(client, result, columns)
+    end
+
+    def execute_insert(client, result, columns)
       begin
         values = resolve_insert_values(client, columns, result)
         if @storage_engine.insert(result[:table_name], values)
@@ -32,6 +38,7 @@ module RubyPureMysql
         if result[:values].size != columns.size
           raise InsertError.new("Column count doesn't match value count at row 1", 1136)
         end
+
         return result[:values]
       end
 
