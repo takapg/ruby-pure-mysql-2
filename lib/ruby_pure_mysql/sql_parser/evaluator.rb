@@ -42,21 +42,28 @@ module RubyPureMysql
       stack = []
       i = 0
       while i < tokens.size
-        t = tokens[i]
-        if ['*', '/'].include?(t)
-          op = t
-          left = stack.pop.to_f
-          right = tokens[i + 1].to_f
-          return nil if op == '/' && right.zero?
-
-          stack << (op == '*' ? left * right : left / right)
-          i += 2
-        else
-          stack << t
-          i += 1
-        end
+        i = process_token(stack, tokens, i)
+        return nil if i == :error
       end
       stack
+    end
+
+    def process_token(stack, tokens, i)
+      t = tokens[i]
+      return handle_mul_div(stack, tokens, i) if ['*', '/'].include?(t)
+
+      stack << t
+      i + 1
+    end
+
+    def handle_mul_div(stack, tokens, i)
+      op = tokens[i]
+      left = stack.pop.to_f
+      right = tokens[i + 1].to_f
+      return :error if op == '/' && right.zero?
+
+      stack << (op == '*' ? left * right : left / right)
+      i + 2
     end
 
     def process_addition_subtraction(stack)
