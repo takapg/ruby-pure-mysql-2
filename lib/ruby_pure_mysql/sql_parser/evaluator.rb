@@ -9,7 +9,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if %r{\A\d+(\s*[+*/-]\s*\d+)*\z}.match?(col)
+      return evaluate_math(col) if %r{\A\s*[-+]?\d*\.?\d+(\s*[+*/-]\s*[-+]?\d*\.?\d+)*\s*\z}.match?(col)
 
       :error
     end
@@ -27,8 +27,15 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.scan(%r{\d+|[+*/-]})
+      tokens = col.split(/([+*/-])/).map(&:strip).reject(&:empty?)
       return :error if tokens.empty?
+
+      # 先頭の単項演算子を処理
+      if tokens[0] == '-'
+        tokens.unshift('0')
+      elsif tokens[0] == '+'
+        tokens.shift
+      end
 
       tokens = process_multiplication_division(tokens)
       return nil if tokens.nil?
