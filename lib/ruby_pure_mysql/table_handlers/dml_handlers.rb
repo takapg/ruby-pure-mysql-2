@@ -21,16 +21,14 @@ module RubyPureMysql
     end
 
     def execute_insert(client, result, columns)
-      begin
-        values = resolve_insert_values(client, columns, result)
-        if @storage_engine.insert(result[:table_name], values)
-          send_ok_packet(client, 1)
-        else
-          send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
-        end
-      rescue InsertError => e
-        send_err_packet(client, 1, e.message, e.code)
+      values = resolve_insert_values(client, columns, result)
+      if @storage_engine.insert(result[:table_name], values)
+        send_ok_packet(client, 1)
+      else
+        send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
       end
+    rescue InsertError => e
+      send_err_packet(client, 1, e.message, e.code)
     end
 
     def resolve_insert_values(client, columns, result)
