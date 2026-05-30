@@ -6,6 +6,7 @@ module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
   class StorageEngine
     include TableHandlerUtils
+    include SortUtils
 
     def initialize
       @tables = {}
