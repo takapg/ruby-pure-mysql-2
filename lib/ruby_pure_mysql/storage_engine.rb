@@ -99,7 +99,7 @@ module RubyPureMysql
     end
 
     def perform_update_rows(rows, columns, where_clauses, update_map, limit)
-      return if limit == 0
+      return if limit&.zero?
 
       updated_count = 0
       rows.each do |row|
@@ -112,7 +112,7 @@ module RubyPureMysql
     end
 
     def collect_indices_to_delete(rows, columns, where_clauses, limit)
-      return [] if limit == 0
+      return [] if limit&.zero?
 
       indices = []
       rows.each_with_index do |row, idx|
