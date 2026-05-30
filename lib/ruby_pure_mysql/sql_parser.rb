@@ -67,21 +67,25 @@ module RubyPureMysql
       updates = parse_update_set_clause(parts[:set_clause])
       return updates if updates.is_a?(Hash) && updates[:error]
 
-      res = { type: :update, table_name: parts[:table_name], updates: updates }
-      return res unless parts[:where_clause]
-
-      where = parse_where_clause(parts[:where_clause])
-      return where if where.is_a?(Hash) && where[:error]
-
-      res.merge(where: where)
+      res = { type: :update, table_name: parts[:table_name], updates: updates, limit: parts[:limit]&.to_i }
+      apply_update_where(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
-      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s+WHERE\s+(.+)\s*;?\s*\z/i))
-        { table_name: match[1], set_clause: match[2], where_clause: match[3] }
-      elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s*;?\s*\z/i))
-        { table_name: match[1], set_clause: match[2], where_clause: nil }
+      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s+WHERE\s+(.+?)(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: match[3], limit: match[4] }
+      elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: nil, limit: match[3] }
       end
+    end
+
+    def apply_update_where(res, where_clause)
+      return res unless where_clause
+
+      where = parse_where_clause(where_clause)
+      return where if where.is_a?(Hash) && where[:error]
+
+      res.merge(where: where)
     end
 
     def parse_update_set_clause(set_clause)
@@ -97,10 +101,10 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: match[1] }
+      result = { type: :delete, table_name: match[1], limit: match[3]&.to_i }
       return result unless match[2]
 
       where = parse_where_clause(match[2])

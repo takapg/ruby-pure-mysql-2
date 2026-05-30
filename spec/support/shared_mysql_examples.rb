@@ -1072,4 +1072,54 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(1)
     end
   end
+
+  describe 'UPDATE and DELETE with LIMIT' do
+    before do
+      client.query('DROP TABLE IF EXISTS limit_test;')
+      client.query('CREATE TABLE limit_test (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO limit_test VALUES (1, 'a');")
+      client.query("INSERT INTO limit_test VALUES (2, 'b');")
+      client.query("INSERT INTO limit_test VALUES (3, 'c');")
+    end
+
+    it 'updates only the first N rows using LIMIT' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 2;")
+      results = client.query('SELECT id, val FROM limit_test ORDER BY id ASC;')
+      rows = results.to_a
+      expect(rows[0]['val']).to eq('updated')
+      expect(rows[1]['val']).to eq('updated')
+      expect(rows[2]['val']).to eq('c')
+    end
+
+    it 'deletes only the first N rows using LIMIT' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 2;')
+      results = client.query('SELECT id FROM limit_test;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(3)
+    end
+
+    it 'updates 0 rows when LIMIT 0 is specified' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 0;")
+      results = client.query('SELECT id, val FROM limit_test ORDER BY id ASC;')
+      expect(results.to_a.none? { |r| r['val'] == 'updated' }).to be true
+    end
+
+    it 'deletes 0 rows when LIMIT 0 is specified' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 0;')
+      results = client.query('SELECT id FROM limit_test;')
+      expect(results.count).to eq(3)
+    end
+
+    it 'updates all rows when LIMIT exceeds row count' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 100;")
+      results = client.query('SELECT id, val FROM limit_test ORDER BY id ASC;')
+      expect(results.to_a.all? { |r| r['val'] == 'updated' }).to be true
+    end
+
+    it 'deletes all rows when LIMIT exceeds row count' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 100;')
+      results = client.query('SELECT id FROM limit_test;')
+      expect(results.count).to eq(0)
+    end
+  end
 end
