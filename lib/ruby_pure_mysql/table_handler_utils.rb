@@ -16,6 +16,7 @@ module RubyPureMysql
     include JoinUtils
     include ProjectionUtils
     include HavingUtils
+
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
       unless columns
@@ -24,6 +25,7 @@ module RubyPureMysql
       end
       columns
     end
+
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
@@ -55,16 +57,14 @@ module RubyPureMysql
       when 'IN' then val.nil? ? false : target_value.include?(val)
       when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
       else
-        method = operator == '=' ? :== : operator.to_sym
-        val.public_send(method, target_value)
+        val.public_send(operator == '=' ? :== : operator.to_sym, target_value)
       end
     end
 
     def match_pattern?(val, target, type)
       return target.match?(val.to_s) if target.is_a?(Regexp)
 
-      regex = type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)
-      regex.match?(val.to_s)
+      (type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)).match?(val.to_s)
     end
 
     def match_between?(val, operator, target)
@@ -87,8 +87,7 @@ module RubyPureMysql
     def resolve_order_by_column_index(client, table_columns, col_name, selected_columns)
       name = col_name
       if selected_columns
-        alias_info = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(name) }
-        name = alias_info[:original] if alias_info
+        name = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(name) }&.dig(:original) || name
       end
       get_column_index(client, table_columns, name)
     end
