@@ -83,7 +83,12 @@ module RubyPureMysql
       updates = parse_update_set_clause(parts[:set_clause])
       return updates if updates.is_a?(Hash) && updates[:error]
 
-      res = { type: :update, table_name: strip_backticks(parts[:table_name]), updates: updates, limit: parts[:limit]&.to_i }
+      res = {
+        type: :update,
+        table_name: strip_backticks(parts[:table_name]),
+        updates: updates,
+        limit: parts[:limit]&.to_i
+      }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_update_where(res, parts[:where_clause])
     end
