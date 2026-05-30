@@ -27,27 +27,15 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.scan(%r{\d+\.?\d*|\.\d+|[+*/-]})
+      # 数値（符号付き）または演算子を抽出
+      tokens = col.scan(%r{[-+]?\d+\.?\d*|[-+]?\.\d+|[+*/-]})
       return :error if tokens.empty?
-
-      # 単項演算子（符号）を数値に統合
-      i = 0
-      while i < tokens.size
-        if (tokens[i] == '-' || tokens[i] == '+') && (i == 0 || %w[+*/-].include?(tokens[i - 1]))
-          if tokens[i + 1] && tokens[i + 1] =~ /\A(\d+\.?\d*|\.\d+)\z/
-            tokens[i + 1] = tokens[i] + tokens[i + 1]
-            tokens.delete_at(i)
-            i -= 1
-          end
-        end
-        i += 1
-      end
 
       tokens = process_multiplication_division(tokens)
       return nil if tokens.nil?
 
       res = process_addition_subtraction(tokens)
-      (res % 1).zero? ? res.to_i : res
+      res == res.to_i ? res.to_i : res
     end
 
     private
