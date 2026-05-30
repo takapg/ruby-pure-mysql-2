@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\s*[\+\-\*\/]\s*\d+)*\z/.match?(col)
+      return evaluate_math(col) if %r{\A\d+(\s*[+*/-]\s*\d+)*\z}.match?(col)
 
       :error
     end
@@ -26,17 +26,26 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.scan(/\d+|[\+\-\*\/]/)
+      tokens = col.scan(%r{\d+|[+*/-]})
       return :error if tokens.empty?
 
-      # Pass 1: Multiplication and Division
+      tokens = process_multiplication_division(tokens)
+      return nil if tokens.nil?
+
+      res = process_addition_subtraction(tokens)
+      (res % 1).zero? ? res.to_i : res
+    end
+
+    private
+
+    def process_multiplication_division(tokens)
       i = 0
       while i < tokens.size
-        if tokens[i] == '*' || tokens[i] == '/'
+        if ['*', '/'].include?(tokens[i])
           op = tokens[i]
           left = tokens[i - 1].to_f
           right = tokens[i + 1].to_f
-          return nil if op == '/' && right == 0
+          return nil if op == '/' && right.zero?
 
           res = op == '*' ? left * right : left / right
           tokens[i - 1] = res
@@ -46,8 +55,10 @@ module RubyPureMysql
         end
         i += 1
       end
+      tokens
+    end
 
-      # Pass 2: Addition and Subtraction
+    def process_addition_subtraction(tokens)
       res = tokens[0].to_f
       i = 1
       while i < tokens.size
@@ -56,8 +67,7 @@ module RubyPureMysql
         res = op == '+' ? res + val : res - val
         i += 2
       end
-
-      res % 1 == 0 ? res.to_i : res
+      res
     end
   end
 end
