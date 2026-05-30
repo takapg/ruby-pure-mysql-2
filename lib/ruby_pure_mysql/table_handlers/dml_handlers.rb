@@ -21,14 +21,19 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      col_idx = get_column_index(client, columns, result[:column])
-      return unless col_idx
+      update_map = {}
+      result[:updates].each do |update|
+        col_idx = get_column_index(client, columns, update[:column])
+        return send_err_packet(client, 1, "Unknown column '#{update[:column]}'", 1054) unless col_idx
 
-      perform_update(client, result, where_clauses, col_idx)
+        update_map[col_idx] = update[:value]
+      end
+
+      perform_update(client, result, where_clauses, update_map)
     end
 
-    def perform_update(client, result, where_clauses, col_idx)
-      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, col_idx, result[:value])
+    def perform_update(client, result, where_clauses, update_map)
+      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, update_map)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Update failed', 1000)
