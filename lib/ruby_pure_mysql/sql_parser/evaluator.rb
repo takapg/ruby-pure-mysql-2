@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if %r{\A\d+(\s*[+\-*/]\s*\d+)*\z}.match?(col)
+      return evaluate_math(col) if %r{\A-?\d+(?:\.\d+)?(\s*[+\-*/]\s*-?\d+(?:\.\d+)?)*\z}.match?(col)
 
       :error
     end
@@ -26,56 +26,30 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.scan(%r{\d+|[+\-*/]})
+      tokens = col.scan(%r{-?\d+(?:\.\d+)?|[+\-*/]})
       return :error if tokens.empty?
 
-      stack = process_multiplication_division(tokens)
-      return nil if stack.nil?
-
-      res = process_addition_subtraction(stack)
-      (res % 1).zero? ? res.to_i : res
-    end
-
-    private
-
-    def process_multiplication_division(tokens)
       stack = []
-      index = 0
-      while index < tokens.size
-        index = process_token(stack, tokens, index)
-        return nil if index == :error
+      i = 0
+      while i < tokens.size
+        t = tokens[i]
+        if t == '*' || t == '/'
+          left = stack.pop.to_f
+          right = tokens[i + 1].to_f
+          return nil if t == '/' && right.zero?
+          stack << (t == '*' ? left * right : left / right)
+          i += 1
+        else
+          stack << t
+        end
+        i += 1
       end
-      stack
-    end
 
-    def process_token(stack, tokens, index)
-      t = tokens[index]
-      return handle_mul_div(stack, tokens, index) if ['*', '/'].include?(t)
-
-      stack << t
-      index + 1
-    end
-
-    def handle_mul_div(stack, tokens, index)
-      op = tokens[index]
-      left = stack.pop.to_f
-      right = tokens[index + 1].to_f
-      return :error if op == '/' && right.zero?
-
-      stack << (op == '*' ? left * right : left / right)
-      index + 2
-    end
-
-    def process_addition_subtraction(stack)
-      res = stack[0].to_f
-      i = 1
-      while i < stack.size
-        op = stack[i]
-        val = stack[i + 1].to_f
-        res = op == '+' ? res + val : res - val
-        i += 2
+      res = stack[1..].each_slice(2).reduce(stack[0].to_f) do |acc, (op, val)|
+        op == '+' ? acc + val.to_f : acc - val.to_f
       end
-      res
+
+      (res % 1).zero? ? res.to_i : res
     end
   end
 end

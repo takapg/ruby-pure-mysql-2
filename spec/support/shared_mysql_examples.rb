@@ -58,6 +58,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'can calculate division with remainder (SELECT 10 / 3;)' do
+      results = client.query('SELECT 10 / 3;')
+      expect(results.first.values.first).to be_within(0.001).of(3.333)
+    end
+
+    it 'can calculate result as zero (SELECT 1 - 1;)' do
+      results = client.query('SELECT 1 - 1;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'can calculate with negative numbers (SELECT -1 + 2;)' do
+      results = client.query('SELECT -1 + 2;')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'can calculate with floating point numbers (SELECT 1.5 * 2;)' do
+      results = client.query('SELECT 1.5 * 2;')
+      expect(results.first.values.first).to eq(3)
+    end
+
     it 'can calculate basic arithmetic with an alias (SELECT 1 + 1 AS total;)' do
       results = client.query('SELECT 1 + 1 AS total;')
       expect(results.fields.first).to eq('total')
