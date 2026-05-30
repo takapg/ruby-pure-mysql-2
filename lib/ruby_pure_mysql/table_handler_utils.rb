@@ -73,7 +73,6 @@ module RubyPureMysql
       operator == 'BETWEEN' ? val.between?(*target) : !val.between?(*target)
     end
 
-
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
         name = col_name.strip

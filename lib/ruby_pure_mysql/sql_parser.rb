@@ -34,6 +34,22 @@ module RubyPureMysql
 
   # DMLパースロジック
   module SqlParserDmlParsers
+    UPDATE_REGEX = /
+      \AUPDATE\s+(\w+)\s+SET\s+(.+?)
+      (?:\s+WHERE\s+(.+?))?
+      (?:\s+ORDER\s+BY\s+(.+?))?
+      (?:\s+LIMIT\s+(\d+))?
+      \s*;?\s*\z
+    /ix
+
+    DELETE_REGEX = /
+      \ADELETE\s+FROM\s+(\w+)
+      (?:\s+WHERE\s+(.+?))?
+      (?:\s+ORDER\s+BY\s+(.+?))?
+      (?:\s+LIMIT\s+(\d+))?
+      \s*;?\s*\z
+    /ix
+
     def parse_insert(query)
       match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|\w+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
@@ -73,7 +89,7 @@ module RubyPureMysql
     end
 
     def extract_update_parts(query)
-      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
+      if (match = query.match(UPDATE_REGEX))
         { table_name: match[1], set_clause: match[2], where_clause: match[3], order_clause: match[4], limit: match[5] }
       end
     end
@@ -100,20 +116,17 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      match = query.match(DELETE_REGEX)
       return { error: 'Invalid DELETE syntax' } unless match
 
       result = { type: :delete, table_name: match[1], limit: match[4]&.to_i }
-      if match[3]
-        SqlParser.parse_order_by_clause(result, match[3])
-      end
+      SqlParser.parse_order_by_clause(result, match[3]) if match[3]
       return result unless match[2]
 
       where = parse_where_clause(match[2])
       return where if where.is_a?(Hash) && where[:error]
 
-      result[:where] = where
-      result
+      result.merge(where: where)
     end
   end
 

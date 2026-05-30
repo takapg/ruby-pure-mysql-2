@@ -116,14 +116,16 @@ module RubyPureMysql
     end
 
     def get_target_indices(rows, columns, criteria)
-      matching_indices = rows.each_index.select { |i| match_row?(rows[i], columns, criteria[:where]) }
+      indices = rows.each_index.select { |i| match_row?(rows[i], columns, criteria[:where]) }
+      indices = sort_indices(rows, indices, columns, criteria)
+      criteria[:limit] ? indices.first(criteria[:limit]) : indices
+    end
 
-      if criteria[:order] && criteria[:client]
-        sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
-        matching_indices.sort! { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
-      end
+    def sort_indices(rows, indices, columns, criteria)
+      return indices unless criteria[:order] && criteria[:client]
 
-      criteria[:limit] ? matching_indices.first(criteria[:limit]) : matching_indices
+      sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
+      indices.sort { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
     end
   end
 end
