@@ -1097,5 +1097,29 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(3)
     end
+
+    it 'updates 0 rows when LIMIT 0 is specified' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 0;")
+      results = client.query('SELECT id, val FROM limit_test ORDER BY id ASC;')
+      expect(results.to_a.none? { |r| r['val'] == 'updated' }).to be true
+    end
+
+    it 'deletes 0 rows when LIMIT 0 is specified' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 0;')
+      results = client.query('SELECT id FROM limit_test;')
+      expect(results.count).to eq(3)
+    end
+
+    it 'updates all rows when LIMIT exceeds row count' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 100;")
+      results = client.query('SELECT id, val FROM limit_test ORDER BY id ASC;')
+      expect(results.to_a.all? { |r| r['val'] == 'updated' }).to be true
+    end
+
+    it 'deletes all rows when LIMIT exceeds row count' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 100;')
+      results = client.query('SELECT id FROM limit_test;')
+      expect(results.count).to eq(0)
+    end
   end
 end
