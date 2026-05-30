@@ -1,4 +1,4 @@
-name: Aider Issue
+name: Auto Dev Issue
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: ''
 
 jobs:
-  aider-issue:
+  auto-dev-issue:
     runs-on: ubuntu-latest
     permissions:
       contents: write
