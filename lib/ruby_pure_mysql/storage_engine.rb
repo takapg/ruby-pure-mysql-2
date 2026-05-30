@@ -50,9 +50,7 @@ module RubyPureMysql
 
         columns = @tables[table_name]
         @data[table_name].each do |row|
-          if match_row?(row, columns, where_clauses)
-            update_map.each { |idx, val| row[idx] = val }
-          end
+          update_map.each { |idx, val| row[idx] = val } if match_row?(row, columns, where_clauses)
         end
         true
       end

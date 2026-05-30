@@ -21,15 +21,19 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      update_map = {}
-      result[:updates].each do |update|
-        col_idx = get_column_index(client, columns, update[:column])
-        return send_err_packet(client, 1, "Unknown column '#{update[:column]}'", 1054) unless col_idx
-
-        update_map[col_idx] = update[:value]
-      end
+      update_map = build_update_map(client, columns, result[:updates])
+      return send_err_packet(client, 1, "Unknown column '#{update_map[:error]}'", 1054) if update_map.is_a?(Hash) && update_map.key?(:error)
 
       perform_update(client, result, where_clauses, update_map)
+    end
+
+    def build_update_map(client, columns, updates)
+      updates.each_with_object({}) do |update, map|
+        col_idx = get_column_index(client, columns, update[:column])
+        return { error: update[:column] } unless col_idx
+
+        map[col_idx] = update[:value]
+      end
     end
 
     def perform_update(client, result, where_clauses, update_map)
