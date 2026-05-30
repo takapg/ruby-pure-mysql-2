@@ -30,7 +30,7 @@ module RubyPureMysql
       return :error if tokens.empty?
 
       # 数値トークンをあらかじめ Float に変換して精度を保証する
-      processed_tokens = tokens.map { |t| t.match?(/\A[+*/-]\z/) ? t : t.to_f }
+      processed_tokens = tokens.map { |t| t.match?(/\A[+*\/-]\z/) ? t : t.to_f }
 
       # 1. 乗除算を先に処理
       pass1 = []
