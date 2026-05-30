@@ -103,7 +103,7 @@ module RubyPureMysql
       return if rows.nil?
 
       # ソートを投影の前に行うことで、SELECTリストに含まれないカラムでのソートを可能にする
-      rows = apply_order_by(client, result[:order], columns, rows) if result[:order]
+      rows = apply_order_by(client, result[:order], columns, rows, result[:columns]) if result[:order]
       return if rows.nil?
 
       rows, final_columns = project_rows(client, rows, columns, result[:columns], table_map)

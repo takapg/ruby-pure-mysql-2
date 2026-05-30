@@ -22,7 +22,7 @@ module RubyPureMysql
     end
 
     def finalize_and_send_group_results(client, result, res_rows)
-      res_rows = apply_order_by(client, result[:order], result[:columns], res_rows) if result[:order]
+      res_rows = apply_order_by(client, result[:order], result[:columns], res_rows, result[:columns]) if result[:order]
       return if res_rows.nil?
 
       res_rows = apply_offset_and_limit(res_rows, result)

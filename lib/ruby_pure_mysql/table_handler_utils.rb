@@ -52,40 +52,44 @@ module RubyPureMysql
 
     def compare_value(val, operator, target_value)
       case operator
-      when 'LIKE' then match_like?(val, target_value)
-      when 'REGEXP', 'RLIKE' then match_regexp?(val, target_value)
+      when 'LIKE' then match_pattern?(val, target_value, :like)
+      when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
       when 'IN' then val.nil? ? false : target_value.include?(val)
       when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
       else
-        method = operator == '=' ? :== : operator.to_sym
-        val.public_send(method, target_value)
+        val.public_send(operator == '=' ? :== : operator.to_sym, target_value)
       end
     end
 
-    def match_like?(val, target_value)
-      target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : build_like_regex(target_value).match?(val.to_s)
+    def match_pattern?(val, target, type)
+      return target.match?(val.to_s) if target.is_a?(Regexp)
+
+      (type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)).match?(val.to_s)
     end
 
-    def match_regexp?(val, target_value)
-      target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : Regexp.new(target_value.to_s, Regexp::IGNORECASE).match?(val.to_s)
+    def match_between?(val, operator, target)
+      operator == 'BETWEEN' ? val.between?(*target) : !val.between?(*target)
     end
 
-    def match_between?(val, operator, target_value)
-      operator == 'BETWEEN' ? val.between?(*target_value) : !val.between?(*target_value)
-    end
-
-    def apply_order_by(client, order_by, table_columns, rows)
-      sort_conditions = []
-      order_by.each do |cond|
-        idx = get_column_index(client, table_columns, cond[:column])
+    def apply_order_by(client, order_by, table_columns, rows, selected_columns = nil)
+      sort_conditions = order_by.map do |cond|
+        idx = resolve_order_by_column_index(client, table_columns, cond[:column], selected_columns)
         if idx.nil?
           send_err_packet(client, 1, "Unknown column '#{cond[:column]}' in 'order clause'", 1054)
           return nil
         end
-        sort_conditions << { index: idx, direction: cond[:direction] }
+        { index: idx, direction: cond[:direction] }
       end
 
       sort_rows(rows, sort_conditions)
+    end
+
+    def resolve_order_by_column_index(client, table_columns, col_name, selected_columns)
+      name = col_name
+      if selected_columns
+        name = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(name) }&.dig(:original) || name
+      end
+      get_column_index(client, table_columns, name)
     end
 
     def sort_rows(rows, sort_conditions)
