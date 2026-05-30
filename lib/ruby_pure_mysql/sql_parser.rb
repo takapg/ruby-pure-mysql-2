@@ -46,16 +46,23 @@ module RubyPureMysql
     end
 
     def parse_update(query)
-      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
-      return { error: 'Invalid UPDATE syntax' } unless match
+      # 1. WHERE句がある場合: 欲張りマッチを用いて最後の ' WHERE ' で分割する
+      if match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s+WHERE\s+(.+)\s*;?\s*\z/i)
+        table_name, set_clause, where_clause = match[1], match[2], match[3]
+      # 2. WHERE句がない場合: セミコロンを含めないように非欲張りマッチを使用する
+      elsif match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s*;?\s*\z/i)
+        table_name, set_clause, where_clause = match[1], match[2], nil
+      else
+        return { error: 'Invalid UPDATE syntax' }
+      end
 
-      updates = parse_update_set_clause(match[2])
+      updates = parse_update_set_clause(set_clause)
       return updates if updates.is_a?(Hash) && updates[:error]
 
-      res = { type: :update, table_name: match[1], updates: updates }
-      return res unless match[3]
+      res = { type: :update, table_name: table_name, updates: updates }
+      return res unless where_clause
 
-      where = parse_where_clause(match[3])
+      where = parse_where_clause(where_clause)
       return where if where.is_a?(Hash) && where[:error]
 
       res.merge(where: where)
