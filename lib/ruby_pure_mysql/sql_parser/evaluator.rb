@@ -30,7 +30,7 @@ module RubyPureMysql
       return :error if tokens.empty?
 
       # 数値トークンを確実に Float に変換して計算精度を確保する
-      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
+      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : Float(t) }
 
       # 1. 乗除算を先に処理
       stack = []
@@ -42,7 +42,7 @@ module RubyPureMysql
           right = processed_tokens[i + 1]
           return nil if t == '/' && right == 0.0
 
-          stack << (t == '*' ? left * right : left / right)
+          stack << (t == '*' ? left * right : left.to_f / right.to_f)
           i += 2
         else
           stack << t
