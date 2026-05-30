@@ -44,20 +44,20 @@ module RubyPureMysql
       end
     end
 
-    def update_rows_with_where(table_name, where_clauses, update_map, limit = nil, order = nil, client = nil)
+    def update_rows_with_where(table_name, criteria, update_map)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        perform_update_rows(@data[table_name], @tables[table_name], where_clauses, update_map, limit, order, client)
+        perform_update_rows(@data[table_name], @tables[table_name], update_map, criteria)
         true
       end
     end
 
-    def delete_rows_with_where(table_name, where_clauses, limit = nil, order = nil, client = nil)
+    def delete_rows_with_where(table_name, criteria)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], where_clauses, limit, order, client)
+        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], criteria)
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
@@ -98,17 +98,10 @@ module RubyPureMysql
       apply_filter(val, clause[:operator], clause[:value])
     end
 
-    def perform_update_rows(rows, columns, where_clauses, update_map, limit, order, client)
-      return if limit&.zero?
+    def perform_update_rows(rows, columns, update_map, criteria)
+      return if criteria[:limit]&.zero?
 
-      matching_indices = rows.each_index.select { |i| match_row?(rows[i], columns, where_clauses) }
-
-      if order && client
-        sort_conditions = resolve_sort_conditions(client, columns, order)
-        matching_indices.sort! { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
-      end
-
-      target_indices = limit ? matching_indices.first(limit) : matching_indices
+      target_indices = get_target_indices(rows, columns, criteria)
       target_indices.each { |i| update_row(rows[i], update_map) }
     end
 
@@ -116,17 +109,21 @@ module RubyPureMysql
       update_map.each { |idx, val| row[idx] = val }
     end
 
-    def collect_indices_to_delete(rows, columns, where_clauses, limit, order, client)
-      return [] if limit&.zero?
+    def collect_indices_to_delete(rows, columns, criteria)
+      return [] if criteria[:limit]&.zero?
 
-      matching_indices = rows.each_index.select { |i| match_row?(rows[i], columns, where_clauses) }
+      get_target_indices(rows, columns, criteria)
+    end
 
-      if order && client
-        sort_conditions = resolve_sort_conditions(client, columns, order)
+    def get_target_indices(rows, columns, criteria)
+      matching_indices = rows.each_index.select { |i| match_row?(rows[i], columns, criteria[:where]) }
+
+      if criteria[:order] && criteria[:client]
+        sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
         matching_indices.sort! { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
       end
 
-      limit ? matching_indices.first(limit) : matching_indices
+      criteria[:limit] ? matching_indices.first(criteria[:limit]) : matching_indices
     end
   end
 end
