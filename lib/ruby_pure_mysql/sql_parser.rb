@@ -68,12 +68,7 @@ module RubyPureMysql
       return updates if updates.is_a?(Hash) && updates[:error]
 
       res = { type: :update, table_name: parts[:table_name], updates: updates, limit: parts[:limit]&.to_i }
-      return res unless parts[:where_clause]
-
-      where = parse_where_clause(parts[:where_clause])
-      return where if where.is_a?(Hash) && where[:error]
-
-      res.merge(where: where)
+      apply_update_where(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
@@ -82,6 +77,15 @@ module RubyPureMysql
       elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
         { table_name: match[1], set_clause: match[2], where_clause: nil, limit: match[3] }
       end
+    end
+
+    def apply_update_where(res, where_clause)
+      return res unless where_clause
+
+      where = parse_where_clause(where_clause)
+      return where if where.is_a?(Hash) && where[:error]
+
+      res.merge(where: where)
     end
 
     def parse_update_set_clause(set_clause)

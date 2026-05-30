@@ -48,15 +48,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        columns = @tables[table_name]
-        updated_count = 0
-        @data[table_name].each do |row|
-          if match_row?(row, columns, where_clauses)
-            update_map.each { |idx, val| row[idx] = val }
-            updated_count += 1
-            break if limit && updated_count >= limit
-          end
-        end
+        perform_update_rows(@data[table_name], @tables[table_name], where_clauses, update_map, limit)
         true
       end
     end
@@ -65,15 +57,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        columns = @tables[table_name]
-        indices_to_delete = []
-        @data[table_name].each_with_index do |row, idx|
-          if match_row?(row, columns, where_clauses)
-            indices_to_delete << idx
-            break if limit && indices_to_delete.size >= limit
-          end
-        end
-        indices_to_delete.reverse_each { |idx| @data[table_name].delete_at(idx) }
+        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], where_clauses, limit)
+        indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
     end
@@ -111,6 +96,28 @@ module RubyPureMysql
       val = row[c_idx]
 
       apply_filter(val, clause[:operator], clause[:value])
+    end
+
+    def perform_update_rows(rows, columns, where_clauses, update_map, limit)
+      updated_count = 0
+      rows.each do |row|
+        next unless match_row?(row, columns, where_clauses)
+
+        update_map.each { |idx, val| row[idx] = val }
+        updated_count += 1
+        break if limit && updated_count >= limit
+      end
+    end
+
+    def collect_indices_to_delete(rows, columns, where_clauses, limit)
+      indices = []
+      rows.each_with_index do |row, idx|
+        next unless match_row?(row, columns, where_clauses)
+
+        indices << idx
+        break if limit && indices.size >= limit
+      end
+      indices
     end
   end
 end
