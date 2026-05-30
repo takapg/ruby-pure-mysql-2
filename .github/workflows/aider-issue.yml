@@ -110,7 +110,11 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cat issue.json | jq
+
           TITLE=$(jq -r '.title' issue.json)
           BODY=$(jq -r '.body' issue.json)
-          echo "TITLE: ${TITLE}"
-          echo "BODY: ${BODY}"
+
+          gh issue create \
+            --title "$ISSUE_TITLE" \
+            --body "$ISSUE_BODY" \
+            --repo ${{ github.repository }}
