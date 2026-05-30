@@ -35,7 +35,7 @@ module RubyPureMysql
   # DMLパースロジック
   module SqlParserDmlParsers
     UPDATE_REGEX = /
-      \AUPDATE\s+(\w+)\s+SET\s+(.+?)
+      \AUPDATE\s+(`[^`]+`|\w+)\s+SET\s+(.+?)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
       (?:\s+LIMIT\s+(\d+))?
@@ -43,7 +43,7 @@ module RubyPureMysql
     /ix
 
     DELETE_REGEX = /
-      \ADELETE\s+FROM\s+(\w+)
+      \ADELETE\s+FROM\s+(`[^`]+`|\w+)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
       (?:\s+LIMIT\s+(\d+))?
@@ -83,7 +83,7 @@ module RubyPureMysql
       updates = parse_update_set_clause(parts[:set_clause])
       return updates if updates.is_a?(Hash) && updates[:error]
 
-      res = { type: :update, table_name: parts[:table_name], updates: updates, limit: parts[:limit]&.to_i }
+      res = { type: :update, table_name: strip_backticks(parts[:table_name]), updates: updates, limit: parts[:limit]&.to_i }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_update_where(res, parts[:where_clause])
     end
@@ -119,14 +119,14 @@ module RubyPureMysql
       match = query.match(DELETE_REGEX)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: match[1], limit: match[4]&.to_i }
+      result = { type: :delete, table_name: strip_backticks(match[1]), limit: match[4]&.to_i }
       SqlParser.parse_order_by_clause(result, match[3]) if match[3]
       return result unless match[2]
 
       where = parse_where_clause(match[2])
       return where if where.is_a?(Hash) && where[:error]
 
-      result.merge(where: where)
+      result.merge!(where: where)
     end
   end
 
