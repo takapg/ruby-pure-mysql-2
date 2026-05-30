@@ -123,7 +123,7 @@ module RubyPureMysql
     end
 
     def sort_indices(rows, indices, columns, criteria)
-      return indices unless criteria[:order] && criteria[:client]
+      return indices unless criteria[:order]
 
       sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
       indices.sort { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
