@@ -43,7 +43,7 @@ module RubyPureMysql
 
       {
         type: :insert,
-        table_name: match[1].delete_prefix('`').delete_suffix('`'),
+        table_name: strip_backticks(match[1]),
         columns: parse_insert_columns(match[2]),
         values: values
       }
@@ -52,7 +52,7 @@ module RubyPureMysql
     def parse_insert_columns(col_list)
       return nil unless col_list
 
-      split_columns(col_list).map { |c| c.delete_prefix('`').delete_suffix('`') }
+      split_columns(col_list).map { |c| strip_backticks(c) }
     end
 
     def parse_insert_values(values_str)
@@ -398,6 +398,10 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    def strip_backticks(str)
+      str.delete_prefix('`').delete_suffix('`')
+    end
+
     def parse_in_value(value_str)
       return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
 

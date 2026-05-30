@@ -3,37 +3,35 @@
 module RubyPureMysql
   # DML操作に関連するハンドラメソッド
   module DmlHandlers
+    class InsertError < StandardError
+      attr_reader :code
+      def initialize(message, code)
+        @code = code
+        super(message)
+      end
+    end
+
     def handle_insert(client, result)
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      values = resolve_insert_values(client, columns, result)
-      return if insert_value_error?(client, values)
-
-      if @storage_engine.insert(result[:table_name], values)
-        send_ok_packet(client, 1)
-      else
-        send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
-      end
-    end
-
-    def insert_value_error?(client, values)
-      case values
-      when :column_count_mismatch
-        send_err_packet(client, 1, "Column count doesn't match value count at row 1", 1136)
-        true
-      when String
-        send_err_packet(client, 1, "Unknown column '#{values}'", 1054)
-        true
-      else
-        false
+      begin
+        values = resolve_insert_values(client, columns, result)
+        if @storage_engine.insert(result[:table_name], values)
+          send_ok_packet(client, 1)
+        else
+          send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
+        end
+      rescue InsertError => e
+        send_err_packet(client, 1, e.message, e.code)
       end
     end
 
     def resolve_insert_values(client, columns, result)
       if result[:columns].nil?
-        return :column_count_mismatch if result[:values].size != columns.size
-
+        if result[:values].size != columns.size
+          raise InsertError.new("Column count doesn't match value count at row 1", 1136)
+        end
         return result[:values]
       end
 
@@ -41,12 +39,14 @@ module RubyPureMysql
     end
 
     def map_values_to_columns(client, table_columns, specified_columns, values)
-      return :column_count_mismatch if specified_columns.size != values.size
+      if specified_columns.size != values.size
+        raise InsertError.new("Column count doesn't match value count at row 1", 1136)
+      end
 
       row = Array.new(table_columns.size, nil)
       specified_columns.each_with_index do |col_name, idx|
         col_idx = get_column_index(client, table_columns, col_name)
-        return col_name unless col_idx
+        raise InsertError.new("Unknown column '#{col_name}'", 1054) unless col_idx
 
         row[col_idx] = values[idx]
       end
