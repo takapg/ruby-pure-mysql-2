@@ -18,17 +18,16 @@ module RubyPureMysql
     end
 
     def insert_value_error?(client, values)
-      if values == :column_count_mismatch
+      case values
+      when :column_count_mismatch
         send_err_packet(client, 1, "Column count doesn't match value count at row 1", 1136)
-        return true
-      end
-
-      if values.is_a?(String)
+        true
+      when String
         send_err_packet(client, 1, "Unknown column '#{values}'", 1054)
-        return true
+        true
+      else
+        false
       end
-
-      false
     end
 
     def resolve_insert_values(client, columns, result)
