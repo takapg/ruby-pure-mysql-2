@@ -60,8 +60,8 @@ module RubyPureMysql
         i += 2
       end
 
-      # MySQLの仕様: 除算が含まれる場合は常に Float を返す
-      return res.to_f if tokens.any? { |t| t == '/' }
+      # MySQLの仕様: 除算が含まれる場合、または数値に小数点が含まれる場合は Float を返す
+      return res.to_f if tokens.any? { |t| t == '/' || t.include?('.') }
 
       res == res.to_i ? res.to_i : res
     end

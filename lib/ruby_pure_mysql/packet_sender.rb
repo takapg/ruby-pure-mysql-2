@@ -138,6 +138,8 @@ module RubyPureMysql
       row_payload = values.map do |v|
         if v.nil?
           [NULL_COLUMN_VALUE].pack('C')
+        elsif v.is_a?(Float)
+          lenenc_str(sprintf('%.15g', v))
         else
           lenenc_str(v.to_s)
         end
