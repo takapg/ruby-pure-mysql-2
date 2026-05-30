@@ -16,7 +16,6 @@ module RubyPureMysql
     include JoinUtils
     include ProjectionUtils
     include HavingUtils
-
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
       unless columns
@@ -25,7 +24,6 @@ module RubyPureMysql
       end
       columns
     end
-
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
@@ -120,6 +118,7 @@ module RubyPureMysql
         0
       end
     end
+
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
         name = col_name.strip
