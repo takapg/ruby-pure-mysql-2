@@ -6,6 +6,7 @@ module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
   class StorageEngine
     include TableHandlerUtils
+    include SortUtils
 
     def initialize
       @tables = {}
@@ -44,20 +45,20 @@ module RubyPureMysql
       end
     end
 
-    def update_rows_with_where(table_name, where_clauses, update_map, limit = nil)
+    def update_rows_with_where(table_name, criteria, update_map)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        perform_update_rows(@data[table_name], @tables[table_name], where_clauses, update_map, limit)
+        perform_update_rows(@data[table_name], @tables[table_name], update_map, criteria)
         true
       end
     end
 
-    def delete_rows_with_where(table_name, where_clauses, limit = nil)
+    def delete_rows_with_where(table_name, criteria)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], where_clauses, limit)
+        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], criteria)
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
@@ -98,34 +99,34 @@ module RubyPureMysql
       apply_filter(val, clause[:operator], clause[:value])
     end
 
-    def perform_update_rows(rows, columns, where_clauses, update_map, limit)
-      return if limit&.zero?
+    def perform_update_rows(rows, columns, update_map, criteria)
+      return if criteria[:limit]&.zero?
 
-      updated_count = 0
-      rows.each do |row|
-        next unless match_row?(row, columns, where_clauses)
-
-        update_row(row, update_map)
-        updated_count += 1
-        break if limit && updated_count >= limit
-      end
+      target_indices = get_target_indices(rows, columns, criteria)
+      target_indices.each { |i| update_row(rows[i], update_map) }
     end
 
     def update_row(row, update_map)
       update_map.each { |idx, val| row[idx] = val }
     end
 
-    def collect_indices_to_delete(rows, columns, where_clauses, limit)
-      return [] if limit&.zero?
+    def collect_indices_to_delete(rows, columns, criteria)
+      return [] if criteria[:limit]&.zero?
 
-      indices = []
-      rows.each_with_index do |row, idx|
-        next unless match_row?(row, columns, where_clauses)
+      get_target_indices(rows, columns, criteria)
+    end
 
-        indices << idx
-        break if limit && indices.size >= limit
-      end
-      indices
+    def get_target_indices(rows, columns, criteria)
+      indices = rows.each_index.select { |i| match_row?(rows[i], columns, criteria[:where]) }
+      indices = sort_indices(rows, indices, columns, criteria)
+      criteria[:limit] ? indices.first(criteria[:limit]) : indices
+    end
+
+    def sort_indices(rows, indices, columns, criteria)
+      return indices unless criteria[:order]
+
+      sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
+      indices.sort { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
     end
   end
 end
