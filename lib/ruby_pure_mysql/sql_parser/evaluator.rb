@@ -30,7 +30,7 @@ module RubyPureMysql
       return :error if tokens.empty?
 
       # 数値トークンをあらかじめ Float に変換しておく
-      tokens = tokens.map { |t| t.match?(/[+\-*/]/) ? t : t.to_f }
+      tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
 
       # 1. 乗除算を先に処理
       stack = []
