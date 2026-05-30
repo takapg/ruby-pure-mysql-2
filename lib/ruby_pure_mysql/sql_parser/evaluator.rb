@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+      return evaluate_math(col) if /\A\d+(\s*[\+\-\*\/]\s*\d+)*\z/.match?(col)
 
       :error
     end
@@ -26,7 +26,38 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      col.split('+').sum { |x| x.strip.to_i }
+      tokens = col.scan(/\d+|[\+\-\*\/]/)
+      return :error if tokens.empty?
+
+      # Pass 1: Multiplication and Division
+      i = 0
+      while i < tokens.size
+        if tokens[i] == '*' || tokens[i] == '/'
+          op = tokens[i]
+          left = tokens[i - 1].to_f
+          right = tokens[i + 1].to_f
+          return nil if op == '/' && right == 0
+
+          res = op == '*' ? left * right : left / right
+          tokens[i - 1] = res
+          tokens.delete_at(i)
+          tokens.delete_at(i)
+          i -= 1
+        end
+        i += 1
+      end
+
+      # Pass 2: Addition and Subtraction
+      res = tokens[0].to_f
+      i = 1
+      while i < tokens.size
+        op = tokens[i]
+        val = tokens[i + 1].to_f
+        res = op == '+' ? res + val : res - val
+        i += 2
+      end
+
+      res % 1 == 0 ? res.to_i : res
     end
   end
 end

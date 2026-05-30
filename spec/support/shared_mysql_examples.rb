@@ -39,6 +39,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate subtraction (SELECT 10 - 5;)' do
+      results = client.query('SELECT 10 - 5;')
+      expect(results.first.values.first).to eq(5)
+    end
+
+    it 'can calculate multiplication (SELECT 10 * 2;)' do
+      results = client.query('SELECT 10 * 2;')
+      expect(results.first.values.first).to eq(20)
+    end
+
+    it 'can calculate division (SELECT 10 / 2;)' do
+      results = client.query('SELECT 10 / 2;')
+      expect(results.first.values.first).to eq(5)
+    end
+
+    it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
+      results = client.query('SELECT 1 + 2 * 3;')
+      expect(results.first.values.first).to eq(7)
+    end
+
+    it 'returns NULL for division by zero (SELECT 10 / 0;)' do
+      results = client.query('SELECT 10 / 0;')
+      expect(results.first.values.first).to be_nil
+    end
+
     it 'handles queries with extra spaces and semicolons' do
       results = client.query('  SELECT   42  ;  ')
       expect(results.first.values.first).to eq(42)
