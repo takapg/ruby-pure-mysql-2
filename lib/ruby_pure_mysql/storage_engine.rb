@@ -100,12 +100,12 @@ module RubyPureMysql
       return if limit == 0
 
       columns = @tables[table_name]
-      rows = @data[table_name]
+      rows = @data[table_name] || []
 
       deleted_count = 0
       @data[table_name] = rows.select do |row|
         if match_row?(row, columns, where_clauses)
-          if limit && deleted_count >= limit
+          if !limit.nil? && deleted_count >= limit
             true # 制限に達したため保持する
           else
             deleted_count += 1
