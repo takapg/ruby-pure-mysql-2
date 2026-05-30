@@ -77,14 +77,17 @@ module RubyPureMysql
     end
 
     def extract_update_parts(query)
-      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s*;?\s*\z/i)
       return nil unless match
 
+      table_name = match[1]
+      parts = split_by_keywords(match[2], ['WHERE', 'LIMIT'])
+
       {
-        table_name: match[1],
-        set_clause: match[2],
-        where_clause: match[3],
-        limit: match[4]&.to_i
+        table_name: table_name,
+        set_clause: parts[:content],
+        where_clause: parts[:where],
+        limit: parts[:limit]&.to_i
       }
     end
 
@@ -101,13 +104,16 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: match[1], limit: match[3]&.to_i }
-      return result unless match[2]
+      table_name = match[1]
+      parts = split_by_keywords(match[2] || '', ['WHERE', 'LIMIT'])
 
-      where = parse_where_clause(match[2])
+      result = { type: :delete, table_name: table_name, limit: parts[:limit]&.to_i }
+      return result if parts[:where].nil? || parts[:where].empty?
+
+      where = parse_where_clause(parts[:where])
       return where if where.is_a?(Hash) && where[:error]
 
       result[:where] = where
@@ -446,6 +452,37 @@ module RubyPureMysql
       else
         { error: "Invalid INSERT value: #{val}" }
       end
+    end
+
+    def split_by_keywords(text, keywords)
+      result = { content: text }
+      remaining = text
+      last_key = :content
+
+      keywords.each do |kw|
+        in_quote = nil
+        split_idx = nil
+
+        remaining.each_char.with_index do |char, idx|
+          if (char == "'" || char == '"') && (idx == 0 || remaining[idx - 1] != '\\')
+            in_quote = (in_quote == char) ? nil : char
+          end
+          if in_quote.nil? && remaining[idx..].match?(/\A\s+#{kw}\s+/i)
+            split_idx = idx
+            break
+          end
+        end
+
+        if split_idx
+          before = remaining[0...split_idx].strip
+          after = remaining[split_idx..].match(/\A\s+#{kw}\s+(.+)\z/i)[1].strip
+          result[last_key] = before
+          remaining = after
+          last_key = kw.downcase.to_sym
+        end
+      end
+      result[last_key] = remaining.strip
+      result
     end
   end
 
