@@ -101,18 +101,18 @@ module RubyPureMysql
 
       columns = @tables[table_name]
       rows = @data[table_name]
-      
-      # 削除対象となる行オブジェクトを収集する
-      to_delete = []
-      rows.each do |row|
-        if match_row?(row, columns, where_clauses)
-          to_delete << row
-          break if limit && to_delete.size >= limit
+
+      deleted_count = 0
+      rows.reject! do |row|
+        if limit && deleted_count >= limit
+          false
+        elsif match_row?(row, columns, where_clauses)
+          deleted_count += 1
+          true
+        else
+          false
         end
       end
-
-      # 元の配列から削除対象の行を除外して更新する
-      @data[table_name] = rows - to_delete
     end
 
     def match_row?(row, columns, where_clauses)
