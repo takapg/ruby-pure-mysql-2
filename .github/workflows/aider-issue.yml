@@ -3,8 +3,8 @@ name: Aider Issue
 on:
   workflow_dispatch:
     inputs:
-      target_issue_number:
-        description: '更新したい既存のIssue番号 (空の場合は新規作成)'
+      title:
+        description: 'Issue のタイトル（空の場合は AI が自動で次の一手を選択）'
         required: false
         default: ''
 
@@ -28,3 +28,89 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Install Aider
+        run: |
+          uv tool install aider-chat
+
+      - name: Generate Issue via AI
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          USER_INPUT: ${{ github.event.inputs.title }}
+        run: |
+          docker run -v .:/app --rm ghcr.io/yamadashy/repomix
+
+          if [ -z "$USER_INPUT" ]; then
+            # 自動発見モード
+            PROMPT="GitHub Issue の内容を作成してください。
+            'issue.json' というファイルの作成だけ実施し、実装は行わないでください。
+            現在の lib/ および spec/ の実装状況を分析し、MySQL 8.0 互換性を高めるために次に実装すべき最適なタスクを1つ特定してください。
+            条件：
+              * Aider が一度の実装で迷子にならない小規模な内容にすること。
+              * まだ実装されていない機能や、リファクタリングのどちらかにすること。
+            
+            結果を以下の JSON 形式で 'issue.json' という名前のファイルに保存してください。
+            {
+              \"title\": \"Issue のタイトル\",
+              \"body\": \"Markdown形式の本文。必ず（#### 概要、#### 実装のポイント、#### 期待される動作、#### 
+              テスト計画）のセクションを含めること\"
+            }"
+          else
+            # 特定指示モード
+            PROMPT="指示: $USER_INPUT に基づき、GitHub Issue の内容を作成してください。
+            結果を以下の JSON 形式で 'issue.json' に保存してください。
+            {
+              \"title\": \"$USER_INPUT\",
+              \"body\": \"Markdown形式の本文。必ず（#### 概要、#### 実装のポイント、#### 期待される動作、#### テスト計画）のセクションを含めること\"
+            }"
+          fi
+
+          MAX_RETRIES=5
+          RETRY_COUNT=1
+          SUCCESS=false
+
+          while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
+            echo "--------------------------------------------------"
+            echo "🔄 Aider 実行試行: $RETRY_COUNT / $MAX_RETRIES"
+            echo "--------------------------------------------------"
+
+            aider --model gemini/gemma-4-31b-it \
+              --read repomix-output.xml \
+              --chat-language japanese \
+              --yes-always \
+              --message "$PROMPT"
+
+            if ! git diff --quiet "origin/${{ github.ref_name }}"; then
+              echo "✅ 変更が検出されました！ループを抜けます。"
+              SUCCESS=true
+              break
+            else
+              echo "⚠️ 差分がありません。"
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -le $MAX_RETRIES ]; then
+              echo "再試行します..."
+              sleep 3
+            fi
+          done
+
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ $MAX_RETRIES 回試行しましたが、コードの変更を生成できませんでした。"
+            exit 1
+          fi
+
+      - name: Create Issue on GitHub
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cat issue.json | jq
+          TITLE=$(jq -r '.title' issue.json)
+          BODY=$(jq -r '.body' issue.json)
+          echo "TITLE: ${TITLE}"
+          echo "BODY: ${BODY}"
