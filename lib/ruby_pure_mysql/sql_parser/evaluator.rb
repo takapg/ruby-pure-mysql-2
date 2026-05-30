@@ -29,8 +29,8 @@ module RubyPureMysql
       tokens = col.scan(%r{-?\d+(?:\.\d+)?|[+\-*/]})
       return :error if tokens.empty?
 
-      # 数値トークンを Float に変換して別の変数に格納
-      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
+      # 数値トークンを明示的に Float に変換
+      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : Float(t) }
 
       # 1. 乗除算を先に処理
       stack = []
@@ -59,6 +59,9 @@ module RubyPureMysql
         res = (op == '+' ? res + val : res - val)
         i += 2
       end
+
+      # MySQLの仕様: 除算が含まれる場合は常に Float を返す
+      return res if tokens.include?('/')
 
       res == res.to_i ? res.to_i : res
     end
