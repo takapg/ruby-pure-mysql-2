@@ -946,7 +946,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'sorts by column alias' do
       results = client.query('SELECT name AS user_name FROM users ORDER BY user_name DESC;')
-      expect(results.map { |r| r['user_name'] }).to eq(['charlie', 'bob', 'alice'])
+      expect(results.map { |r| r['user_name'] }).to eq(%w[charlie bob alice])
     end
 
     it 'sorts by aggregate alias' do
@@ -957,7 +957,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query("INSERT INTO products VALUES (3, 'books', 50);")
       client.query("INSERT INTO products VALUES (4, 'books', 150);")
       results = client.query('SELECT category, SUM(price) AS total FROM products GROUP BY category ORDER BY total ASC;')
-      expect(results.map { |r| r['category'] }).to eq(['books', 'electronics'])
+      expect(results.map { |r| r['category'] }).to eq(%w[books electronics])
     end
 
     it 'returns an error for non-existent alias in ORDER BY' do
