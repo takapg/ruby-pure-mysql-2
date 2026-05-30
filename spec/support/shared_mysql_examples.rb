@@ -325,6 +325,29 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(2)
     end
 
+    it 'filters rows by REGEXP operator' do
+      results = client.query("SELECT * FROM users WHERE name REGEXP '^a.*e$';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'filters rows by RLIKE operator' do
+      results = client.query("SELECT * FROM users WHERE name RLIKE '^b';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([2, 'bob'])
+    end
+
+    it 'is case-insensitive for REGEXP' do
+      results = client.query("SELECT * FROM users WHERE name REGEXP '^ALICE$';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
+
+    it 'returns empty result set when REGEXP does not match' do
+      results = client.query("SELECT * FROM users WHERE name REGEXP '^z';")
+      expect(results.count).to eq(0)
+    end
+
     it 'filters rows by NOT BETWEEN operator' do
       results = client.query('SELECT * FROM users WHERE id NOT BETWEEN 1 AND 2;')
       expect(results.count).to eq(1)
@@ -688,6 +711,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(2)
       categories = results.map { |r| r['category'] }
       expect(categories).to contain_exactly('electronics', 'books')
+    end
+
+    it 'filters groups using HAVING with REGEXP' do
+      results = client.query("SELECT category FROM products GROUP BY category HAVING category REGEXP '^e';")
+      expect(results.count).to eq(1)
+      expect(results.first['category']).to eq('electronics')
     end
 
     it 'filters groups using HAVING with IN operator' do

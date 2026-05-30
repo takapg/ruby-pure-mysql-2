@@ -17,7 +17,11 @@ module RubyPureMysql
           return nil
         end
 
-        regex = clause[:operator] == 'LIKE' ? build_like_regex(clause[:value]) : nil
+        regex = case clause[:operator]
+                when 'LIKE' then build_like_regex(clause[:value])
+                when 'REGEXP', 'RLIKE' then Regexp.new(clause[:value].to_s, Regexp::IGNORECASE)
+                else nil
+                end
         { col_idx: col_idx, operator: clause[:operator], value: clause[:value], regex: regex }
       end
     end
