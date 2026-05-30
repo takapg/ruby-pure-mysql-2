@@ -38,13 +38,21 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(\w+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      table_name = match[1]
-      col_list = match[2] ? split_columns(match[2]).map { |c| c.delete_prefix('`').delete_suffix('`') } : nil
-      values = split_insert_values(match[3]).map { |val| convert_value(val) }
-      error = values.find { |v| v.is_a?(Hash) && v[:error] }
-      return error if error
+      values = parse_insert_values(match[3])
+      return values if values.is_a?(Hash) && values[:error]
 
-      { type: :insert, table_name: table_name, columns: col_list, values: values }
+      { type: :insert, table_name: match[1], columns: parse_insert_columns(match[2]), values: values }
+    end
+
+    def parse_insert_columns(col_list)
+      return nil unless col_list
+
+      split_columns(col_list).map { |c| c.delete_prefix('`').delete_suffix('`') }
+    end
+
+    def parse_insert_values(values_str)
+      values = split_insert_values(values_str).map { |val| convert_value(val) }
+      values.find { |v| v.is_a?(Hash) && v[:error] } || values
     end
 
     def parse_update(query)

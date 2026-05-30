@@ -1017,7 +1017,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns an error for INSERT with non-existent column' do
       expect do
-        client.query("INSERT INTO users (unknown_col) VALUES (1);")
+        client.query('INSERT INTO users (unknown_col) VALUES (1);')
       end.to raise_error(Mysql2::Error)
     end
 
