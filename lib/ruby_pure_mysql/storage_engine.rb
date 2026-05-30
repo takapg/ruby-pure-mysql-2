@@ -105,10 +105,14 @@ module RubyPureMysql
       rows.each do |row|
         next unless match_row?(row, columns, where_clauses)
 
-        update_map.each { |idx, val| row[idx] = val }
+        update_row(row, update_map)
         updated_count += 1
         break if limit && updated_count >= limit
       end
+    end
+
+    def update_row(row, update_map)
+      update_map.each { |idx, val| row[idx] = val }
     end
 
     def collect_indices_to_delete(rows, columns, where_clauses, limit)
