@@ -74,10 +74,18 @@ module RubyPureMysql
       operator == 'BETWEEN' ? val.between?(*target_value) : !val.between?(*target_value)
     end
 
-    def apply_order_by(client, order_by, table_columns, rows)
+    def apply_order_by(client, order_by, table_columns, rows, selected_columns = nil)
       sort_conditions = []
       order_by.each do |cond|
-        idx = get_column_index(client, table_columns, cond[:column])
+        col_name = cond[:column]
+
+        if selected_columns
+          # SELECT 句の別名定義から一致するものを探す
+          alias_info = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(col_name) }
+          col_name = alias_info[:original] if alias_info
+        end
+
+        idx = get_column_index(client, table_columns, col_name)
         if idx.nil?
           send_err_packet(client, 1, "Unknown column '#{cond[:column]}' in 'order clause'", 1054)
           return nil
