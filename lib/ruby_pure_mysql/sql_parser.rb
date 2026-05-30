@@ -35,7 +35,7 @@ module RubyPureMysql
   # DMLパースロジック
   module SqlParserDmlParsers
     def parse_insert(query)
-      match = query.match(/\AINSERT\s+INTO\s+([`\w]+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|[\w]+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
       values = parse_insert_values(match[3])
