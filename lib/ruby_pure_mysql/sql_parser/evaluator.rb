@@ -3,6 +3,7 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
+    MD_OPERATORS = %w[* /].freeze
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
@@ -41,21 +42,31 @@ module RubyPureMysql
     def process_multiplication_division(tokens)
       i = 0
       while i < tokens.size
-        if ['*', '/'].include?(tokens[i])
-          op = tokens[i]
-          left = tokens[i - 1].to_f
-          right = tokens[i + 1].to_f
-          return nil if op == '/' && right.zero?
+        if MD_OPERATORS.include?(tokens[i])
+          result = execute_md_op(tokens, i)
+          return nil if result.nil?
 
-          res = op == '*' ? left * right : left / right
-          tokens[i - 1] = res
-          tokens.delete_at(i)
-          tokens.delete_at(i)
+          update_tokens_md(tokens, i, result)
           i -= 1
         end
         i += 1
       end
       tokens
+    end
+
+    def execute_md_op(tokens, i)
+      op = tokens[i]
+      left = tokens[i - 1].to_f
+      right = tokens[i + 1].to_f
+      return nil if op == '/' && right.zero?
+
+      op == '*' ? left * right : left / right
+    end
+
+    def update_tokens_md(tokens, i, result)
+      tokens[i - 1] = result
+      tokens.delete_at(i)
+      tokens.delete_at(i)
     end
 
     def process_addition_subtraction(tokens)
