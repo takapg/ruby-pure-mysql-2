@@ -96,7 +96,7 @@ module RubyPureMysql
         col, val = pair.split('=', 2)
         return { error: 'Invalid UPDATE syntax' } unless col && val
 
-        converted_val = convert_value(val.strip)
+        converted_val = convert_value(val.strip.delete_suffix(';'))
         return converted_val if converted_val.is_a?(Hash) && converted_val[:error]
 
         { column: col.strip, value: converted_val }

@@ -83,6 +83,8 @@ module RubyPureMysql
     private
 
     def apply_update(table_name, where_clauses, update_map, limit)
+      return if limit == 0
+
       columns = @tables[table_name]
       updated_count = 0
       @data[table_name].each do |row|
@@ -95,6 +97,8 @@ module RubyPureMysql
     end
 
     def apply_delete(table_name, where_clauses, limit)
+      return if limit == 0
+
       columns = @tables[table_name]
       deleted_count = 0
       @data[table_name].delete_if do |row|

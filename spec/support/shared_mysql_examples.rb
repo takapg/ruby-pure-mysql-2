@@ -1112,7 +1112,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query("UPDATE limit_test SET val = 'updated' LIMIT 1;")
       results = client.query('SELECT val FROM limit_test ORDER BY id ASC;')
       expect(results.first['val']).to eq('updated')
-      expect(results.last['val']).to eq('c')
+      expect(results.to_a.last['val']).to eq('c')
     end
 
     it 'deletes only the limited number of rows without WHERE clause' do
