@@ -103,13 +103,15 @@ module RubyPureMysql
       rows = @data[table_name]
       deleted_count = 0
 
-      rows.reject! do |row|
+      # 保持する行を抽出して配列を更新する
+      @data[table_name] = rows.select do |row|
         if match_row?(row, columns, where_clauses)
           deleted_count += 1
-          # limitが指定されており、既に上限に達している場合は削除しない(falseを返す)
-          (limit.nil? || deleted_count <= limit)
+          # limitが指定されており、既に上限に達している場合は保持する(trueを返す)
+          limit && deleted_count > limit
         else
-          false
+          # 条件に合わない行は保持する
+          true
         end
       end
     end
