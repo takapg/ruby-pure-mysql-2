@@ -248,7 +248,7 @@ module RubyPureMysql
 
     def split_where_clause(clause)
       parts = []
-      buffer = { current: +'', in_quote: nil, index: 0 }
+      buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
 
       handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
       parts << buffer[:current].strip
@@ -256,15 +256,35 @@ module RubyPureMysql
 
     def handle_where_char(clause, buffer, parts)
       buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+      return process_normal_char(clause, buffer) if buffer[:in_quote]
 
-      match = nil
-      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i) if buffer[:in_quote].nil?
+      update_between_state(clause, buffer)
+      return if handle_and_operator?(clause, buffer, parts)
 
-      if match
-        process_and_operator(match, buffer, parts)
-      else
-        process_normal_char(clause, buffer)
+      process_normal_char(clause, buffer)
+    end
+
+    def update_between_state(clause, buffer)
+      buffer[:in_between] = true if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
+    end
+
+    def handle_and_operator?(clause, buffer, parts)
+      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
+      return false unless match
+
+      if buffer[:in_between]
+        consume_between_and_token(match, buffer)
+        return false
       end
+
+      process_and_operator(match, buffer, parts)
+      true
+    end
+
+    def consume_between_and_token(match, buffer)
+      buffer[:current] << match[0]
+      buffer[:index] += match[0].length
+      buffer[:in_between] = false
     end
 
     def process_and_operator(match, buffer, parts)
@@ -306,20 +326,44 @@ module RubyPureMysql
     end
 
     def parse_standard_where_condition(condition, column_pattern)
+      res = parse_between_condition(condition, column_pattern)
+      return res if res
+
       where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
-      column = where_match[1]
-      operator = where_match[2].upcase
+      build_standard_condition(where_match)
+    end
+
+    def parse_between_condition(condition, column_pattern)
+      match = condition.match(/\A(#{column_pattern})\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i)
+      return nil unless match
+
+      column = match[1]
+      operator = match[2] ? 'NOT BETWEEN' : 'BETWEEN'
+      val1 = convert_value(match[3].strip)
+      val2 = convert_value(match[4].strip.delete_suffix(';'))
+      return val1 if val1.is_a?(Hash) && val1[:error]
+      return val2 if val2.is_a?(Hash) && val2[:error]
+
+      { column: column, operator: operator, value: [val1, val2] }
+    end
+
+    def build_standard_condition(match)
+      column = match[1]
+      operator = match[2].upcase
       operator = '!=' if operator == '<>'
-      value_str = where_match[3].strip.delete_suffix(';')
+      value_str = match[3].strip.delete_suffix(';')
 
       value = operator == 'IN' ? parse_in_value(value_str) : convert_value(value_str)
       return value if value.is_a?(Hash) && value[:error]
 
       { column: column, operator: operator, value: value }
     end
+  end
 
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
     def parse_in_value(value_str)
       return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
 
@@ -335,10 +379,7 @@ module RubyPureMysql
 
       values
     end
-  end
 
-  # ユーティリティメソッドをまとめたモジュール
-  module SqlParserUtils
     def split_columns(definition)
       cols = []
       buf = +''

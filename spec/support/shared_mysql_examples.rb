@@ -300,6 +300,42 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(1)
     end
+
+    it 'filters rows by BETWEEN operator (integers)' do
+      results = client.query('SELECT * FROM users WHERE id BETWEEN 1 AND 2;')
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 2)
+    end
+
+    it 'filters rows by BETWEEN operator (boundary values)' do
+      results = client.query('SELECT * FROM users WHERE id BETWEEN 2 AND 2;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns empty result set when BETWEEN range does not match' do
+      results = client.query('SELECT * FROM users WHERE id BETWEEN 10 AND 20;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'filters rows by BETWEEN operator (strings)' do
+      results = client.query("SELECT * FROM users WHERE name BETWEEN 'alice' AND 'bob';")
+      # 'alice' and 'bob' should match
+      expect(results.count).to eq(2)
+    end
+
+    it 'filters rows by NOT BETWEEN operator' do
+      results = client.query('SELECT * FROM users WHERE id NOT BETWEEN 1 AND 2;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(3)
+    end
+
+    it 'handles BETWEEN combined with other AND conditions' do
+      results = client.query("SELECT * FROM users WHERE id BETWEEN 1 AND 3 AND name = 'alice';")
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, 'alice'])
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do

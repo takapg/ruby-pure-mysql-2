@@ -51,15 +51,22 @@ module RubyPureMysql
     end
 
     def compare_value(val, operator, target_value)
-      if operator == 'LIKE'
-        regex = target_value.is_a?(Regexp) ? target_value : build_like_regex(target_value)
-        regex.match?(val.to_s)
-      elsif operator == 'IN'
-        val.nil? ? false : target_value.include?(val)
+      case operator
+      when 'LIKE' then match_like?(val, target_value)
+      when 'IN' then val.nil? ? false : target_value.include?(val)
+      when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
+    end
+
+    def match_like?(val, target_value)
+      target_value.is_a?(Regexp) ? target_value.match?(val.to_s) : build_like_regex(target_value).match?(val.to_s)
+    end
+
+    def match_between?(val, operator, target_value)
+      operator == 'BETWEEN' ? val.between?(*target_value) : !val.between?(*target_value)
     end
 
     def apply_order_by(client, order_by, table_columns, rows)
