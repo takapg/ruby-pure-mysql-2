@@ -118,6 +118,25 @@ module RubyPureMysql
       end
     end
 
+    def compare_rows(row_a, row_b, sort_conditions)
+      comparison = 0
+      sort_conditions.each do |cond|
+        res = compare_values(row_a, row_b, cond)
+        comparison = res * (cond[:direction] == :DESC ? -1 : 1)
+        break if comparison != 0
+      end
+      comparison
+    end
+
+    def resolve_sort_conditions(client, table_columns, order_by, selected_columns = nil)
+      order_by.map do |cond|
+        idx = resolve_order_by_column_index(client, table_columns, cond[:column], selected_columns)
+        next nil unless idx
+
+        { index: idx, direction: cond[:direction] }
+      end.compact
+    end
+
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
         name = col_name.strip

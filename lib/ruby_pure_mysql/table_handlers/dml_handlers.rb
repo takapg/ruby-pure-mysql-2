@@ -70,7 +70,7 @@ module RubyPureMysql
         return send_err_packet(client, 1, "Unknown column '#{update_map[:error]}'", 1054)
       end
 
-      perform_update(client, result, where_clauses, update_map, result[:limit])
+      perform_update(client, result, where_clauses, update_map, result[:limit], result[:order])
     end
 
     def build_update_map(client, columns, updates)
@@ -82,8 +82,8 @@ module RubyPureMysql
       end
     end
 
-    def perform_update(client, result, where_clauses, update_map, limit = nil)
-      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, update_map, limit)
+    def perform_update(client, result, where_clauses, update_map, limit = nil, order = nil)
+      if @storage_engine.update_rows_with_where(result[:table_name], where_clauses, update_map, limit, order, client)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Update failed', 1000)
@@ -97,7 +97,7 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return unless where_clauses
 
-      if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses, result[:limit])
+      if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses, result[:limit], result[:order], client)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, 'Delete failed', 1000)

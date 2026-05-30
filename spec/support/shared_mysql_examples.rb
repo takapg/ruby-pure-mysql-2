@@ -1071,6 +1071,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(1)
     end
+
+    it 'updates rows with ORDER BY and LIMIT' do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, price INT, sale INT);')
+      client.query('INSERT INTO products VALUES (1, 100, 0);')
+      client.query('INSERT INTO products VALUES (2, 300, 0);')
+      client.query('INSERT INTO products VALUES (3, 200, 0);')
+
+      # 価格の高い順に2件をセール対象にする
+      client.query('UPDATE products SET sale = 1 ORDER BY price DESC LIMIT 2;')
+
+      results = client.query('SELECT id FROM products WHERE sale = 1 ORDER BY id ASC;')
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(2, 3)
+    end
+
+    it 'deletes rows with ORDER BY and LIMIT' do
+      client.query('DROP TABLE IF EXISTS logs;')
+      client.query('CREATE TABLE logs (id INT, timestamp INT);')
+      client.query('INSERT INTO logs VALUES (1, 1000);')
+      client.query('INSERT INTO logs VALUES (2, 2000);')
+      client.query('INSERT INTO logs VALUES (3, 3000);')
+
+      # タイムスタンプが古い順に2件削除する
+      client.query('DELETE FROM logs ORDER BY timestamp ASC LIMIT 2;')
+
+      results = client.query('SELECT id FROM logs;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(3)
+    end
   end
 
   describe 'UPDATE and DELETE with LIMIT' do

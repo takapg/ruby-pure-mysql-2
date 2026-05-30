@@ -68,14 +68,13 @@ module RubyPureMysql
       return updates if updates.is_a?(Hash) && updates[:error]
 
       res = { type: :update, table_name: parts[:table_name], updates: updates, limit: parts[:limit]&.to_i }
+      SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_update_where(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
-      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s+WHERE\s+(.+?)(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
-        { table_name: match[1], set_clause: match[2], where_clause: match[3], limit: match[4] }
-      elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
-        { table_name: match[1], set_clause: match[2], where_clause: nil, limit: match[3] }
+      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: match[3], order_clause: match[4], limit: match[5] }
       end
     end
 
@@ -101,10 +100,13 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
+      match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: match[1], limit: match[3]&.to_i }
+      result = { type: :delete, table_name: match[1], limit: match[4]&.to_i }
+      if match[3]
+        SqlParser.parse_order_by_clause(result, match[3])
+      end
       return result unless match[2]
 
       where = parse_where_clause(match[2])
