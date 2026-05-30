@@ -7,11 +7,32 @@ module RubyPureMysql
       columns = validate_table(client, result[:table_name])
       return unless columns
 
-      if @storage_engine.insert(result[:table_name], result[:values])
+      values = if result[:columns]
+                 map_values_to_columns(client, columns, result[:columns], result[:values])
+               else
+                 result[:values]
+               end
+
+      if values.is_a?(String)
+        return send_err_packet(client, 1, "Unknown column '#{values}'", 1054)
+      end
+
+      if @storage_engine.insert(result[:table_name], values)
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
       end
+    end
+
+    def map_values_to_columns(client, table_columns, specified_columns, values)
+      row = Array.new(table_columns.size, nil)
+      specified_columns.each_with_index do |col_name, idx|
+        col_idx = get_column_index(client, table_columns, col_name)
+        return col_name unless col_idx
+
+        row[col_idx] = values[idx]
+      end
+      row
     end
 
     def handle_update(client, result)

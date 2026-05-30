@@ -35,14 +35,16 @@ module RubyPureMysql
   # DMLパースロジック
   module SqlParserDmlParsers
     def parse_insert(query)
-      match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      match = query.match(/\AINSERT\s+INTO\s+(\w+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = split_insert_values(match[2]).map { |val| convert_value(val) }
+      table_name = match[1]
+      col_list = match[2] ? split_columns(match[2]).map { |c| c.delete_prefix('`').delete_suffix('`') } : nil
+      values = split_insert_values(match[3]).map { |val| convert_value(val) }
       error = values.find { |v| v.is_a?(Hash) && v[:error] }
       return error if error
 
-      { type: :insert, table_name: match[1], values: values }
+      { type: :insert, table_name: table_name, columns: col_list, values: values }
     end
 
     def parse_update(query)
