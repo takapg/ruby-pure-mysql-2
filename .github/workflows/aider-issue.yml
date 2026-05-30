@@ -52,6 +52,6 @@ jobs:
           BODY=$(jq -r '.body' issue.json)
 
           gh issue create \
-            --title "$ISSUE_TITLE" \
-            --body "$ISSUE_BODY" \
+            --title "$TITLE" \
+            --body "$BODY" \
             --repo ${{ github.repository }}
