@@ -22,7 +22,9 @@ module RubyPureMysql
       return unless where_clauses
 
       update_map = build_update_map(client, columns, result[:updates])
-      return send_err_packet(client, 1, "Unknown column '#{update_map[:error]}'", 1054) if update_map.is_a?(Hash) && update_map.key?(:error)
+      if update_map.is_a?(Hash) && update_map.key?(:error)
+        return send_err_packet(client, 1, "Unknown column '#{update_map[:error]}'", 1054)
+      end
 
       perform_update(client, result, where_clauses, update_map)
     end
