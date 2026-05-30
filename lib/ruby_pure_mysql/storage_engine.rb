@@ -102,15 +102,17 @@ module RubyPureMysql
       columns = @tables[table_name]
       rows = @data[table_name] || []
 
-      deleted_indices = []
-      rows.each_with_index do |row, idx|
-        next unless match_row?(row, columns, where_clauses)
-
-        deleted_indices << idx
-        break if !limit.nil? && deleted_indices.size >= limit
+      deleted_count = 0
+      rows.reject! do |row|
+        if !limit.nil? && deleted_count >= limit
+          false
+        elsif match_row?(row, columns, where_clauses)
+          deleted_count += 1
+          true
+        else
+          false
+        end
       end
-
-      @data[table_name] = rows.reject.with_index { |_, idx| deleted_indices.include?(idx) }
     end
 
     def match_row?(row, columns, where_clauses)
