@@ -1021,6 +1021,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    it 'returns an error for INSERT with column count mismatch (no column list)' do
+      expect do
+        client.query("INSERT INTO users VALUES (1);")
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for INSERT with column count mismatch (with column list)' do
+      expect do
+        client.query("INSERT INTO users (id, name) VALUES (1);")
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'deletes specific rows matching a WHERE clause' do
       client.query('DELETE FROM users WHERE id = 2;')
       results = client.query('SELECT * FROM users;')
