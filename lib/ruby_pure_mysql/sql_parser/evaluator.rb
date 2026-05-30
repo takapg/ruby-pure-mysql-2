@@ -27,7 +27,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.scan(/\d+\.?\d*|\.\d+|[+\-*/]/)
+      tokens = col.scan(%r{\d+\.?\d*|\.\d+|[+*/-]})
       return :error if tokens.empty?
 
       # 単項演算子（符号）を数値に統合
