@@ -46,26 +46,27 @@ module RubyPureMysql
     end
 
     def parse_update(query)
-      # 1. WHERE句がある場合: 欲張りマッチを用いて最後の ' WHERE ' で分割する
-      if match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s+WHERE\s+(.+)\s*;?\s*\z/i)
-        table_name, set_clause, where_clause = match[1], match[2], match[3]
-      # 2. WHERE句がない場合: セミコロンを含めないように非欲張りマッチを使用する
-      elsif match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s*;?\s*\z/i)
-        table_name, set_clause, where_clause = match[1], match[2], nil
-      else
-        return { error: 'Invalid UPDATE syntax' }
-      end
+      parts = extract_update_parts(query)
+      return { error: 'Invalid UPDATE syntax' } unless parts
 
-      updates = parse_update_set_clause(set_clause)
+      updates = parse_update_set_clause(parts[:set_clause])
       return updates if updates.is_a?(Hash) && updates[:error]
 
-      res = { type: :update, table_name: table_name, updates: updates }
-      return res unless where_clause
+      res = { type: :update, table_name: parts[:table_name], updates: updates }
+      return res unless parts[:where_clause]
 
-      where = parse_where_clause(where_clause)
+      where = parse_where_clause(parts[:where_clause])
       return where if where.is_a?(Hash) && where[:error]
 
       res.merge(where: where)
+    end
+
+    def extract_update_parts(query)
+      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s+WHERE\s+(.+)\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: match[3] }
+      elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: nil }
+      end
     end
 
     def parse_update_set_clause(set_clause)
@@ -516,6 +517,6 @@ module RubyPureMysql
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part
+                         :parse_part, :extract_update_parts
   end
 end
