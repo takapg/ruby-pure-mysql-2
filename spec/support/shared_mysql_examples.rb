@@ -1003,6 +1003,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq('Doe, John')
     end
 
+    it 'supports INSERT with column list (reordered)' do
+      client.query("INSERT INTO users (name, id) VALUES ('charlie', 3);")
+      results = client.query('SELECT * FROM users WHERE id = 3;')
+      expect(results.first.values).to eq([3, 'charlie'])
+    end
+
+    it 'supports INSERT with column list (partial)' do
+      client.query("INSERT INTO users (name) VALUES ('diana');")
+      results = client.query("SELECT * FROM users WHERE name = 'diana';")
+      expect(results.first.values).to eq([nil, 'diana'])
+    end
+
+    it 'returns an error for INSERT with non-existent column' do
+      expect do
+        client.query('INSERT INTO users (unknown_col) VALUES (1);')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for INSERT with column count mismatch (no column list)' do
+      expect do
+        client.query('INSERT INTO users VALUES (1);')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for INSERT with column count mismatch (with column list)' do
+      expect do
+        client.query('INSERT INTO users (id, name) VALUES (1);')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'deletes specific rows matching a WHERE clause' do
       client.query('DELETE FROM users WHERE id = 2;')
       results = client.query('SELECT * FROM users;')

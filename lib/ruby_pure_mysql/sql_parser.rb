@@ -35,14 +35,29 @@ module RubyPureMysql
   # DMLパースロジック
   module SqlParserDmlParsers
     def parse_insert(query)
-      match = query.match(/\AINSERT\s+INTO\s+(\w+)\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|\w+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = split_insert_values(match[2]).map { |val| convert_value(val) }
-      error = values.find { |v| v.is_a?(Hash) && v[:error] }
-      return error if error
+      values = parse_insert_values(match[3])
+      return values if values.is_a?(Hash) && values[:error]
 
-      { type: :insert, table_name: match[1], values: values }
+      {
+        type: :insert,
+        table_name: strip_backticks(match[1]),
+        columns: parse_insert_columns(match[2]),
+        values: values
+      }
+    end
+
+    def parse_insert_columns(col_list)
+      return nil unless col_list
+
+      split_columns(col_list).map { |c| strip_backticks(c) }
+    end
+
+    def parse_insert_values(values_str)
+      values = split_insert_values(values_str).map { |val| convert_value(val) }
+      values.find { |v| v.is_a?(Hash) && v[:error] } || values
     end
 
     def parse_update(query)
@@ -383,6 +398,10 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    def strip_backticks(str)
+      str.delete_prefix('`').delete_suffix('`')
+    end
+
     def parse_in_value(value_str)
       return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
 
