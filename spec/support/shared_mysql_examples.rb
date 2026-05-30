@@ -1072,4 +1072,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(1)
     end
   end
+
+  describe 'Data Modification with LIMIT' do
+    before do
+      client.query('DROP TABLE IF EXISTS limit_test;')
+      client.query('CREATE TABLE limit_test (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO limit_test VALUES (1, 'a');")
+      client.query("INSERT INTO limit_test VALUES (2, 'b');")
+      client.query("INSERT INTO limit_test VALUES (3, 'c');")
+    end
+
+    it 'updates only the limited number of rows' do
+      client.query("UPDATE limit_test SET val = 'updated' LIMIT 2;")
+      results = client.query('SELECT val FROM limit_test ORDER BY id ASC;')
+      vals = results.map { |r| r['val'] }
+      expect(vals).to eq(['updated', 'updated', 'c'])
+    end
+
+    it 'deletes only the limited number of rows' do
+      client.query('DELETE FROM limit_test WHERE id > 0 LIMIT 1;')
+      results = client.query('SELECT id FROM limit_test ORDER BY id ASC;')
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to eq([2, 3])
+    end
+  end
 end
