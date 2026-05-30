@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if %r{\A-?\d+(?:\.\d+)?(\s*[+\-*/]\s*-?\d+(?:\.\d+)?)*\z}.match?(col)
+      return evaluate_math(col) if %r{\A-?\d+(?:\.\d+)?(\s*[+*/-]\s*-?\d+(?:\.\d+)?)*\z}.match?(col)
 
       :error
     end
@@ -30,7 +30,7 @@ module RubyPureMysql
       return :error if tokens.empty?
 
       # 数値トークンをあらかじめ Float に変換して精度を保証する
-      processed_tokens = tokens.map { |t| t.match?(/[+\-*/]/) ? t : t.to_f }
+      processed_tokens = tokens.map { |t| t.match?(/\A[+*/-]\z/) ? t : t.to_f }
 
       # 1. 乗除算を先に処理
       pass1 = []
