@@ -9,7 +9,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if %r{\A\s*[-+]?\d*\.?\d+(\s*[+*/-]\s*[-+]?\d*\.?\d+)*\s*\z}.match?(col)
+      return evaluate_math(col) if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
 
       :error
     end
@@ -27,14 +27,14 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.gsub(/([+*/-])/, ' \1 ').split
+      tokens = col.scan(/\d+\.?\d*|\.\d+|[+*/-]/)
       return :error if tokens.empty?
 
       # 単項演算子（符号）を数値に統合
       i = 0
       while i < tokens.size
         if (tokens[i] == '-' || tokens[i] == '+') && (i == 0 || %w[+*/-].include?(tokens[i - 1]))
-          if tokens[i + 1] && tokens[i + 1] =~ /\A\d*\.?\d+\z/
+          if tokens[i + 1] && tokens[i + 1] =~ /\A(\d+\.?\d*|\.\d+)\z/
             tokens[i + 1] = tokens[i] + tokens[i + 1]
             tokens.delete_at(i)
             i -= 1
