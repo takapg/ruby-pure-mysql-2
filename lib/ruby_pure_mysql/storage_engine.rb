@@ -44,13 +44,15 @@ module RubyPureMysql
       end
     end
 
-    def update_rows_with_where(table_name, where_clauses, col_idx, new_value)
+    def update_rows_with_where(table_name, where_clauses, update_map)
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
         columns = @tables[table_name]
         @data[table_name].each do |row|
-          row[col_idx] = new_value if match_row?(row, columns, where_clauses)
+          if match_row?(row, columns, where_clauses)
+            update_map.each { |idx, val| row[idx] = val }
+          end
         end
         true
       end

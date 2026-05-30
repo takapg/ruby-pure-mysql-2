@@ -46,16 +46,24 @@ module RubyPureMysql
     end
 
     def parse_update(query)
-      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
+      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
       return { error: 'Invalid UPDATE syntax' } unless match
 
-      value = convert_value(match[3].strip)
-      return value if value.is_a?(Hash) && value[:error]
+      set_clause = match[2]
+      update_pairs = split_insert_values(set_clause).map do |pair|
+        col, val = pair.split('=', 2)
+        return { error: 'Invalid UPDATE syntax' } unless col && val
 
-      result = { type: :update, table_name: match[1], column: match[2], value: value }
-      return result unless match[4]
+        converted_val = convert_value(val.strip)
+        return converted_val if converted_val.is_a?(Hash) && converted_val[:error]
 
-      where = parse_where_clause(match[4])
+        { column: col.strip, value: converted_val }
+      end
+
+      result = { type: :update, table_name: match[1], updates: update_pairs }
+      return result unless match[3]
+
+      where = parse_where_clause(match[3])
       return where if where.is_a?(Hash) && where[:error]
 
       result[:where] = where
