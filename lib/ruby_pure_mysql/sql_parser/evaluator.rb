@@ -27,7 +27,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.split(/([+*/-])/).map(&:strip).reject(&:empty?)
+      tokens = col.gsub(/([+*/-])/, ' \1 ').split
       return :error if tokens.empty?
 
       # 単項演算子（符号）を数値に統合
