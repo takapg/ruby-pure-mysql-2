@@ -935,6 +935,38 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'ORDER BY with Alias support' do
+    before do
+      client.query('DROP TABLE IF EXISTS users;')
+      client.query('CREATE TABLE users (id INT, name VARCHAR(255));')
+      client.query("INSERT INTO users VALUES (1, 'alice');")
+      client.query("INSERT INTO users VALUES (2, 'bob');")
+      client.query("INSERT INTO users VALUES (3, 'charlie');")
+    end
+
+    it 'sorts by column alias' do
+      results = client.query('SELECT name AS user_name FROM users ORDER BY user_name DESC;')
+      expect(results.map { |r| r['user_name'] }).to eq(['charlie', 'bob', 'alice'])
+    end
+
+    it 'sorts by aggregate alias' do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 200);")
+      client.query("INSERT INTO products VALUES (3, 'books', 50);")
+      client.query("INSERT INTO products VALUES (4, 'books', 150);")
+      results = client.query('SELECT category, SUM(price) AS total FROM products GROUP BY category ORDER BY total ASC;')
+      expect(results.map { |r| r['category'] }).to eq(['books', 'electronics'])
+    end
+
+    it 'returns an error for non-existent alias in ORDER BY' do
+      expect do
+        client.query('SELECT name FROM users ORDER BY unknown_alias;')
+      end.to raise_error(Mysql2::Error)
+    end
+  end
+
   describe 'Alias support' do
     it 'supports column aliases with AS' do
       results = client.query('SELECT 1 AS total;')

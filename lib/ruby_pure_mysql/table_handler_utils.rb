@@ -75,25 +75,25 @@ module RubyPureMysql
     end
 
     def apply_order_by(client, order_by, table_columns, rows, selected_columns = nil)
-      sort_conditions = []
-      order_by.each do |cond|
-        col_name = cond[:column]
-
-        if selected_columns
-          # SELECT 句の別名定義から一致するものを探す
-          alias_info = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(col_name) }
-          col_name = alias_info[:original] if alias_info
-        end
-
-        idx = get_column_index(client, table_columns, col_name)
+      sort_conditions = order_by.map do |cond|
+        idx = resolve_order_by_column_index(client, table_columns, cond[:column], selected_columns)
         if idx.nil?
           send_err_packet(client, 1, "Unknown column '#{cond[:column]}' in 'order clause'", 1054)
           return nil
         end
-        sort_conditions << { index: idx, direction: cond[:direction] }
+        { index: idx, direction: cond[:direction] }
       end
 
       sort_rows(rows, sort_conditions)
+    end
+
+    def resolve_order_by_column_index(client, table_columns, col_name, selected_columns)
+      name = col_name
+      if selected_columns
+        alias_info = selected_columns.find { |c| c.is_a?(Hash) && c[:alias]&.casecmp?(name) }
+        name = alias_info[:original] if alias_info
+      end
+      get_column_index(client, table_columns, name)
     end
 
     def sort_rows(rows, sort_conditions)
