@@ -83,6 +83,10 @@ module RubyPureMysql
       updates = parse_update_set_clause(parts[:set_clause])
       return updates if updates.is_a?(Hash) && updates[:error]
 
+      build_update_result(parts, updates)
+    end
+
+    def build_update_result(parts, updates)
       res = {
         type: :update,
         table_name: strip_backticks(parts[:table_name]),
@@ -560,6 +564,6 @@ module RubyPureMysql
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part, :extract_update_parts
+                         :parse_part, :extract_update_parts, :build_update_result
   end
 end
