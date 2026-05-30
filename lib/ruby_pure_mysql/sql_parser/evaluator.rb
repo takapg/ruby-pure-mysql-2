@@ -29,20 +29,20 @@ module RubyPureMysql
       tokens = col.scan(%r{-?\d+(?:\.\d+)?|[+\-*/]})
       return :error if tokens.empty?
 
-      # 数値トークンを確実に Float に変換して計算精度を確保する
-      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : Float(t) }
+      # 数値を Float に変換して計算精度を確保
+      tokens = tokens.map { |t| t.match?(/[+\-*/]/) ? t : t.to_f }
 
       # 1. 乗除算を先に処理
       stack = []
       i = 0
-      while i < processed_tokens.size
-        t = processed_tokens[i]
+      while i < tokens.size
+        t = tokens[i]
         if t == '*' || t == '/'
           left = stack.pop
-          right = processed_tokens[i + 1]
+          right = tokens[i + 1]
           return nil if t == '/' && right == 0.0
 
-          stack << (t == '*' ? left * right : left.to_f / right.to_f)
+          stack << (t == '*' ? left * right : left / right)
           i += 2
         else
           stack << t
@@ -51,13 +51,11 @@ module RubyPureMysql
       end
 
       # 2. 加減算を処理
-      res = stack[0]
-      i = 1
-      while i < stack.size
-        op = stack[i]
-        val = stack[i + 1]
+      res = stack.shift
+      while stack.any?
+        op = stack.shift
+        val = stack.shift
         res = (op == '+' ? res + val : res - val)
-        i += 2
       end
 
       # 計算結果が整数と等しい場合は整数型で返し、それ以外は Float で返す
