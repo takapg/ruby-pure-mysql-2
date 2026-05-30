@@ -29,17 +29,17 @@ module RubyPureMysql
       tokens = col.scan(%r{-?\d+(?:\.\d+)?|[+\-*/]})
       return :error if tokens.empty?
 
-      # 数値トークンをあらかじめ Float に変換しておく
-      tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
+      # 数値トークンを Float に変換して別の変数に格納
+      processed_tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
 
       # 1. 乗除算を先に処理
       stack = []
       i = 0
-      while i < tokens.size
-        t = tokens[i]
+      while i < processed_tokens.size
+        t = processed_tokens[i]
         if t == '*' || t == '/'
           left = stack.pop
-          right = tokens[i + 1]
+          right = processed_tokens[i + 1]
           return nil if t == '/' && right == 0.0
 
           stack << (t == '*' ? left * right : left / right)
@@ -60,7 +60,7 @@ module RubyPureMysql
         i += 2
       end
 
-      (res % 1).zero? ? res.to_i : res
+      res == res.to_i ? res.to_i : res
     end
   end
 end
