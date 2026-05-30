@@ -84,7 +84,7 @@ module RubyPureMysql
         table_name: match[1],
         set_clause: match[2],
         where_clause: match[3],
-        limit: match[4] ? match[4].to_i : nil
+        limit: match[4]&.to_i
       }
     end
 
@@ -104,7 +104,7 @@ module RubyPureMysql
       match = query.match(/\ADELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?\s*\z/i)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: match[1], limit: match[3] ? match[3].to_i : nil }
+      result = { type: :delete, table_name: match[1], limit: match[3]&.to_i }
       return result unless match[2]
 
       where = parse_where_clause(match[2])

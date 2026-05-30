@@ -48,15 +48,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        columns = @tables[table_name]
-        updated_count = 0
-        @data[table_name].each do |row|
-          if match_row?(row, columns, where_clauses)
-            update_map.each { |idx, val| row[idx] = val }
-            updated_count += 1
-            break if limit && updated_count >= limit
-          end
-        end
+        apply_update(table_name, where_clauses, update_map, limit)
         true
       end
     end
@@ -65,16 +57,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        columns = @tables[table_name]
-        deleted_count = 0
-        @data[table_name].delete_if do |row|
-          if match_row?(row, columns, where_clauses)
-            deleted_count += 1
-            deleted_count <= (limit || Float::INFINITY)
-          else
-            false
-          end
-        end
+        apply_delete(table_name, where_clauses, limit)
         true
       end
     end
@@ -98,6 +81,29 @@ module RubyPureMysql
     end
 
     private
+
+    def apply_update(table_name, where_clauses, update_map, limit)
+      columns = @tables[table_name]
+      updated_count = 0
+      @data[table_name].each do |row|
+        next unless match_row?(row, columns, where_clauses)
+
+        update_map.each { |idx, val| row[idx] = val }
+        updated_count += 1
+        break if limit && updated_count >= limit
+      end
+    end
+
+    def apply_delete(table_name, where_clauses, limit)
+      columns = @tables[table_name]
+      deleted_count = 0
+      @data[table_name].delete_if do |row|
+        next false unless match_row?(row, columns, where_clauses)
+
+        deleted_count += 1
+        deleted_count <= (limit || Float::INFINITY)
+      end
+    end
 
     def match_row?(row, columns, where_clauses)
       return true if where_clauses.nil? || where_clauses.empty?

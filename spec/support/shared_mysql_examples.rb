@@ -1086,7 +1086,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query("UPDATE limit_test SET val = 'updated' LIMIT 2;")
       results = client.query('SELECT val FROM limit_test ORDER BY id ASC;')
       vals = results.map { |r| r['val'] }
-      expect(vals).to eq(['updated', 'updated', 'c'])
+      expect(vals).to eq(%w[updated updated c])
     end
 
     it 'deletes only the limited number of rows' do
