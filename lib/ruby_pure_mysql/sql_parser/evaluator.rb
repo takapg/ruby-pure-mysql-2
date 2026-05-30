@@ -40,30 +40,30 @@ module RubyPureMysql
 
     def process_multiplication_division(tokens)
       stack = []
-      i = 0
-      while i < tokens.size
-        i = process_token(stack, tokens, i)
-        return nil if i == :error
+      index = 0
+      while index < tokens.size
+        index = process_token(stack, tokens, index)
+        return nil if index == :error
       end
       stack
     end
 
-    def process_token(stack, tokens, i)
-      t = tokens[i]
-      return handle_mul_div(stack, tokens, i) if ['*', '/'].include?(t)
+    def process_token(stack, tokens, index)
+      t = tokens[index]
+      return handle_mul_div(stack, tokens, index) if ['*', '/'].include?(t)
 
       stack << t
-      i + 1
+      index + 1
     end
 
-    def handle_mul_div(stack, tokens, i)
-      op = tokens[i]
+    def handle_mul_div(stack, tokens, index)
+      op = tokens[index]
       left = stack.pop.to_f
-      right = tokens[i + 1].to_f
+      right = tokens[index + 1].to_f
       return :error if op == '/' && right.zero?
 
       stack << (op == '*' ? left * right : left / right)
-      i + 2
+      index + 2
     end
 
     def process_addition_subtraction(stack)
