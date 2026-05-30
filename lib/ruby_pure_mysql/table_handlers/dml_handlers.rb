@@ -95,6 +95,9 @@ module RubyPureMysql
       return unless columns
 
       where_clauses = prepare_where_clauses(client, columns, result[:where])
+      if where_clauses.is_a?(Hash) && where_clauses.key?(:error)
+        return send_err_packet(client, 1, where_clauses[:error], 1054)
+      end
 
       if @storage_engine.delete_rows_with_where(result[:table_name], where_clauses, limit: result[:limit])
         send_ok_packet(client, 1)

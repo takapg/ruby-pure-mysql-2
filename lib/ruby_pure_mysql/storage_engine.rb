@@ -107,11 +107,13 @@ module RubyPureMysql
       @data[table_name] = rows.select do |row|
         if match_row?(row, columns, where_clauses)
           deleted_count += 1
-          # limitが指定されており、既に上限に達している場合は保持する(trueを返す)
-          limit && deleted_count > limit
+          if limit.nil?
+            false # 制限なしなら削除
+          else
+            deleted_count > limit # 制限を超えたら保持
+          end
         else
-          # 条件に合わない行は保持する
-          true
+          true # 条件に合わない行は保持
         end
       end
     end
