@@ -1101,6 +1101,39 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(3)
     end
+
+    it 'updates rows with WHERE, ORDER BY and LIMIT' do
+      client.query('DROP TABLE IF EXISTS products;')
+      client.query('CREATE TABLE products (id INT, category VARCHAR(255), price INT, sale INT);')
+      client.query("INSERT INTO products VALUES (1, 'electronics', 100, 0);")
+      client.query("INSERT INTO products VALUES (2, 'electronics', 300, 0);")
+      client.query("INSERT INTO products VALUES (3, 'electronics', 200, 0);")
+      client.query("INSERT INTO products VALUES (4, 'books', 500, 0);")
+
+      # electronics カテゴリの中で価格の高い順に1件をセール対象にする
+      client.query("UPDATE products SET sale = 1 WHERE category = 'electronics' ORDER BY price DESC LIMIT 1;")
+
+      results = client.query('SELECT id FROM products WHERE sale = 1;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(2)
+    end
+
+    it 'deletes rows with WHERE, ORDER BY and LIMIT' do
+      client.query('DROP TABLE IF EXISTS logs;')
+      client.query('CREATE TABLE logs (id INT, level VARCHAR(10), timestamp INT);')
+      client.query("INSERT INTO logs VALUES (1, 'INFO', 1000);")
+      client.query("INSERT INTO logs VALUES (2, 'INFO', 2000);")
+      client.query("INSERT INTO logs VALUES (3, 'INFO', 3000);")
+      client.query("INSERT INTO logs VALUES (4, 'ERROR', 500);")
+      client.query("INSERT INTO logs VALUES (5, 'ERROR', 1500);")
+
+      # ERROR レベルの中でタイムスタンプが古い順に1件削除する
+      client.query("DELETE FROM logs WHERE level = 'ERROR' ORDER BY timestamp ASC LIMIT 1;")
+
+      results = client.query("SELECT id FROM logs WHERE level = 'ERROR';")
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(5)
+    end
   end
 
   describe 'UPDATE and DELETE with LIMIT' do
