@@ -100,13 +100,18 @@ module RubyPureMysql
       return if limit == 0
 
       columns = @tables[table_name]
-      deleted_count = 0
-      @data[table_name].delete_if do |row|
-        next false unless match_row?(row, columns, where_clauses)
-
-        deleted_count += 1
-        deleted_count <= (limit || Float::INFINITY)
+      rows = @data[table_name]
+      
+      to_delete = []
+      rows.each_with_index do |row, idx|
+        next unless match_row?(row, columns, where_clauses)
+        
+        to_delete << idx
+        break if limit && to_delete.size >= limit
       end
+
+      # インデックスが大きい順に削除して、インデックスのズレを防ぐ
+      to_delete.reverse_each { |idx| rows.delete_at(idx) }
     end
 
     def match_row?(row, columns, where_clauses)

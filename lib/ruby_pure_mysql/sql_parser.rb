@@ -475,7 +475,9 @@ module RubyPureMysql
 
         if split_idx
           before = remaining[0...split_idx].strip
-          after = remaining[split_idx..].match(/\A\s+#{kw}\s+(.+)\z/i)[1].strip
+          # \z を削除し、キーワード以降の文字列を抽出する
+          match = remaining[split_idx..].match(/\A\s+#{kw}\s+(.+)/i)
+          after = match ? match[1].strip : ''
           result[last_key] = before
           remaining = after
           last_key = kw.downcase.to_sym
