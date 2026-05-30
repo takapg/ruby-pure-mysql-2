@@ -52,24 +52,24 @@ module RubyPureMysql
 
     def compare_value(val, operator, target_value)
       case operator
-      when 'LIKE' then match_pattern(val, target_value, :like)
-      when 'REGEXP', 'RLIKE' then match_pattern(val, target_value, :regexp)
+      when 'LIKE' then match_pattern?(val, target_value, :like)
+      when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
       when 'IN' then val.nil? ? false : target_value.include?(val)
-      when 'BETWEEN', 'NOT BETWEEN' then match_between(val, operator, target_value)
+      when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
       else
         method = operator == '=' ? :== : operator.to_sym
         val.public_send(method, target_value)
       end
     end
 
-    def match_pattern(val, target, type)
+    def match_pattern?(val, target, type)
       return target.match?(val.to_s) if target.is_a?(Regexp)
 
       regex = type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)
       regex.match?(val.to_s)
     end
 
-    def match_between(val, operator, target)
+    def match_between?(val, operator, target)
       operator == 'BETWEEN' ? val.between?(*target) : !val.between?(*target)
     end
 
@@ -120,7 +120,6 @@ module RubyPureMysql
         0
       end
     end
-
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
         name = col_name.strip
