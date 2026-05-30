@@ -1122,5 +1122,4 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(3)
     end
   end
-  end
 end
