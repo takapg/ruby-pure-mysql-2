@@ -46,20 +46,39 @@ module RubyPureMysql
     end
 
     def parse_update(query)
-      match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)(?:\s+WHERE\s+(.+))?\s*;?\s*\z/i)
-      return { error: 'Invalid UPDATE syntax' } unless match
+      parts = extract_update_parts(query)
+      return { error: 'Invalid UPDATE syntax' } unless parts
 
-      value = convert_value(match[3].strip)
-      return value if value.is_a?(Hash) && value[:error]
+      updates = parse_update_set_clause(parts[:set_clause])
+      return updates if updates.is_a?(Hash) && updates[:error]
 
-      result = { type: :update, table_name: match[1], column: match[2], value: value }
-      return result unless match[4]
+      res = { type: :update, table_name: parts[:table_name], updates: updates }
+      return res unless parts[:where_clause]
 
-      where = parse_where_clause(match[4])
+      where = parse_where_clause(parts[:where_clause])
       return where if where.is_a?(Hash) && where[:error]
 
-      result[:where] = where
-      result
+      res.merge(where: where)
+    end
+
+    def extract_update_parts(query)
+      if (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+)\s+WHERE\s+(.+)\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: match[3] }
+      elsif (match = query.match(/\AUPDATE\s+(\w+)\s+SET\s+(.+?)\s*;?\s*\z/i))
+        { table_name: match[1], set_clause: match[2], where_clause: nil }
+      end
+    end
+
+    def parse_update_set_clause(set_clause)
+      split_insert_values(set_clause).map do |pair|
+        col, val = pair.split('=', 2)
+        return { error: 'Invalid UPDATE syntax' } unless col && val
+
+        converted_val = convert_value(val.strip)
+        return converted_val if converted_val.is_a?(Hash) && converted_val[:error]
+
+        { column: col.strip, value: converted_val }
+      end
     end
 
     def parse_delete(query)
@@ -498,6 +517,6 @@ module RubyPureMysql
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part
+                         :parse_part, :extract_update_parts
   end
 end

@@ -977,6 +977,32 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq('charlie')
     end
 
+    it 'updates multiple columns simultaneously' do
+      client.query("UPDATE users SET name = 'charlie', id = 10 WHERE id = 1;")
+      results = client.query('SELECT id, name FROM users WHERE id = 10;')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([10, 'charlie'])
+    end
+
+    it 'returns an error when updating a non-existent column' do
+      expect do
+        client.query("UPDATE users SET non_existent = 'value' WHERE id = 1;")
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'updates all rows when WHERE clause is omitted' do
+      client.query("UPDATE users SET name = 'everyone';")
+      results = client.query('SELECT name FROM users;')
+      expect(results.count).to eq(2)
+      expect(results.all? { |r| r['name'] == 'everyone' }).to be true
+    end
+
+    it 'updates columns with values containing commas' do
+      client.query("UPDATE users SET name = 'Doe, John' WHERE id = 1;")
+      results = client.query('SELECT name FROM users WHERE id = 1;')
+      expect(results.first.values.first).to eq('Doe, John')
+    end
+
     it 'deletes specific rows matching a WHERE clause' do
       client.query('DELETE FROM users WHERE id = 2;')
       results = client.query('SELECT * FROM users;')
