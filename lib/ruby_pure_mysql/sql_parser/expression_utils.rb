@@ -6,32 +6,32 @@ module RubyPureMysql
     MD_OPERATORS = %w[* /].freeze
     def tokenize_math(col)
       tokens = []
-      i = 0
-      while i < col.length
-        char = col[i]
+      idx = 0
+      while idx < col.length
+        char = col[idx]
         case
         when char.match?(/\s/)
-          i += 1
+          idx += 1
         when char == '('
-          start = i
-          i = consume_parentheses(col, i)
-          tokens << col[start...i]
+          start = idx
+          idx = consume_parentheses(col, idx)
+          tokens << col[start...idx]
         when char.match?(/[a-zA-Z_]/)
-          res = consume_identifier_or_function(col, i)
+          res = consume_identifier_or_function(col, idx)
           return :error if res == :error
 
           tokens << res[:token]
-          i = res[:next_i]
-        when char.match?(%r{[-+*\/]})
-          res = consume_operator(col, i, tokens)
+          idx = res[:next_i]
+        when char.match?(%r{[-+*/]})
+          res = consume_operator(col, idx, tokens)
           return :error if res == :error
 
           tokens << res[:token]
-          i = res[:next_i]
+          idx = res[:next_i]
         when char.match?(/[\d.]/)
-          start = i
-          i = consume_number(col, i)
-          tokens << col[start...i]
+          start = idx
+          idx = consume_number(col, idx)
+          tokens << col[start...idx]
         else
           return :error
         end
@@ -47,77 +47,70 @@ module RubyPureMysql
       processed
     end
 
-    def consume_parentheses(col, i)
+    def consume_parentheses(col, idx)
       depth = 1
-      i += 1
-      while i < col.length && depth.positive?
-        depth += 1 if col[i] == '('
-        depth -= 1 if col[i] == ')'
-        i += 1
+      idx += 1
+      while idx < col.length && depth.positive?
+        depth += 1 if col[idx] == '('
+        depth -= 1 if col[idx] == ')'
+        idx += 1
       end
-      i
+      idx
     end
 
-    def consume_identifier_or_function(col, i)
-      start = i
-      while i < col.length && col[i].match?(/[a-zA-Z0-9_]/)
-        i += 1
-      end
-      token = col[start...i]
-      return { token: token, next_i: i } if token.casecmp?('NULL')
+    def consume_identifier_or_function(col, idx)
+      start = idx
+      idx += 1 while idx < col.length && col[idx].match?(/[a-zA-Z0-9_]/)
+      token = col[start...idx]
+      return { token: token, next_i: idx } if token.casecmp?('NULL')
 
-      if i < col.length && col[i] == '('
-        i += 1
+      if idx < col.length && col[idx] == '('
+        idx += 1
         depth = 1
-        while i < col.length && depth.positive?
-          depth += 1 if col[i] == '('
-          depth -= 1 if col[i] == ')'
-          i += 1
+        while idx < col.length && depth.positive?
+          depth += 1 if col[idx] == '('
+          depth -= 1 if col[idx] == ')'
+          idx += 1
         end
-        return { token: col[start...i], next_i: i }
+        return { token: col[start...idx], next_i: idx }
       end
 
       :error
     end
 
-    def consume_operator(col, i, tokens)
-      char = col[i]
-      unless %w[- +].include?(char) && (tokens.empty? || operator?(tokens.last))
-        return { token: char, next_i: i + 1 }
-      end
+    def consume_operator(col, idx, tokens)
+      char = col[idx]
+      return { token: char, next_i: idx + 1 } unless %w[- +].include?(char) && (tokens.empty? || operator?(tokens.last))
 
-      start = i
-      i += 1
-      i = skip_whitespace(col, i)
-      return :error if i >= col.length
+      start = idx
+      idx += 1
+      idx = skip_whitespace(col, idx)
+      return :error if idx >= col.length
 
-      if col[i] == '('
-        i = consume_parentheses(col, i)
-      elsif col[i].match?(/[a-zA-Z_]/)
-        res = consume_identifier_or_function(col, i)
+      case col[idx]
+      when '('
+        idx = consume_parentheses(col, idx)
+      when /[a-zA-Z_]/
+        res = consume_identifier_or_function(col, idx)
         return :error if res == :error
 
-        i = res[:next_i]
-      elsif col[i].match?(/[\d.]/)
-        i = consume_number(col, i)
+        idx = res[:next_i]
+      when /[\d.]/
+        idx = consume_number(col, idx)
       else
         return :error
       end
-      { token: col[start...i], next_i: i }
+      { token: col[start...idx], next_i: idx }
     end
 
-    def consume_number(col, i)
-      while i < col.length && col[i].match?(/[\d.]/)
-        i += 1
-      end
-      i
+    def consume_number(col, idx)
+      idx += 1 while idx < col.length && col[idx].match?(/[\d.]/)
+      idx
     end
 
-    def skip_whitespace(col, i)
-      while i < col.length && col[i].match?(/\s/)
-        i += 1
-      end
-      i
+    def skip_whitespace(col, idx)
+      idx += 1 while idx < col.length && col[idx].match?(/\s/)
+      idx
     end
 
     def split_args(args_str)
@@ -134,9 +127,7 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
 
       token_s = token.strip
-      if token_s.start_with?('-', '+') && token_s.length > 1
-        return handle_unary_token(token_s)
-      end
+      return handle_unary_token(token_s) if token_s.start_with?('-', '+') && token_s.length > 1
 
       evaluate_inner_token(token_s)
     end
@@ -219,7 +210,9 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left, op, right = tokens[index - 1], tokens[index], tokens[index + 1]
+      left = tokens[index - 1]
+      op = tokens[index]
+      right = tokens[index + 1]
 
       if left.nil? || right.nil?
         tokens[index - 1] = nil
@@ -236,12 +229,16 @@ module RubyPureMysql
 
     def apply_addition_subtraction(tokens)
       result = tokens[0]
-      i = 1
-      while i < tokens.size
-        op = tokens[i]
-        val = tokens[i + 1]
-        result = (result.nil? || val.nil?) ? nil : (op == '+' ? result + val : result - val)
-        i += 2
+      idx = 1
+      while idx < tokens.size
+        op = tokens[idx]
+        val = tokens[idx + 1]
+        if result.nil? || val.nil?
+          result = nil
+        else
+          result = op == '+' ? result + val : result - val
+        end
+        idx += 2
       end
       result
     end
