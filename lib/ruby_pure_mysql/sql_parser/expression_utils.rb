@@ -78,6 +78,7 @@ module RubyPureMysql
   # 式のトークナイズ処理を提供するモジュール
   module ExpressionTokenizer
     include ExpressionTokenConsumer
+
     def tokenize_math(col)
       tokens = []
       idx = 0
@@ -139,7 +140,6 @@ module RubyPureMysql
       end
       processed
     end
-
   end
 
   # 式の評価ロジックを提供するモジュール
