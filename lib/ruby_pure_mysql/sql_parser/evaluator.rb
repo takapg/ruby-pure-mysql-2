@@ -3,6 +3,9 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
+    MATH_OPERATORS = ['+', '-', '*', '/'].freeze
+    MD_OPERATORS = ['*', '/'].freeze
+
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
@@ -31,14 +34,26 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      # 整数除算を避けるため、数値を Float に変換して評価する
-      tokens = col.scan(/([-+]?\d+)|([+\-*\/])/).map { |m| m.compact.first }
-      tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
+      tokens = tokenize_math(col)
+      tokens = process_multiplication_division(tokens)
+      res = process_addition_subtraction(tokens)
 
-      # 乗算と除算を先に処理
+      finalize_math_result(res, col)
+    rescue StandardError
+      :error
+    end
+
+    private
+
+    def tokenize_math(col)
+      tokens = col.scan(%r{([-+]?\d+)|([+\-*/])}).map { |m| m.compact.first }
+      tokens.map { |t| MATH_OPERATORS.include?(t) ? t : t.to_f }
+    end
+
+    def process_multiplication_division(tokens)
       i = 1
       while i < tokens.size
-        if tokens[i] == '*' || tokens[i] == '/'
+        if MD_OPERATORS.include?(tokens[i])
           op = tokens[i]
           res = op == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
           tokens[i - 1] = res
@@ -47,8 +62,10 @@ module RubyPureMysql
           i += 1
         end
       end
+      tokens
+    end
 
-      # 加算と減算を処理
+    def process_addition_subtraction(tokens)
       res = tokens[0]
       i = 1
       while i < tokens.size
@@ -56,15 +73,15 @@ module RubyPureMysql
         res = op == '+' ? res + tokens[i + 1] : res - tokens[i + 1]
         i += 2
       end
+      res
+    end
 
-      # 除算が含まれる場合は Float を返し、それ以外は整数値なら Integer に変換する
+    def finalize_math_result(res, col)
       if col.include?('/')
         res.to_f
       else
         res == res.to_i ? res.to_i : res
       end
-    rescue StandardError
-      :error
     end
   end
 end
