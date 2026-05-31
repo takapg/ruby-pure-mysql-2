@@ -13,7 +13,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_function(col) if is_single_function_call?(col)
+      return evaluate_function(col) if single_function_call?(col)
       return evaluate_math(col) if MATH_REGEX.match?(col)
 
       :error
@@ -67,19 +67,15 @@ module RubyPureMysql
 
     private
 
-    def is_single_function_call?(col)
+    def single_function_call?(col)
       return false unless col.match?(/\A\w+\(.*\)\z/)
-
       depth = 0
       col.each_char.with_index do |char, i|
-        if char == '('
-          depth += 1
-        elsif char == ')'
-          depth -= 1
-          return false if depth == 0 && i < col.length - 1
-        end
+        depth += 1 if char == '('
+        depth -= 1 if char == ')'
+        return false if char == ')' && depth.zero? && i < col.length - 1
       end
-      depth == 0
+      depth.zero?
     end
 
     def evaluate_function_args(args_str)
