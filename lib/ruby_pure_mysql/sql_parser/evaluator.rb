@@ -62,11 +62,11 @@ module RubyPureMysql
       tokens
     end
 
-    def apply_md_op(tokens, i)
-      op = tokens[i]
-      res = op == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
-      tokens[i - 1] = res
-      tokens.slice!(i, 2)
+    def apply_md_op(tokens, index)
+      op = tokens[index]
+      res = op == '*' ? tokens[index - 1] * tokens[index + 1] : tokens[index - 1] / tokens[index + 1]
+      tokens[index - 1] = res
+      tokens.slice!(index, 2)
     end
 
     def process_addition_subtraction(tokens)
