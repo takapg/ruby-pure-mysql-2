@@ -3,7 +3,7 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
-    include SqlParser::ExpressionUtils
+    include ExpressionUtils
 
     MD_OPERATORS = %w[* /].freeze
     MATH_REGEX = %r{\A\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\))(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\)))*\s*\z}.freeze
