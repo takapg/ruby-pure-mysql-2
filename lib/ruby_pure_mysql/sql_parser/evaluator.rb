@@ -26,12 +26,22 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      # evaluate_expression の正規表現で厳格にバリデーションされているため、
-      # 数字、小数点、+、-、空白以外の文字は含まれず、eval は安全に使用できます。
-      # Rubyのevalは '.5' のような形式をサポートしていないため、'0.5' に変換します。
-      # rubocop:disable Security/Eval
-      eval(col.gsub(/(?<!\d)\./, '0.'))
-      # rubocop:enable Security/Eval
+      # .5 -> 0.5, 1. -> 1.0 に変換し、演算子で分割して計算することで eval を回避します
+      has_float = col.include?('.')
+      normalized = col.gsub(/(?<!\d)\./, '0.').gsub(/\.(?!\d)/, '.0')
+      tokens = normalized.gsub(/([+-])/, ' \1 ').split
+
+      total = 0.0
+      current_op = 1
+      tokens.each do |token|
+        case token
+        when '+' then current_op = 1
+        when '-' then current_op = -1
+        else total += current_op * token.to_f
+        end
+      end
+
+      (total == total.to_i && !has_float) ? total.to_i : total
     end
   end
 end
