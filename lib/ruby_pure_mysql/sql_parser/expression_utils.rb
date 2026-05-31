@@ -304,11 +304,16 @@ module RubyPureMysql
     def apply_multiplication_division(tokens)
       index = 1
       while index < tokens.size
-        res = MD_OPERATORS.include?(tokens[index]) ? process_md_op!(tokens, index) : (index += 1; :ok)
+        res = process_md_if_operator(tokens, index)
         return nil if res == :div_by_zero
         return :error if res == :error
+        index += 1 if res == :ok
       end
       tokens
+    end
+
+    def process_md_if_operator(tokens, index)
+      MD_OPERATORS.include?(tokens[index]) ? process_md_op!(tokens, index) : :ok
     end
 
     def process_md_op!(tokens, index)
