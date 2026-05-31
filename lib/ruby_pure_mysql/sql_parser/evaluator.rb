@@ -36,7 +36,6 @@ module RubyPureMysql
       end
     end
 
-
     def evaluate_math(col)
       has_float = col.include?('.')
       tokens = tokenize_math(col)
