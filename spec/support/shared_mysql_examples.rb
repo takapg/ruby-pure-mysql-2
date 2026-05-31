@@ -43,6 +43,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate multiplication (SELECT 2 * 3;)' do
+      results = client.query('SELECT 2 * 3;')
+      expect(results.first.values.first).to eq(6)
+    end
+
+    it 'can calculate division (SELECT 100 / 4;)' do
+      results = client.query('SELECT 100 / 4;')
+      expect(results.first.values.first).to eq(25)
+    end
+
+    it 'returns NULL for division by zero (SELECT 1/0;)' do
+      results = client.query('SELECT 1/0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
+      results = client.query('SELECT 1 + 2 * 3;')
+      expect(results.first.values.first).to eq(7)
+    end
+
+    it 'can calculate complex arithmetic (SELECT 10 - 2 * 3 + 4 / 2;)' do
+      results = client.query('SELECT 10 - 2 * 3 + 4 / 2;')
+      expect(results.first.values.first).to eq(6)
+    end
+
     it 'can return a simple negative integer (SELECT -1;)' do
       results = client.query('SELECT -1;')
       expect(results.first.values.first).to eq(-1)
@@ -98,6 +123,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns a string value for SELECT "hello";' do
       results = client.query('SELECT "hello";')
       expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'handles string literals with quotes (SELECT "It\'s a test";)' do
+      results = client.query('SELECT "It\'s a test";')
+      expect(results.first.values.first).to eq("It's a test")
     end
 
     it 'returns nil for SELECT NULL;' do
