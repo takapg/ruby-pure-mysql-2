@@ -33,6 +33,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate basic subtraction (SELECT 1 - 1;)' do
+      results = client.query('SELECT 1 - 1;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'can calculate subtraction with negative numbers (SELECT 1 - -1;)' do
+      results = client.query('SELECT 1 - -1;')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'can return a simple negative integer (SELECT -1;)' do
+      results = client.query('SELECT -1;')
+      expect(results.first.values.first).to eq(-1)
+    end
+
     it 'can calculate basic arithmetic with an alias (SELECT 1 + 1 AS total;)' do
       results = client.query('SELECT 1 + 1 AS total;')
       expect(results.fields.first).to eq('total')
@@ -47,6 +62,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'handles case-insensitive SELECT' do
       results = client.query('select 100;')
       expect(results.first.values.first).to eq(100)
+    end
+
+    it 'can calculate with negative numbers and leading dots (SELECT -1.5 + .5;)' do
+      results = client.query('SELECT -1.5 + .5;')
+      expect(results.first.values.first).to eq(-1.0)
     end
 
     it 'returns an error for unsupported syntax' do
@@ -83,6 +103,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns nil for SELECT NULL;' do
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns a float value for SELECT 1.5;' do
+      results = client.query('SELECT 1.5;')
+      expect(results.first.values.first).to eq(1.5)
+      expect(results.first.values.first).to be_a(Numeric)
     end
   end
 
