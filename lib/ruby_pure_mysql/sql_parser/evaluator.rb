@@ -27,8 +27,7 @@ module RubyPureMysql
 
     def evaluate_math(col)
       has_float = col.include?('.')
-      normalized = col.gsub(/(?<!\d)\./, '0.').gsub(/\.(?!\d)/, '.0')
-      tokens = normalized.gsub(/([+-])/, ' \1 ').split
+      tokens = col.gsub(/([+-])/, ' \1 ').split
 
       total = calculate_tokens(tokens)
       total == total.to_i && !has_float ? total.to_i : total
