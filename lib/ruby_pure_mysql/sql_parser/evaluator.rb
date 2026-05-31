@@ -60,13 +60,13 @@ module RubyPureMysql
       return false unless col.match?(/\A\w+\(.*\)\z/)
 
       depth = 0
-      col.each_char.with_index do |char, i|
-        next if i == col.length - 1 && char == ')'
+      first_paren_idx = col.index('(')
+      col[first_paren_idx..].each_char do |char|
         depth += 1 if char == '('
         depth -= 1 if char == ')'
         return false if depth < 0
       end
-      depth == 1
+      depth == 0
     end
 
     def evaluate_function_args(args_str)
