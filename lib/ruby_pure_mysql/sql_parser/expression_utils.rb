@@ -14,6 +14,8 @@ module RubyPureMysql
         depth -= 1 if char == ')'
         break if depth == 0
       end
+      return :error if depth != 0
+
       scanner.string[start_pos...scanner.pos]
     end
 
@@ -22,7 +24,9 @@ module RubyPureMysql
         return token if token.casecmp?('NULL')
         if scanner.peek(1) == '('
           start_pos = scanner.pos - token.length
-          scan_balanced_parens(scanner)
+          res = scan_balanced_parens(scanner)
+          return :error if res == :error
+
           return scanner.string[start_pos...scanner.pos]
         end
         return token
@@ -84,10 +88,11 @@ module RubyPureMysql
       if scanner.scan(/\s+/)
         nil
       elsif scanner.peek(1) == '('
-        scan_balanced_parens(scanner)
+        res = scan_balanced_parens(scanner)
+        res == :error ? :error : res
       elsif scanner.peek(1).match?(/[a-zA-Z_]/)
         scan_identifier_or_function(scanner)
-      elsif scanner.peek(1).match?(/[-+*/]/)
+      elsif scanner.peek(1).match?(/[-+*/%]/)
         scan_operator(scanner, tokens)
       elsif scanner.peek(1).match?(/[\d.]/)
         scanner.scan(/[\d.]+/)
@@ -264,7 +269,7 @@ module RubyPureMysql
 
   # 算術演算の計算ロジックを提供するモジュール
   module ExpressionCalculator
-    MD_OPERATORS = %w[* /].freeze
+    MD_OPERATORS = %w[* / %].freeze
 
     def apply_multiplication_division(tokens)
       index = 1
@@ -279,7 +284,11 @@ module RubyPureMysql
     end
 
     def process_md_if_operator(tokens, index)
-      MD_OPERATORS.include?(tokens[index]) ? process_md_op!(tokens, index) : :ok
+      if MD_OPERATORS.include?(tokens[index])
+        res = process_md_op!(tokens, index)
+        return res == :ok ? :performed : res
+      end
+      :ok
     end
 
     def process_md_op!(tokens, index)
@@ -289,7 +298,7 @@ module RubyPureMysql
       left = to_float_value(left_raw)
       right = to_float_value(right_raw)
       return :error if left == :error || right == :error
-      return :div_by_zero if operator == '/' && right.zero?
+      return :div_by_zero if (operator == '/' || operator == '%') && right.zero?
 
       tokens[index - 1] = calculate_md(left, right, operator)
       tokens.slice!(index, 2)
@@ -297,7 +306,11 @@ module RubyPureMysql
     end
 
     def calculate_md(left, right, operator)
-      operator == '*' ? left * right : left / right
+      case operator
+      when '*' then left * right
+      when '/' then left / right
+      when '%' then left % right
+      end
     end
 
     def handle_missing_operand(tokens, index)
