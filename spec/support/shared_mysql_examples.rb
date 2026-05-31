@@ -84,6 +84,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil
     end
+
+    it 'returns a float value for SELECT 1.5;' do
+      results = client.query('SELECT 1.5;')
+      expect(results.first.values.first).to eq(1.5)
+      expect(results.first.values.first).to be_a(Float)
+    end
   end
 
   # describe 'Empty result set' do
