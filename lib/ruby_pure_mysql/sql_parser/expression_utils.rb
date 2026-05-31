@@ -135,13 +135,8 @@ module RubyPureMysql
       quote = col[idx]
       start = idx
       idx += 1
-      while idx < col.length
-        if col[idx] == quote && col[idx - 1] != '\\'
-          idx += 1
-          break
-        end
-        idx += 1
-      end
+      idx += 1 while idx < col.length && (col[idx] != quote || col[idx - 1] == '\\')
+      idx += 1 if idx < col.length
       [idx, col[start...idx]]
     end
 
@@ -220,16 +215,21 @@ module RubyPureMysql
     end
 
     def update_state(state, char)
+      update_quote_and_depth(state, char)
+      handle_buffer(state, char)
+    end
+
+    def update_quote_and_depth(state, char)
       if state[:in_quote]
-        if char == state[:in_quote] && state[:buf][-1] != '\\'
-          state[:in_quote] = nil
-        end
+        state[:in_quote] = nil if char == state[:in_quote] && state[:buf][-1] != '\\'
       elsif ["'", '"'].include?(char)
         state[:in_quote] = char
       else
         state[:depth] = adjust_depth(char, state[:depth])
       end
+    end
 
+    def handle_buffer(state, char)
       if comma_at_root?(char, state[:depth]) && state[:in_quote].nil?
         state[:args] << state[:buf].strip
         state[:buf] = +''
