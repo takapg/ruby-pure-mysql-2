@@ -260,12 +260,12 @@ module RubyPureMysql
 
     def parse_column_alias(col)
       # 1. 明示的な AS: "expr AS alias"
-      if m = col.match(EXPLICIT_ALIAS_REGEX)
+      if (m = col.match(EXPLICIT_ALIAS_REGEX))
         return { original: m[1].strip, alias: strip_backticks(m[2]) }
       end
 
       # 2. 暗黙的な AS: "expr alias"
-      if m = col.match(IMPLICIT_ALIAS_REGEX)
+      if (m = col.match(IMPLICIT_ALIAS_REGEX))
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
         return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
