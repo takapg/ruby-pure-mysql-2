@@ -75,7 +75,7 @@ module RubyPureMysql
 
       res = case op
             when '*' then left.to_f * right.to_f
-            when '/' then right.to_f == 0.0 ? nil : left.to_f.fdiv(right.to_f)
+            when '/' then right.to_f == 0.0 ? nil : left.to_f / right.to_f
             end
 
       tokens[index - 1] = res
@@ -91,7 +91,7 @@ module RubyPureMysql
         res = (res.nil? || right.nil?) ? nil : (op == '+' ? res.to_f + right.to_f : res.to_f - right.to_f)
         i += 2
       end
-      res
+      res.is_a?(Float) ? res : res
     end
 
     def finalize_math_result(res, _col)
