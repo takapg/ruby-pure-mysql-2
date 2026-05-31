@@ -31,7 +31,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.gsub(/\s+/, '').scan(/([-+]?\d+|[\+\-\*\/])/)
+      tokens = col.gsub(/\s+/, '').scan(/[-+]?\d+|[\+\-\*\/]/)
       return :error if tokens.empty?
 
       # First pass: Multiplication and Division
