@@ -6,7 +6,7 @@ module RubyPureMysql
     include ExpressionUtils
 
     MD_OPERATORS = %w[* /].freeze
-    MATH_REGEX = %r{\A\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\))(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\)))*\s*\z}
+    MATH_REGEX = %r{\A\s*[-+]?(\d+\.?\d*|\.\d+|\w+\((?:[^()]*|\([^()]*\))*\))(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\((?:[^()]*|\([^()]*\))*\)))*\s*\z}
 
     def evaluate_expression(col)
       col = col.strip
@@ -61,6 +61,7 @@ module RubyPureMysql
       return nil if tokens.nil?
 
       result = apply_addition_subtraction(tokens)
+      return :error if result == :error
 
       result == result.to_i && !has_float ? result.to_i : result
     end
