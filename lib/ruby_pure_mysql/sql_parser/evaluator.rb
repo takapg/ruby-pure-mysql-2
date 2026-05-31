@@ -60,10 +60,11 @@ module RubyPureMysql
       return false unless col.match?(/\A\w+\(.*\)\z/)
 
       depth = 0
-      col[0...-1].each_char do |char|
+      col.each_char.with_index do |char, i|
+        next if i == col.length - 1 && char == ')'
         depth += 1 if char == '('
         depth -= 1 if char == ')'
-        return false if depth.zero? && char == ')'
+        return false if depth < 0
       end
       depth == 1
     end

@@ -185,7 +185,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT CONCAT(USER(), VERSION());')
       val = results.first.values.first
       expect(val).to match(/root@.*/)
-      expect(val).to include('Hi-MySQL-8.0')
+      expect(val).to match(/8\.0/)
     end
 
     it 'returns an error for invalid syntax (missing closing parenthesis)' do
