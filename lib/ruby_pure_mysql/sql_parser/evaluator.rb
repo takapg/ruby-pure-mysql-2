@@ -68,7 +68,19 @@ module RubyPureMysql
 
     def apply_md_op(tokens, index)
       op = tokens[index]
-      res = op == '*' ? tokens[index - 1] * tokens[index + 1] : tokens[index - 1] / tokens[index + 1]
+      left = tokens[index - 1]
+      right = tokens[index + 1]
+
+      res = if left.nil? || right.nil?
+              nil
+            elsif op == '*'
+              left * right
+            elsif right == 0
+              nil
+            else
+              left / right
+            end
+
       tokens[index - 1] = res
       tokens.slice!(index, 2)
     end
@@ -78,13 +90,16 @@ module RubyPureMysql
       i = 1
       while i < tokens.size
         op = tokens[i]
-        res = op == '+' ? res + tokens[i + 1] : res - tokens[i + 1]
+        right = tokens[i + 1]
+        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res + right : res - right)
         i += 2
       end
       res
     end
 
     def finalize_math_result(res, col)
+      return nil if res.nil?
+
       if col.include?('/')
         res.to_f
       else
