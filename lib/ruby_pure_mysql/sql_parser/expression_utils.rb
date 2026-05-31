@@ -23,11 +23,11 @@ module RubyPureMysql
 
     private
 
-    def process_math_token(t)
-      return t if t.match?(%r{[+*/-]}) && t.length == 1
-      return t.to_f unless t.match?(/\A\w+\(.*\)\z/)
+    def process_math_token(token)
+      return token if token.match?(%r{[+*/-]}) && token.length == 1
+      return token.to_f unless token.match?(/\A\w+\(.*\)\z/)
 
-      val = evaluate_expression(t)
+      val = evaluate_expression(token)
       return :error if val == :error
 
       val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
