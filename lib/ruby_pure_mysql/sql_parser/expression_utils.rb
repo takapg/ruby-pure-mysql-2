@@ -54,18 +54,46 @@ module RubyPureMysql
       scanner.skip(/\s+/)
       return false if scanner.eos?
 
-      if scanner.peek(1) == '('
+      char = scanner.peek(1)
+      if char == '('
         scan_balanced_parens(scanner)
         true
-      elsif scanner.peek(1).match?(/[a-zA-Z_]/)
+      elsif char.match?(/[a-zA-Z_]/)
         scan_identifier_or_function(scanner)
         true
-      elsif scanner.peek(1).match?(/[\d.]/)
+      elsif char.match?(/[\d.]/)
         scanner.scan(/[\d.]+/)
         true
+      elsif char.match?(/['"]/)
+        scan_string(scanner)
+        true
+      elsif char.match?(/[-+]/)
+        scanner.getch
+        scan_unary_operand(scanner)
       else
         false
       end
+    end
+
+    def scan_string(scanner)
+      quote = scanner.getch
+      start_pos = scanner.pos - 1
+      while !scanner.eos?
+        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
+        scanner.getch
+      end
+      scanner.getch if !scanner.eos?
+      scanner.string[start_pos...scanner.pos]
+    end
+
+    def count_backslashes(scanner)
+      count = 0
+      pos = scanner.pos - 1
+      while pos >= 0 && scanner.string[pos] == '\\'
+        count += 1
+        pos -= 1
+      end
+      count
     end
   end
 
@@ -101,27 +129,6 @@ module RubyPureMysql
       else
         :error
       end
-    end
-
-    def scan_string(scanner)
-      quote = scanner.getch
-      start_pos = scanner.pos - 1
-      while !scanner.eos?
-        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
-        scanner.getch
-      end
-      scanner.getch if !scanner.eos?
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def count_backslashes(scanner)
-      count = 0
-      pos = scanner.pos - 1
-      while pos >= 0 && scanner.string[pos] == '\\'
-        count += 1
-        pos -= 1
-      end
-      count
     end
 
     def process_tokens(tokens)
