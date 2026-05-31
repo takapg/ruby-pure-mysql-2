@@ -48,7 +48,7 @@ module RubyPureMysql
 
     def tokenize_math(col)
       col.scan(%r{[-+]?\d*\.?\d+|[+*/-]}).map do |t|
-        t.match?(/[+*/-]/) && t.length == 1 ? t : t.to_f
+        t.match?(%r{[+*/-]}) && t.length == 1 ? t : t.to_f
       end
     end
 
