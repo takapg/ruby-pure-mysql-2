@@ -135,7 +135,18 @@ module RubyPureMysql
       quote = col[idx]
       start = idx
       idx += 1
-      idx += 1 while idx < col.length && (col[idx] != quote || col[idx - 1] == '\\')
+      while idx < col.length
+        if col[idx] == quote
+          bs_count = 0
+          temp_idx = idx - 1
+          while temp_idx >= start && col[temp_idx] == '\\'
+            bs_count += 1
+            temp_idx -= 1
+          end
+          break if bs_count.even?
+        end
+        idx += 1
+      end
       idx += 1 if idx < col.length
       [idx, col[start...idx]]
     end
@@ -191,11 +202,18 @@ module RubyPureMysql
     end
 
     def evaluate_complex_token(token)
-      inner = parenthesized?(token) ? token[1...-1] : token
-      val = evaluate_expression(inner)
-      return :error if val == :error
-
-      val.nil? ? nil : to_float_value(val)
+      if parenthesized?(token)
+        inner = token[1...-1]
+        val = evaluate_expression(inner)
+        return :error if val == :error
+        val
+      elsif function_call?(token)
+        val = evaluate_function(token)
+        return :error if val == :error
+        val
+      else
+        :error
+      end
     end
 
     def operator?(token)
@@ -267,10 +285,13 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left = tokens[index - 1]
+      left_raw = tokens[index - 1]
       op = tokens[index]
-      right = tokens[index + 1]
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      right_raw = tokens[index + 1]
+      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
+
+      left = to_float_value(left_raw)
+      right = to_float_value(right_raw)
       return :div_by_zero if op == '/' && right.zero?
 
       tokens[index - 1] = op == '*' ? left * right : left / right
@@ -299,7 +320,9 @@ module RubyPureMysql
     def calculate_sum_diff(result, operator, value)
       return nil if result.nil? || value.nil?
 
-      operator == '+' ? result + value : result - value
+      left = to_float_value(result)
+      right = to_float_value(value)
+      operator == '+' ? left + right : left - right
     end
   end
 
