@@ -294,10 +294,11 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left_raw, op, right_raw = tokens[index - 1..index + 1]
+      left_raw, op, right_raw = tokens[(index - 1)..(index + 1)]
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
-      left, right = to_float_value(left_raw), to_float_value(right_raw)
+      left = to_float_value(left_raw)
+      right = to_float_value(right_raw)
       return :div_by_zero if op == '/' && right.zero?
 
       tokens[index - 1] = op == '*' ? left * right : left / right
