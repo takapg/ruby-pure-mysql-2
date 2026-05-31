@@ -78,7 +78,7 @@ module RubyPureMysql
             elsif right.to_f == 0
               nil
             else
-              left.to_f / right.to_f
+              left.to_f.fdiv(right.to_f)
             end
 
       tokens[index - 1] = res
@@ -100,7 +100,7 @@ module RubyPureMysql
     def finalize_math_result(res, _col)
       return nil if res.nil?
 
-      res == res.to_i ? res.to_i : res
+      (res.is_a?(Float) && res % 1 == 0) ? res.to_i : res
     end
   end
 end
