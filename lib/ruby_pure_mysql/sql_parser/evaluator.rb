@@ -35,9 +35,11 @@ module RubyPureMysql
       current_op = 1
       tokens.each do |token|
         case token
-        when '+' then current_op = 1
-        when '-' then current_op = -1
-        else total += current_op * token.to_f
+        when '+' then current_op *= 1
+        when '-' then current_op *= -1
+        else
+          total += current_op * token.to_f
+          current_op = 1
         end
       end
 
