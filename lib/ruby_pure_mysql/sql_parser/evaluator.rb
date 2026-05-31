@@ -69,6 +69,8 @@ module RubyPureMysql
     end
 
     def evaluate_function_args(args_str)
+      return [] if args_str.strip.empty?
+
       split_args(args_str).map do |arg|
         val = evaluate_expression(arg)
         return :error if val == :error
