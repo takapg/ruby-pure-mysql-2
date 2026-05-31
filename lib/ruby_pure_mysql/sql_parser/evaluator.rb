@@ -26,8 +26,9 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      parts = col.scan(/[-+]?\s*(?:\d+\.?\d*|\.\d+)/).map { |p| p.gsub(/\s+/, '') }
-      parts.any? { |p| p.include?('.') } ? parts.sum(&:to_f) : parts.sum(&:to_i)
+      # evaluate_expression の正規表現で厳格にバリデーションされているため、
+      # 数字、小数点、+、-、空白以外の文字は含まれず、eval は安全に使用できます。
+      eval(col)
     end
   end
 end

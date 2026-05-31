@@ -38,6 +38,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(0)
     end
 
+    it 'can calculate subtraction with negative numbers (SELECT 1 - -1;)' do
+      results = client.query('SELECT 1 - -1;')
+      expect(results.first.values.first).to eq(2)
+    end
+
     it 'can return a simple negative integer (SELECT -1;)' do
       results = client.query('SELECT -1;')
       expect(results.first.values.first).to eq(-1)
