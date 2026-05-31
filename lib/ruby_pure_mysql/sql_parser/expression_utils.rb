@@ -304,11 +304,7 @@ module RubyPureMysql
     def apply_multiplication_division(tokens)
       index = 1
       while index < tokens.size
-        unless MD_OPERATORS.include?(tokens[index])
-          index += 1
-          next
-        end
-        res = process_md_op!(tokens, index)
+        res = MD_OPERATORS.include?(tokens[index]) ? process_md_op!(tokens, index) : (index += 1; :ok)
         return nil if res == :div_by_zero
         return :error if res == :error
       end
@@ -316,21 +312,21 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left_raw, op, right_raw = tokens[(index - 1)..(index + 1)]
+      left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left = to_float_value(left_raw)
       right = to_float_value(right_raw)
       return :error if left == :error || right == :error
-      return :div_by_zero if op == '/' && right.zero?
+      return :div_by_zero if operator == '/' && right.zero?
 
-      tokens[index - 1] = calculate_md(left, right, op)
+      tokens[index - 1] = calculate_md(left, right, operator)
       tokens.slice!(index, 2)
       :ok
     end
 
-    def calculate_md(left, right, op)
-      op == '*' ? left * right : left / right
+    def calculate_md(left, right, operator)
+      operator == '*' ? left * right : left / right
     end
 
     def handle_missing_operand(tokens, index)
