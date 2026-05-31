@@ -41,7 +41,7 @@ module RubyPureMysql
           else
             return :error
           end
-        elsif char =~ /[-+*/]/
+        elsif char =~ /[-+*\/]/
           if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
             start = i
             i += 1
