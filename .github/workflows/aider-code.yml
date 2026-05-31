@@ -88,6 +88,13 @@ jobs:
             echo "🔄 Aider 実行試行: $RETRY_COUNT / $MAX_RETRIES"
             echo "--------------------------------------------------"
 
+            echo "## Branch Commit History and Diffs" > .aider.chat.history.md
+            echo "The following is a detailed commit history and diffs of the current branch compared to origin/main. Review this context before making changes." >> .aider.chat.history.md
+            echo "\`\`\`diff" >> .aider.chat.history.md
+            git log origin/main..HEAD -p >> .aider.chat.history.md
+            echo "\`\`\`" >> .aider.chat.history.md
+            echo "---" >> .aider.chat.history.md
+
             aider --model gemini/gemma-4-31b-it \
                   --edit-format diff-fenced \
                   --thinking-tokens 1024 \
