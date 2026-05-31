@@ -71,8 +71,6 @@ module RubyPureMysql
       split_args(args_str).each do |arg|
         val = evaluate_expression(arg)
         return :error if val == :error
-
-        val
       end
       :ok
     end
