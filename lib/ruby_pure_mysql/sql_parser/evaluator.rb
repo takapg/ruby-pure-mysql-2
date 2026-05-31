@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*)\1\z/m)
-      return evaluate_math(col) if /\A\s*[-+]?\d+(\s*[\+\-\*\/]\s*[-+]?\d+)*\s*\z/.match?(col)
+      return evaluate_math(col) if %r{\A\s*[-+]?\d+(\s*[+\-*/]\s*[-+]?\d+)*\s*\z}.match?(col)
 
       :error
     end
@@ -32,8 +32,30 @@ module RubyPureMysql
 
     def evaluate_math(col)
       # 整数除算を避けるため、数値を Float に変換して評価する
-      safe_expr = col.gsub(/\d+/) { |m| "#{m}.to_f" }
-      res = eval(safe_expr)
+      tokens = col.scan(/\s*([+\-*/])\s*|([-+]?\d+)/).map { |m| m.reject { |x| x.nil? || x.empty? }.first }
+      tokens = tokens.map { |t| t.match?(/[+\-*/]/) ? t : t.to_f }
+
+      # 乗算と除算を先に処理
+      i = 1
+      while i < tokens.size
+        if tokens[i] == '*' || tokens[i] == '/'
+          op = tokens[i]
+          res = op == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
+          tokens[i - 1] = res
+          tokens.slice!(i, 2)
+        else
+          i += 1
+        end
+      end
+
+      # 加算と減算を処理
+      res = tokens[0]
+      i = 1
+      while i < tokens.size
+        op = tokens[i]
+        res = op == '+' ? res + tokens[i + 1] : res - tokens[i + 1]
+        i += 2
+      end
 
       # 除算が含まれる場合は Float を返し、それ以外は整数値なら Integer に変換する
       if col.include?('/')
