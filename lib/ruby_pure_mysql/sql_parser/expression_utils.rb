@@ -137,6 +137,7 @@ module RubyPureMysql
     end
   end
 
+  # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     def split_args(args_str)
       state = { args: [], buf: +'', depth: 0 }
@@ -220,6 +221,7 @@ module RubyPureMysql
     end
   end
 
+  # 算術演算の計算ロジックを提供するモジュール
   module ExpressionCalculator
     MD_OPERATORS = %w[* /].freeze
 
@@ -262,10 +264,10 @@ module RubyPureMysql
       result
     end
 
-    def calculate_sum_diff(result, op, val)
-      return nil if result.nil? || val.nil?
+    def calculate_sum_diff(result, op, value)
+      return nil if result.nil? || value.nil?
 
-      op == '+' ? result + val : result - val
+      op == '+' ? result + value : result - value
     end
   end
 
