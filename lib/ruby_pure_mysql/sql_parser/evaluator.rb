@@ -79,7 +79,7 @@ module RubyPureMysql
             elsif r_val == 0
               nil
             else
-              l_val.fdiv(r_val)
+              l_val / r_val
             end
 
       tokens[index - 1] = res
@@ -92,7 +92,7 @@ module RubyPureMysql
       while i < tokens.size
         op = tokens[i]
         right = tokens[i + 1]
-        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res.to_f + right.to_f : res.to_f - right.to_f)
+        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res + right.to_f : res - right.to_f)
         i += 2
       end
       res
