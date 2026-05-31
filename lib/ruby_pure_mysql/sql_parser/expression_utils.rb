@@ -136,19 +136,22 @@ module RubyPureMysql
       start = idx
       idx += 1
       while idx < col.length
-        if col[idx] == quote
-          bs_count = 0
-          temp_idx = idx - 1
-          while temp_idx >= start && col[temp_idx] == '\\'
-            bs_count += 1
-            temp_idx -= 1
-          end
-          break if bs_count.even?
-        end
+        break if col[idx] == quote && count_backslashes(col, idx, start).even?
+
         idx += 1
       end
       idx += 1 if idx < col.length
       [idx, col[start...idx]]
+    end
+
+    def count_backslashes(col, idx, start)
+      count = 0
+      temp_idx = idx - 1
+      while temp_idx >= start && col[temp_idx] == '\\'
+        count += 1
+        temp_idx -= 1
+      end
+      count
     end
 
     def process_tokens(tokens)
@@ -202,18 +205,24 @@ module RubyPureMysql
     end
 
     def evaluate_complex_token(token)
-      if parenthesized?(token)
-        inner = token[1...-1]
-        val = evaluate_expression(inner)
-        return :error if val == :error
-        val
-      elsif function_call?(token)
-        val = evaluate_function(token)
-        return :error if val == :error
-        val
-      else
-        :error
-      end
+      return evaluate_parenthesized(token) if parenthesized?(token)
+      return evaluate_function_token(token) if function_call?(token)
+
+      :error
+    end
+
+    def evaluate_parenthesized(token)
+      val = evaluate_expression(token[1...-1])
+      return :error if val == :error
+
+      val
+    end
+
+    def evaluate_function_token(token)
+      val = evaluate_function(token)
+      return :error if val == :error
+
+      val
     end
 
     def operator?(token)
@@ -285,13 +294,10 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left_raw = tokens[index - 1]
-      op = tokens[index]
-      right_raw = tokens[index + 1]
+      left_raw, op, right_raw = tokens[index - 1..index + 1]
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
-      left = to_float_value(left_raw)
-      right = to_float_value(right_raw)
+      left, right = to_float_value(left_raw), to_float_value(right_raw)
       return :div_by_zero if op == '/' && right.zero?
 
       tokens[index - 1] = op == '*' ? left * right : left / right
