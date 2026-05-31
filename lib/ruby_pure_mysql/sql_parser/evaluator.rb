@@ -29,7 +29,9 @@ module RubyPureMysql
       # evaluate_expression の正規表現で厳格にバリデーションされているため、
       # 数字、小数点、+、-、空白以外の文字は含まれず、eval は安全に使用できます。
       # Rubyのevalは '.5' のような形式をサポートしていないため、'0.5' に変換します。
+      # rubocop:disable Security/Eval
       eval(col.gsub(/(?<!\d)\./, '0.'))
+      # rubocop:enable Security/Eval
     end
   end
 end
