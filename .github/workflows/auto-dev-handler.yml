@@ -210,7 +210,7 @@ jobs:
             ERROR_LOGS="${ERROR_LOGS}\n### ${JOB_NAME}\n\`\`\`\n${LOG}\n\`\`\`\n"
           done < <(echo "$FAILED_JOBS" | jq -c .)
 
-          echo "${ERROR_LOGS}" > "ci-error.log
+          echo "${ERROR_LOGS}" > ci-error.log
 
           docker run -v .:/app --rm ghcr.io/yamadashy/repomix
           uv run --with google-genai --with pydantic python .github/workflows/scripts/analyze_failure.py
