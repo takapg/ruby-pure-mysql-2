@@ -45,6 +45,9 @@ module RubyPureMysql
           if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
             start = i
             i += 1
+            while i < col.length && col[i] =~ /\s/
+              i += 1
+            end
             if i < col.length
               if col[i] == '('
                 depth = 1
@@ -72,12 +75,10 @@ module RubyPureMysql
                   i += 1
                 end
               else
-                tokens << col[start...i]
-                next
+                return :error
               end
             else
-              tokens << col[start...i]
-              next
+              return :error
             end
             tokens << col[start...i]
           else
