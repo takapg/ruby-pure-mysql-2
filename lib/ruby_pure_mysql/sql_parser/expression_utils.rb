@@ -307,6 +307,7 @@ module RubyPureMysql
         res = process_md_if_operator(tokens, index)
         return nil if res == :div_by_zero
         return :error if res == :error
+
         index += 1 if res == :ok
       end
       tokens
