@@ -43,9 +43,43 @@ module RubyPureMysql
           end
         elsif char =~ /[-+*/]/
           if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
-            tokens << '0'
-            tokens << char
+            start = i
             i += 1
+            if i < col.length
+              if col[i] == '('
+                depth = 1
+                i += 1
+                while i < col.length && depth > 0
+                  depth += 1 if col[i] == '('
+                  depth -= 1 if col[i] == ')'
+                  i += 1
+                end
+              elsif col[i] =~ /[a-zA-Z_]/
+                while i < col.length && col[i] =~ /[a-zA-Z0-9_]/
+                  i += 1
+                end
+                if i < col.length && col[i] == '('
+                  i += 1
+                  depth = 1
+                  while i < col.length && depth > 0
+                    depth += 1 if col[i] == '('
+                    depth -= 1 if col[i] == ')'
+                    i += 1
+                  end
+                end
+              elsif col[i] =~ /[\d.]/
+                while i < col.length && col[i] =~ /[\d.]/
+                  i += 1
+                end
+              else
+                tokens << col[start...i]
+                next
+              end
+            else
+              tokens << col[start...i]
+              next
+            end
+            tokens << col[start...i]
           else
             tokens << char
             i += 1
@@ -83,10 +117,28 @@ module RubyPureMysql
       return token if operator?(token)
       return nil if token.casecmp?('NULL')
 
+      token_s = token.strip
+      if token_s.start_with?('-') && token_s.length > 1
+        inner = token_s[1..-1].strip
+        val = evaluate_inner_token(inner)
+        return :error if val == :error
+        return val.nil? ? nil : -to_float_value(val)
+      elsif token_s.start_with?('+') && token_s.length > 1
+        inner = token_s[1..-1].strip
+        val = evaluate_inner_token(inner)
+        return :error if val == :error
+        return val.nil? ? nil : to_float_value(val)
+      end
+
+      evaluate_inner_token(token_s)
+    end
+
+    def evaluate_inner_token(token)
+      return nil if token.casecmp?('NULL')
+
       if parenthesized?(token) || function_call?(token)
         val = evaluate_expression(parenthesized?(token) ? token[1...-1] : token)
         return :error if val == :error
-
         return val.nil? ? nil : to_float_value(val)
       end
 
