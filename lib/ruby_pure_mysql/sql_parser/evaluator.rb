@@ -3,14 +3,14 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
+    MD_OPERATORS = %w[* /].freeze
+
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
-        return evaluate_math(col)
-      end
+      return evaluate_math(col) if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
 
       :error
     end
@@ -55,16 +55,14 @@ module RubyPureMysql
     def apply_multiplication_division(tokens)
       i = 1
       while i < tokens.size
-        if %w[* /].include?(tokens[i])
-          op = tokens[i]
-          res = op == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
-          tokens[i - 1] = res
-          tokens.slice!(i, 2)
-        else
-          i += 1
-        end
+        MD_OPERATORS.include?(tokens[i]) ? process_md_op!(tokens, i) : i += 1
       end
       tokens
+    end
+
+    def process_md_op!(tokens, i)
+      tokens[i - 1] = tokens[i] == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
+      tokens.slice!(i, 2)
     end
 
     def apply_addition_subtraction(tokens)
