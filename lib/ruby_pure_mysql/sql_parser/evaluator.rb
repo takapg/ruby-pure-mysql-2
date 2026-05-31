@@ -41,7 +41,7 @@ module RubyPureMysql
         case token
         when '+' then [sum, op]
         when '-' then [sum, op * -1]
-        else [sum + op * token.to_f, 1]
+        else [sum + (op * token.to_f), 1]
         end
       end.first
     end
