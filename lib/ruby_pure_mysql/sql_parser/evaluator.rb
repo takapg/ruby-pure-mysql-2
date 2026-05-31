@@ -52,7 +52,7 @@ module RubyPureMysql
     def tokenize_math(col)
       col.scan(%r{([-+]?\d+)|([+\-*/])}).map do |m|
         val = m.compact.first
-        MATH_OPERATORS.include?(val) ? val : val.to_i
+        MATH_OPERATORS.include?(val) ? val : val.to_f
       end
     end
 
