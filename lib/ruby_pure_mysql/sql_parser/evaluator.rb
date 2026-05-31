@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\.\d+)?(\s*\+\s*\d+(\.\d+)?)*\z/.match?(col)
+      return evaluate_math(col) if /\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*\+\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z/.match?(col)
 
       :error
     end

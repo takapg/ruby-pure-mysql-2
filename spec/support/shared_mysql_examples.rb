@@ -49,6 +49,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(100)
     end
 
+    it 'can calculate with negative numbers and leading dots (SELECT -1.5 + .5;)' do
+      results = client.query('SELECT -1.5 + .5;')
+      expect(results.first.values.first).to eq(-1.0)
+    end
+
     it 'returns an error for unsupported syntax' do
       expect do
         client.query('INVALID SQL')
