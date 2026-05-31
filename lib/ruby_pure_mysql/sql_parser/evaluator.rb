@@ -40,6 +40,7 @@ module RubyPureMysql
       tokens = tokenize_math(col)
       tokens = apply_multiplication_division(tokens)
       return nil if tokens.nil?
+
       result = apply_addition_subtraction(tokens)
 
       result == result.to_i && !has_float ? result.to_i : result
@@ -68,7 +69,7 @@ module RubyPureMysql
     def process_md_op!(tokens, index)
       left = tokens[index - 1]
       right = tokens[index + 1]
-      return :div_by_zero if tokens[index] == '/' && right == 0
+      return :div_by_zero if tokens[index] == '/' && right.zero?
 
       tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
       tokens.slice!(index, 2)
