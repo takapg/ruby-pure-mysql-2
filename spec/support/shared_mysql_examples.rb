@@ -110,6 +110,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq("It's a test")
     end
 
+    it 'handles escaped backslashes in string literals (SELECT "a\\\\b";)' do
+      results = client.query('SELECT "a\\\\b";')
+      expect(results.first.values.first).to eq('a\\b')
+    end
+
     it 'returns nil for SELECT NULL;' do
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil

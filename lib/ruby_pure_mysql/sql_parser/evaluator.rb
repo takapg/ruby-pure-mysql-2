@@ -10,7 +10,7 @@ module RubyPureMysql
       col = col.strip
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
-      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*)\1\z/m)
+      return evaluate_string_literal(col) if col.match?(/\A(['"])(?:(?!\1).|\\.)*\1\z/m)
       return evaluate_math(col) if %r{\A\s*[-+]?\d+(\s*[+\-*/]\s*[-+]?\d+)*\s*\z}.match?(col)
 
       :error
@@ -30,7 +30,16 @@ module RubyPureMysql
 
       quote = match[1]
       content = match[2]
-      content.gsub("\\#{quote}", quote)
+
+      content.gsub(/\\(.)/) do |m|
+        case $1
+        when quote, '\\' then $1
+        when 'n' then "\n"
+        when 'r' then "\r"
+        when 't' then "\t"
+        else m
+        end
+      end
     end
 
     def evaluate_math(col)
