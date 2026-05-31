@@ -71,17 +71,15 @@ module RubyPureMysql
       left = tokens[index - 1]
       right = tokens[index + 1]
 
-      l_val = left&.to_f
-      r_val = right&.to_f
+      l_val = left.to_f
+      r_val = right.to_f
 
-      res = if l_val.nil? || r_val.nil?
-              nil
-            elsif op == '*'
+      res = if op == '*'
               l_val * r_val
             elsif r_val == 0
               nil
             else
-              l_val / r_val
+              l_val.fdiv(r_val)
             end
 
       tokens[index - 1] = res
