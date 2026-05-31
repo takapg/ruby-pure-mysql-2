@@ -64,6 +64,9 @@ try:
             response_mime_type="application/json",
             response_schema=ResultJson,
             temperature=0.2, # 意図しないブレを減らす
+            thinking_config=types.ThinkingConfig(
+                thinking_budget=16384
+            )
         ),
     )
     
