@@ -5,12 +5,6 @@ module RubyPureMysql
   module Evaluator
     include ExpressionUtils
 
-    MATH_REGEX = %r{
-      \A\s*[-+]?
-      (\d+\.?\d*|\.\d+|\w+\((?:[^()]*|\([^()]*\))*\)|\((?:[^()]*|\([^()]*\))*\))
-      (\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\((?:[^()]*|\([^()]*\))*\)|\((?:[^()]*|\([^()]*\))*\)))*
-      \s*\z
-    }x
 
     def evaluate_expression(col)
       col = col.strip
@@ -18,9 +12,8 @@ module RubyPureMysql
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
       return evaluate_function(col) if single_function_call?(col)
-      return evaluate_math(col) if MATH_REGEX.match?(col)
 
-      :error
+      evaluate_math(col)
     end
 
     def evaluate_system_variable(col)
@@ -66,6 +59,8 @@ module RubyPureMysql
 
       result = apply_addition_subtraction(tokens)
       return :error if result == :error
+
+      return nil if result.nil?
 
       result == result.to_i && !has_float ? result.to_i : result
     end

@@ -6,13 +6,71 @@ module RubyPureMysql
     MD_OPERATORS = %w[* /].freeze
     def tokenize_math(col)
       tokens = []
-      col.scan(%r{\((?:[^()]*|\([^()]*\))*\)|[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
-        token = process_math_token(t)
-        return :error if token == :error
-
-        tokens << token
+      i = 0
+      while i < col.length
+        char = col[i]
+        if char =~ /\s/
+          i += 1
+        elsif char == '('
+          start = i
+          depth = 1
+          i += 1
+          while i < col.length && depth > 0
+            depth += 1 if col[i] == '('
+            depth -= 1 if col[i] == ')'
+            i += 1
+          end
+          tokens << col[start...i]
+        elsif char =~ /[a-zA-Z_]/
+          start = i
+          while i < col.length && col[i] =~ /[a-zA-Z0-9_]/
+            i += 1
+          end
+          token = col[start...i]
+          if token.casecmp?('NULL')
+            tokens << token
+          elsif i < col.length && col[i] == '('
+            i += 1
+            depth = 1
+            while i < col.length && depth > 0
+              depth += 1 if col[i] == '('
+              depth -= 1 if col[i] == ')'
+              i += 1
+            end
+            tokens << col[start...i]
+          else
+            return :error
+          end
+        elsif char =~ /[-+*/]/
+          if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
+            start = i
+            i += 1
+            while i < col.length && col[i] =~ /[\d.]/
+              i += 1
+            end
+            tokens << col[start...i]
+          else
+            tokens << char
+            i += 1
+          end
+        elsif char =~ /[\d.]/
+          start = i
+          while i < col.length && col[i] =~ /[\d.]/
+            i += 1
+          end
+          tokens << col[start...i]
+        else
+          return :error
+        end
       end
-      tokens
+
+      processed = []
+      tokens.each do |t|
+        res = process_math_token(t)
+        return :error if res == :error
+        processed << res
+      end
+      processed
     end
 
     def split_args(args_str)
@@ -26,15 +84,18 @@ module RubyPureMysql
 
     def process_math_token(token)
       return token if operator?(token)
+      return nil if token.casecmp?('NULL')
 
       if parenthesized?(token) || function_call?(token)
         val = evaluate_expression(parenthesized?(token) ? token[1...-1] : token)
         return :error if val == :error
 
-        return to_float_value(val)
+        return val.nil? ? nil : to_float_value(val)
       end
 
-      token.to_f
+      return token.to_f if token =~ /\A[-+]?\d*\.?\d+\z/
+
+      :error
     end
 
     def operator?(token)
@@ -89,6 +150,13 @@ module RubyPureMysql
     def process_md_op!(tokens, index)
       left = tokens[index - 1]
       right = tokens[index + 1]
+
+      if left.nil? || right.nil?
+        tokens[index - 1] = nil
+        tokens.slice!(index, 2)
+        return :ok
+      end
+
       return :div_by_zero if tokens[index] == '/' && right.zero?
 
       tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
@@ -101,7 +169,12 @@ module RubyPureMysql
       i = 1
       while i < tokens.size
         op = tokens[i]
-        result = op == '+' ? result + tokens[i + 1] : result - tokens[i + 1]
+        val = tokens[i + 1]
+        if result.nil? || val.nil?
+          result = nil
+        else
+          result = op == '+' ? result + val : result - val
+        end
         i += 2
       end
       result
