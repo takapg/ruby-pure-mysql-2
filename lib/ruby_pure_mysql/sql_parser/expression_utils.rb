@@ -1,77 +1,67 @@
 # frozen_string_literal: true
 
+require 'strscan'
+
 module RubyPureMysql
   # トークンの消費ロジックを提供するモジュール
   module ExpressionTokenConsumer
-    def consume_parentheses(col, idx)
-      depth = 1
-      idx += 1
-      while idx < col.length && depth.positive?
-        depth += 1 if col[idx] == '('
-        depth -= 1 if col[idx] == ')'
-        idx += 1
+    def scan_balanced_parens(scanner)
+      start_pos = scanner.pos
+      depth = 0
+      while !scanner.eos?
+        char = scanner.getch
+        depth += 1 if char == '('
+        depth -= 1 if char == ')'
+        break if depth == 0
       end
-      idx
+      scanner.string[start_pos...scanner.pos]
     end
 
-    def consume_identifier_or_function(col, idx)
-      start = idx
-      idx += 1 while idx < col.length && col[idx].match?(/[a-zA-Z0-9_]/)
-      token = col[start...idx]
-      return { token: token, next_i: idx } if token.casecmp?('NULL')
-
-      return consume_function_call(col, start, idx) if idx < col.length && col[idx] == '('
-
-      { token: token, next_i: idx }
-    end
-
-    def consume_function_call(col, start, idx)
-      idx += 1
-      depth = 1
-      while idx < col.length && depth.positive?
-        depth += 1 if col[idx] == '('
-        depth -= 1 if col[idx] == ')'
-        idx += 1
+    def scan_identifier_or_function(scanner)
+      if (token = scanner.scan(/[a-zA-Z0-9_]+/))
+        return token if token.casecmp?('NULL')
+        if scanner.peek(1) == '('
+          start_pos = scanner.pos - token.length
+          scan_balanced_parens(scanner)
+          return scanner.string[start_pos...scanner.pos]
+        end
+        return token
       end
-      { token: col[start...idx], next_i: idx }
+      nil
     end
 
-    def consume_operator(col, idx, tokens)
-      char = col[idx]
-      return { token: char, next_i: idx + 1 } unless unary_operator?(char, tokens)
-
-      start = idx
-      idx = consume_unary_operand(col, idx + 1)
-      return :error if idx.nil?
-
-      { token: col[start...idx], next_i: idx }
+    def scan_operator(scanner, tokens)
+      if (char = scanner.getch)
+        return char unless unary_operator?(char, tokens)
+        start_pos = scanner.pos - 1
+        if scan_unary_operand(scanner)
+          return scanner.string[start_pos...scanner.pos]
+        end
+        return :error
+      end
+      nil
     end
 
     def unary_operator?(char, tokens)
       %w[- +].include?(char) && (tokens.empty? || operator?(tokens.last))
     end
 
-    def consume_unary_operand(col, idx)
-      idx = skip_whitespace(col, idx)
-      return nil if idx >= col.length
+    def scan_unary_operand(scanner)
+      scanner.skip(/\s+/)
+      return false if scanner.eos?
 
-      case col[idx]
-      when '(' then consume_parentheses(col, idx)
-      when /[a-zA-Z_]/
-        res = consume_identifier_or_function(col, idx)
-        res == :error ? :error : res[:next_i]
-      when /[\d.]/ then consume_number(col, idx)
+      if scanner.peek(1) == '('
+        scan_balanced_parens(scanner)
+        true
+      elsif scanner.peek(1).match?(/[a-zA-Z_]/)
+        scan_identifier_or_function(scanner)
+        true
+      elsif scanner.peek(1).match?(/[\d.]/)
+        scanner.scan(/[\d.]+/)
+        true
+      else
+        false
       end
-    end
-
-    def consume_number(col, idx)
-      idx += 1 while idx < col.length && col[idx].match?(/[\d.]/)
-      idx
-    end
-
-    def skip_whitespace(col, idx)
-      idx += 1 while idx < col.length && col[idx].match?(/\s/)
-      idx
     end
   end
 
@@ -80,76 +70,51 @@ module RubyPureMysql
     include ExpressionTokenConsumer
 
     def tokenize_math(col)
+      scanner = StringScanner.new(col)
       tokens = []
-      idx = 0
-      while idx < col.length
-        res = tokenize_char(col, idx, tokens)
-        return :error if res == :error
-
-        idx, token = res
+      until scanner.eos?
+        token = tokenize_char(scanner, tokens)
+        return :error if token == :error
         tokens << token if token
       end
       process_tokens(tokens)
     end
 
-    def tokenize_char(col, idx, tokens)
-      char = col[idx]
-      case char
-      when /\s/ then [idx + 1, nil]
-      when '(' then handle_paren(col, idx)
-      when /[a-zA-Z_]/ then handle_ident(col, idx)
-      when %r{[-+*/]} then handle_op(col, idx, tokens)
-      when /[\d.]/ then handle_num(col, idx)
-      when /['"]/ then handle_string(col, idx)
-      else :error
+    def tokenize_char(scanner, tokens)
+      if scanner.scan(/\s+/)
+        nil
+      elsif scanner.peek(1) == '('
+        scan_balanced_parens(scanner)
+      elsif scanner.peek(1).match?(/[a-zA-Z_]/)
+        scan_identifier_or_function(scanner)
+      elsif scanner.peek(1).match?(/[-+*/]/)
+        scan_operator(scanner, tokens)
+      elsif scanner.peek(1).match?(/[\d.]/)
+        scanner.scan(/[\d.]+/)
+      elsif scanner.peek(1).match?(/['"]/)
+        scan_string(scanner)
+      else
+        :error
       end
     end
 
-    def handle_paren(col, idx)
-      start = idx
-      end_idx = consume_parentheses(col, idx)
-      [end_idx, col[start...end_idx]]
-    end
-
-    def handle_ident(col, idx)
-      res = consume_identifier_or_function(col, idx)
-      return :error if res == :error
-
-      [res[:next_i], res[:token]]
-    end
-
-    def handle_op(col, idx, tokens)
-      res = consume_operator(col, idx, tokens)
-      return :error if res == :error
-
-      [res[:next_i], res[:token]]
-    end
-
-    def handle_num(col, idx)
-      start = idx
-      end_idx = consume_number(col, idx)
-      [end_idx, col[start...end_idx]]
-    end
-
-    def handle_string(col, idx)
-      quote = col[idx]
-      start = idx
-      idx += 1
-      while idx < col.length
-        break if col[idx] == quote && count_backslashes(col, idx, start).even?
-
-        idx += 1
+    def scan_string(scanner)
+      quote = scanner.getch
+      start_pos = scanner.pos - 1
+      while !scanner.eos?
+        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
+        scanner.getch
       end
-      idx += 1 if idx < col.length
-      [idx, col[start...idx]]
+      scanner.getch if !scanner.eos?
+      scanner.string[start_pos...scanner.pos]
     end
 
-    def count_backslashes(col, idx, start)
+    def count_backslashes(scanner)
       count = 0
-      temp_idx = idx - 1
-      while temp_idx >= start && col[temp_idx] == '\\'
+      pos = scanner.pos - 1
+      while pos >= 0 && scanner.string[pos] == '\\'
         count += 1
-        temp_idx -= 1
+        pos -= 1
       end
       count
     end

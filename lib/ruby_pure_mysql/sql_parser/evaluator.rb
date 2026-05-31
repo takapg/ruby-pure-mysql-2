@@ -26,12 +26,14 @@ module RubyPureMysql
       match = col.match(/\A(\w+)\((.*)\)\z/)
       return :error unless match
 
-      return :error if evaluate_function_args(match[2]) == :error
+      args = evaluate_function_args(match[2])
+      return :error if args == :error
 
       case match[1].downcase
       when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
+      when 'concat' then args.map(&:to_s).join
       else :error
       end
     end
@@ -67,11 +69,11 @@ module RubyPureMysql
     end
 
     def evaluate_function_args(args_str)
-      split_args(args_str).each do |arg|
+      split_args(args_str).map do |arg|
         val = evaluate_expression(arg)
         return :error if val == :error
+        val
       end
-      :ok
     end
   end
 end
