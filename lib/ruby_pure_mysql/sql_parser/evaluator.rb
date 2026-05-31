@@ -97,14 +97,10 @@ module RubyPureMysql
       res
     end
 
-    def finalize_math_result(res, col)
+    def finalize_math_result(res, _col)
       return nil if res.nil?
 
-      if col.include?('/')
-        res.to_f
-      else
-        res == res.to_i ? res.to_i : res
-      end
+      res == res.to_i ? res.to_i : res
     end
   end
 end
