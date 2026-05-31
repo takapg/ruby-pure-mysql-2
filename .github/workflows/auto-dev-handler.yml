@@ -175,6 +175,11 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
 
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.11'
+
       - name: Relay CI failure to Aider
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -198,6 +203,17 @@ jobs:
             LOG=$(gh api "/repos/${{ github.repository }}/actions/jobs/${JOB_ID}/logs" 2>&1 | tail -n 100)
             ERROR_LOGS="${ERROR_LOGS}\n### ${JOB_NAME}\n\`\`\`\n${LOG}\n\`\`\`\n"
           done < <(echo "$FAILED_JOBS" | jq -c .)
+
+          echo "${ERROR_LOGS}" > "ci-error.log
+
+          docker run -v .:/app --rm ghcr.io/yamadashy/repomix
+          uv run --with google-genai --with pydantic python .github/workflows/scripts/analyze_failure.py
+
+          cat result.json | jq
+          
+          TITLE=$(jq -r '.title' result.json)
+          BODY=$(jq -r '.body' result.json)
+
           # Aider に修正を依頼するコメントを投稿
           gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "/auto-dev code
           ❌ CI が失敗しました。
@@ -205,6 +221,11 @@ jobs:
           <details>
           <summary>エラーログ</summary>
           ${ERROR_LOGS}
+          </details>
+          <details>
+          <summary>エラー対応案</summary>
+          ### ${TITLE}
+          ${BODY}
           </details>
           "
 
