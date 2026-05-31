@@ -6,15 +6,10 @@ module RubyPureMysql
     def tokenize_math(col)
       tokens = []
       col.scan(%r{[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
-        if t.match?(%r{[+*/-]}) && t.length == 1
-          tokens << t
-        elsif t.match?(/\A\w+\(.*\)\z/)
-          val = evaluate_expression(t)
-          return :error if val == :error
-          tokens << (val.is_a?(Numeric) ? val.to_f : val.to_s.to_f)
-        else
-          tokens << t.to_f
-        end
+        token = process_math_token(t)
+        return :error if token == :error
+
+        tokens << token
       end
       tokens
     end
@@ -27,6 +22,16 @@ module RubyPureMysql
     end
 
     private
+
+    def process_math_token(t)
+      return t if t.match?(%r{[+*/-]}) && t.length == 1
+      return t.to_f unless t.match?(/\A\w+\(.*\)\z/)
+
+      val = evaluate_expression(t)
+      return :error if val == :error
+
+      val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+    end
 
     def update_state(state, char)
       state[:depth] = adjust_depth(char, state[:depth])
