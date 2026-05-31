@@ -233,6 +233,10 @@ module RubyPureMysql
 
   # 結果セットの構築を支援するモジュール
   module SqlParserResultBuilder
+    ALIAS_PATTERN = '(`[^`]+`|[a-zA-Z_]\w*)'
+    EXPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+AS\\s+#{ALIAS_PATTERN}\\z", Regexp::IGNORECASE)
+    IMPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+#{ALIAS_PATTERN}\\z")
+
     def build_select_result(match)
       {
         type: :select_from,
@@ -255,16 +259,13 @@ module RubyPureMysql
     end
 
     def parse_column_alias(col)
-      # エイリアスパターン: バッククォートで囲まれているか、標準的な識別子であること
-      alias_pattern = '(`[^`]+`|[a-zA-Z_]\w*)'
-
       # 1. 明示的な AS: "expr AS alias"
-      if (m = col.match(Regexp.new("(.+)\\s+AS\\s+#{alias_pattern}\\z", Regexp::IGNORECASE)))
+      if m = col.match(EXPLICIT_ALIAS_REGEX)
         return { original: m[1].strip, alias: strip_backticks(m[2]) }
       end
 
       # 2. 暗黙的な AS: "expr alias"
-      if (m = col.match(Regexp.new("(.+)\\s+#{alias_pattern}\\z")))
+      if m = col.match(IMPLICIT_ALIAS_REGEX)
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
         return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
