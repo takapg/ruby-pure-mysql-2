@@ -234,8 +234,8 @@ module RubyPureMysql
   # 結果セットの構築を支援するモジュール
   module SqlParserResultBuilder
     ALIAS_PATTERN = '(`[^`]+`|[a-zA-Z_]\w*)'
-    EXPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+AS\\s+#{ALIAS_PATTERN}\\z", Regexp::IGNORECASE)
-    IMPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+#{ALIAS_PATTERN}\\z")
+    EXPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+AS\\s+#{ALIAS_PATTERN}\\s*\\z", Regexp::IGNORECASE)
+    IMPLICIT_ALIAS_REGEX = Regexp.new("(.+)\\s+#{ALIAS_PATTERN}\\s*\\z")
 
     def build_select_result(match)
       {
