@@ -6,7 +6,7 @@ module RubyPureMysql
     MD_OPERATORS = %w[* /].freeze
     def tokenize_math(col)
       tokens = []
-      col.scan(%r{[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
+      col.scan(%r{\((?:[^()]*|\([^()]*\))*\)|[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
         token = process_math_token(t)
         return :error if token == :error
 
@@ -26,6 +26,12 @@ module RubyPureMysql
 
     def process_math_token(token)
       return token if token.match?(%r{[+*/-]}) && token.length == 1
+      if token.start_with?('(') && token.end_with?(')')
+        val = evaluate_expression(token[1...-1])
+        return :error if val == :error
+
+        return val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+      end
       return token.to_f unless token.match?(/\A\w+\(.*\)\z/)
 
       val = evaluate_expression(token)
