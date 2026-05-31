@@ -64,3 +64,4 @@ module RubyPureMysql
     end
   end
 end
+

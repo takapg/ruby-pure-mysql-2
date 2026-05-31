@@ -33,6 +33,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'can calculate subtraction (SELECT 10 - 5;)' do
+      results = client.query('SELECT 10 - 5;')
+      expect(results.first.values.first).to eq(5)
+    end
+
+    it 'can calculate multiplication (SELECT 2 * 3;)' do
+      results = client.query('SELECT 2 * 3;')
+      expect(results.first.values.first).to eq(6)
+    end
+
+    it 'can calculate division (SELECT 100 / 4;)' do
+      results = client.query('SELECT 100 / 4;')
+      expect(results.first.values.first).to eq(25.0)
+    end
+
+    it 'returns NULL for division by zero (SELECT 1 / 0;)' do
+      results = client.query('SELECT 1 / 0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'can calculate with negative numbers (SELECT -1 + -2;)' do
+      results = client.query('SELECT -1 + -2;')
+      expect(results.first.values.first).to eq(-3)
+    end
+
+    it 'can calculate non-integer division (SELECT 10 / 3;)' do
+      results = client.query('SELECT 10 / 3;')
+      expect(results.first.values.first).to be_within(0.001).of(3.333)
+    end
+
+    it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
+      results = client.query('SELECT 1 + 2 * 3;')
+      expect(results.first.values.first).to eq(7)
+    end
+
     it 'can calculate basic arithmetic with an alias (SELECT 1 + 1 AS total;)' do
       results = client.query('SELECT 1 + 1 AS total;')
       expect(results.fields.first).to eq('total')
@@ -78,6 +113,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns a string value for SELECT "hello";' do
       results = client.query('SELECT "hello";')
       expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'handles string literals with quotes (SELECT "It\'s a test";)' do
+      results = client.query('SELECT "It\'s a test";')
+      expect(results.first.values.first).to eq("It's a test")
+    end
+
+    it 'handles escaped quotes in string literals (SELECT \'It\\\'s a test\';)' do
+      results = client.query("SELECT 'It\\'s a test';")
+      expect(results.first.values.first).to eq("It's a test")
+    end
+
+    it 'handles escaped backslashes in string literals (SELECT "a\\\\b";)' do
+      results = client.query('SELECT "a\\\\b";')
+      expect(results.first.values.first).to eq('a\\b')
     end
 
     it 'returns nil for SELECT NULL;' do
