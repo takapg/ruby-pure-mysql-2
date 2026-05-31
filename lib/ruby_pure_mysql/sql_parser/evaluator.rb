@@ -31,41 +31,18 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      tokens = col.gsub(/\s+/, '').scan(/[-+]?\d+|[\+\-\*\/]/)
-      return :error if tokens.empty?
+      # 整数除算を避けるため、数値を Float に変換して評価する
+      safe_expr = col.gsub(/\d+/) { |m| "#{m}.to_f" }
+      res = eval(safe_expr)
 
-      # First pass: Multiplication and Division
-      i = 0
-      while i < tokens.size
-        if tokens[i] == '*' || tokens[i] == '/'
-          op = tokens[i]
-          left = tokens[i - 1].to_f
-          right = tokens[i + 1].to_f
-          return nil if op == '/' && right == 0
-
-          res = op == '*' ? left * right : left / right
-          tokens[i - 1] = res
-          tokens.delete_at(i)
-          tokens.delete_at(i)
-          i -= 1
-        end
-        i += 1
+      # 除算が含まれる場合は Float を返し、それ以外は整数値なら Integer に変換する
+      if col.include?('/')
+        res.to_f
+      else
+        res == res.to_i ? res.to_i : res
       end
-
-      # Second pass: Addition and Subtraction
-      res = tokens[0].to_f
-      i = 1
-      while i < tokens.size
-        op = tokens[i]
-        val = tokens[i + 1].to_f
-        res = op == '+' ? res + val : res - val
-        i += 2
-      end
-
-      has_division = col.include?('/')
-      return res.to_f if has_division
-
-      res == res.to_i ? res.to_i : res
+    rescue StandardError
+      :error
     end
   end
 end
