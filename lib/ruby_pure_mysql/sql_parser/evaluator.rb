@@ -5,7 +5,6 @@ module RubyPureMysql
   module Evaluator
     include ExpressionUtils
 
-
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')

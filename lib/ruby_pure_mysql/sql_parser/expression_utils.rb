@@ -9,87 +9,28 @@ module RubyPureMysql
       i = 0
       while i < col.length
         char = col[i]
-        if char =~ /\s/
+        case
+        when char.match?(/\s/)
           i += 1
-        elsif char == '('
+        when char == '('
           start = i
-          depth = 1
-          i += 1
-          while i < col.length && depth > 0
-            depth += 1 if col[i] == '('
-            depth -= 1 if col[i] == ')'
-            i += 1
-          end
+          i = consume_parentheses(col, i)
           tokens << col[start...i]
-        elsif char =~ /[a-zA-Z_]/
+        when char.match?(/[a-zA-Z_]/)
+          res = consume_identifier_or_function(col, i)
+          return :error if res == :error
+
+          tokens << res[:token]
+          i = res[:next_i]
+        when char.match?(%r{[-+*\/]})
+          res = consume_operator(col, i, tokens)
+          return :error if res == :error
+
+          tokens << res[:token]
+          i = res[:next_i]
+        when char.match?(/[\d.]/)
           start = i
-          while i < col.length && col[i] =~ /[a-zA-Z0-9_]/
-            i += 1
-          end
-          token = col[start...i]
-          if token.casecmp?('NULL')
-            tokens << token
-          elsif i < col.length && col[i] == '('
-            i += 1
-            depth = 1
-            while i < col.length && depth > 0
-              depth += 1 if col[i] == '('
-              depth -= 1 if col[i] == ')'
-              i += 1
-            end
-            tokens << col[start...i]
-          else
-            return :error
-          end
-        elsif char =~ /[-+*\/]/
-          if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
-            start = i
-            i += 1
-            while i < col.length && col[i] =~ /\s/
-              i += 1
-            end
-            if i < col.length
-              if col[i] == '('
-                depth = 1
-                i += 1
-                while i < col.length && depth > 0
-                  depth += 1 if col[i] == '('
-                  depth -= 1 if col[i] == ')'
-                  i += 1
-                end
-              elsif col[i] =~ /[a-zA-Z_]/
-                while i < col.length && col[i] =~ /[a-zA-Z0-9_]/
-                  i += 1
-                end
-                if i < col.length && col[i] == '('
-                  i += 1
-                  depth = 1
-                  while i < col.length && depth > 0
-                    depth += 1 if col[i] == '('
-                    depth -= 1 if col[i] == ')'
-                    i += 1
-                  end
-                end
-              elsif col[i] =~ /[\d.]/
-                while i < col.length && col[i] =~ /[\d.]/
-                  i += 1
-                end
-              else
-                return :error
-              end
-            else
-              return :error
-            end
-            tokens << col[start...i]
-          else
-            tokens << char
-            i += 1
-          end
-        elsif char =~ /[\d.]/
-          start = i
-          while i < col.length && col[i] =~ /[\d.]/
-            i += 1
-          end
+          i = consume_number(col, i)
           tokens << col[start...i]
         else
           return :error
@@ -100,9 +41,83 @@ module RubyPureMysql
       tokens.each do |t|
         res = process_math_token(t)
         return :error if res == :error
+
         processed << res
       end
       processed
+    end
+
+    def consume_parentheses(col, i)
+      depth = 1
+      i += 1
+      while i < col.length && depth.positive?
+        depth += 1 if col[i] == '('
+        depth -= 1 if col[i] == ')'
+        i += 1
+      end
+      i
+    end
+
+    def consume_identifier_or_function(col, i)
+      start = i
+      while i < col.length && col[i].match?(/[a-zA-Z0-9_]/)
+        i += 1
+      end
+      token = col[start...i]
+      return { token: token, next_i: i } if token.casecmp?('NULL')
+
+      if i < col.length && col[i] == '('
+        i += 1
+        depth = 1
+        while i < col.length && depth.positive?
+          depth += 1 if col[i] == '('
+          depth -= 1 if col[i] == ')'
+          i += 1
+        end
+        return { token: col[start...i], next_i: i }
+      end
+
+      :error
+    end
+
+    def consume_operator(col, i, tokens)
+      char = col[i]
+      unless %w[- +].include?(char) && (tokens.empty? || operator?(tokens.last))
+        return { token: char, next_i: i + 1 }
+      end
+
+      start = i
+      i += 1
+      i = skip_whitespace(col, i)
+      return :error if i >= col.length
+
+      if col[i] == '('
+        i = consume_parentheses(col, i)
+      elsif col[i].match?(/[a-zA-Z_]/)
+        res = consume_identifier_or_function(col, i)
+        return :error if res == :error
+
+        i = res[:next_i]
+      elsif col[i].match?(/[\d.]/)
+        i = consume_number(col, i)
+      else
+        return :error
+      end
+      { token: col[start...i], next_i: i }
+    end
+
+    def consume_number(col, i)
+      while i < col.length && col[i].match?(/[\d.]/)
+        i += 1
+      end
+      i
+    end
+
+    def skip_whitespace(col, i)
+      while i < col.length && col[i].match?(/\s/)
+        i += 1
+      end
+      i
     end
 
     def split_args(args_str)
@@ -119,19 +134,22 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
 
       token_s = token.strip
-      if token_s.start_with?('-') && token_s.length > 1
-        inner = token_s[1..-1].strip
-        val = evaluate_inner_token(inner)
-        return :error if val == :error
-        return val.nil? ? nil : -to_float_value(val)
-      elsif token_s.start_with?('+') && token_s.length > 1
-        inner = token_s[1..-1].strip
-        val = evaluate_inner_token(inner)
-        return :error if val == :error
-        return val.nil? ? nil : to_float_value(val)
+      if token_s.start_with?('-', '+') && token_s.length > 1
+        return handle_unary_token(token_s)
       end
 
       evaluate_inner_token(token_s)
+    end
+
+    def handle_unary_token(token_s)
+      op = token_s[0]
+      inner = token_s[1..].strip
+      val = evaluate_inner_token(inner)
+      return :error if val == :error
+
+      return nil if val.nil?
+
+      op == '-' ? -to_float_value(val) : to_float_value(val)
     end
 
     def evaluate_inner_token(token)
@@ -140,10 +158,13 @@ module RubyPureMysql
       if parenthesized?(token) || function_call?(token)
         val = evaluate_expression(parenthesized?(token) ? token[1...-1] : token)
         return :error if val == :error
-        return val.nil? ? nil : to_float_value(val)
+
+        return nil if val.nil?
+
+        return to_float_value(val)
       end
 
-      return token.to_f if token =~ /\A[-+]?\d*\.?\d+\z/
+      return token.to_f if token.match?(/\A[-+]?\d*\.?\d+\z/)
 
       :error
     end
@@ -198,8 +219,7 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left = tokens[index - 1]
-      right = tokens[index + 1]
+      left, op, right = tokens[index - 1], tokens[index], tokens[index + 1]
 
       if left.nil? || right.nil?
         tokens[index - 1] = nil
@@ -207,9 +227,9 @@ module RubyPureMysql
         return :ok
       end
 
-      return :div_by_zero if tokens[index] == '/' && right.zero?
+      return :div_by_zero if op == '/' && right.zero?
 
-      tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
+      tokens[index - 1] = op == '*' ? left * right : left / right
       tokens.slice!(index, 2)
       :ok
     end
@@ -220,11 +240,7 @@ module RubyPureMysql
       while i < tokens.size
         op = tokens[i]
         val = tokens[i + 1]
-        if result.nil? || val.nil?
-          result = nil
-        else
-          result = op == '+' ? result + val : result - val
-        end
+        result = (result.nil? || val.nil?) ? nil : (op == '+' ? result + val : result - val)
         i += 2
       end
       result
