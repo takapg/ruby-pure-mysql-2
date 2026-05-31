@@ -70,12 +70,12 @@ module RubyPureMysql
 
     def apply_md_op(tokens, index)
       op = tokens[index]
-      left = tokens[index - 1]
-      right = tokens[index + 1]
+      left = tokens[index - 1].to_f
+      right = tokens[index + 1].to_f
 
       res = case op
             when '*' then left * right
-            when '/' then right == 0 ? nil : left.fdiv(right)
+            when '/' then right == 0 ? nil : left / right
             end
 
       tokens[index - 1] = res
@@ -97,7 +97,7 @@ module RubyPureMysql
     def finalize_math_result(res, _col)
       return nil if res.nil?
 
-      res
+      res.is_a?(Float) && res == res.to_i ? res.to_i : res
     end
   end
 end
