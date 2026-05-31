@@ -255,18 +255,21 @@ module RubyPureMysql
     end
 
     def parse_column_alias(col)
+      # エイリアスパターン: バッククォートで囲まれているか、標準的な識別子であること
+      alias_pattern = '(`[^`]+`|[a-zA-Z_]\w*)'
+
       # 1. 明示的な AS: "expr AS alias"
-      m = col.match(/(.+)\s+AS\s+([a-zA-Z_]\w*)\z/i)
-      return { original: m[1].strip, alias: m[2] } if m
+      if (m = col.match(/(.+)\s+AS\s+#{alias_pattern}\z/i))
+        return { original: m[1].strip, alias: strip_backticks(m[2]) }
+      end
 
       # 2. 暗黙的な AS: "expr alias"
-      # "a + b" のような式を誤って分割しないよう、直前が演算子で終わっていないことを確認する
-      m = col.match(/(.+)\s+([a-zA-Z_]\w*)\z/)
-      if m
+      if (m = col.match(/(.+)\s+#{alias_pattern}\z/))
         original = m[1].strip
+        # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
         return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
 
-        return { original: original, alias: m[2] }
+        return { original: original, alias: strip_backticks(m[2]) }
       end
 
       { original: col, alias: nil }
