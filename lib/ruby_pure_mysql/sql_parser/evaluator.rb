@@ -69,13 +69,14 @@ module RubyPureMysql
 
     def single_function_call?(col)
       return false unless col.match?(/\A\w+\(.*\)\z/)
+
       depth = 0
-      col.each_char.with_index do |char, i|
+      col[0...-1].each_char do |char|
         depth += 1 if char == '('
         depth -= 1 if char == ')'
-        return false if char == ')' && depth.zero? && i < col.length - 1
+        return false if depth.zero? && char == ')'
       end
-      depth.zero?
+      depth == 1
     end
 
     def evaluate_function_args(args_str)
