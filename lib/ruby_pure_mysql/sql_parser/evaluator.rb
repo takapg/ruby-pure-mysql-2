@@ -91,6 +91,5 @@ module RubyPureMysql
       end
       :ok
     end
-
   end
 end
