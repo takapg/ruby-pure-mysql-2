@@ -26,7 +26,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      parts = col.split('+').map(&:strip)
+      parts = col.scan(/[-+]?\s*(?:\d+\.?\d*|\.\d+)/).map { |p| p.gsub(/\s+/, '') }
       parts.any? { |p| p.include?('.') } ? parts.sum(&:to_f) : parts.sum(&:to_i)
     end
   end
