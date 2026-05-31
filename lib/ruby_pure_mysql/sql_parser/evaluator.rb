@@ -37,18 +37,13 @@ module RubyPureMysql
     private
 
     def calculate_tokens(tokens)
-      total = 0.0
-      current_op = 1
-      tokens.each do |token|
+      tokens.reduce([0.0, 1]) do |(sum, op), token|
         case token
-        when '+' then next
-        when '-' then current_op *= -1
-        else
-          total += current_op * token.to_f
-          current_op = 1
+        when '+' then [sum, op]
+        when '-' then [sum, op * -1]
+        else [sum + op * token.to_f, 1]
         end
-      end
-      total
+      end.first
     end
   end
 end
