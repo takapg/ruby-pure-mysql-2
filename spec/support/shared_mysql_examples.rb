@@ -1036,6 +1036,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(1)
     end
 
+    it 'supports implicit aliases with expressions (SELECT 1 + 1 total;)' do
+      results = client.query('SELECT 1 + 1 total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns the expression as column name when no alias is provided (SELECT 1 + 1;)' do
+      results = client.query('SELECT 1 + 1;')
+      expect(results.fields.first).to eq('1 + 1')
+      expect(results.first.values.first).to eq(2)
+    end
+
     it 'supports table aliases with AS' do
       client.query('CREATE TABLE IF NOT EXISTS users (id INT, name VARCHAR(255));')
       client.query("INSERT INTO users VALUES (1, 'alice');")
