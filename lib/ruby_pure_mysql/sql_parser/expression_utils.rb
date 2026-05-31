@@ -1,69 +1,8 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
-  module ExpressionTokenizer
-    def tokenize_math(col)
-      tokens = []
-      idx = 0
-      while idx < col.length
-        res = tokenize_char(col, idx, tokens)
-        return :error if res == :error
-
-        idx, token = res
-        tokens << token if token
-      end
-      process_tokens(tokens)
-    end
-
-    def tokenize_char(col, idx, tokens)
-      char = col[idx]
-      case
-      when char.match?(/\s/) then [idx + 1, nil]
-      when char == '(' then handle_paren(col, idx)
-      when char.match?(/[a-zA-Z_]/) then handle_ident(col, idx)
-      when char.match?(%r{[-+*/]}) then handle_op(col, idx, tokens)
-      when char.match?(/[\d.]/) then handle_num(col, idx)
-      else :error
-      end
-    end
-
-    def handle_paren(col, idx)
-      start = idx
-      end_idx = consume_parentheses(col, idx)
-      [end_idx, col[start...end_idx]]
-    end
-
-    def handle_ident(col, idx)
-      res = consume_identifier_or_function(col, idx)
-      return :error if res == :error
-
-      [res[:next_i], res[:token]]
-    end
-
-    def handle_op(col, idx, tokens)
-      res = consume_operator(col, idx, tokens)
-      return :error if res == :error
-
-      [res[:next_i], res[:token]]
-    end
-
-    def handle_num(col, idx)
-      start = idx
-      end_idx = consume_number(col, idx)
-      [end_idx, col[start...end_idx]]
-    end
-
-    def process_tokens(tokens)
-      processed = []
-      tokens.each do |t|
-        res = process_math_token(t)
-        return :error if res == :error
-
-        processed << res
-      end
-      processed
-    end
-
+  # トークンの消費ロジックを提供するモジュール
+  module ExpressionTokenConsumer
     def consume_parentheses(col, idx)
       depth = 1
       idx += 1
@@ -122,7 +61,6 @@ module RubyPureMysql
         res = consume_identifier_or_function(col, idx)
         res == :error ? :error : res[:next_i]
       when /[\d.]/ then consume_number(col, idx)
-      else nil
       end
     end
 
@@ -135,6 +73,73 @@ module RubyPureMysql
       idx += 1 while idx < col.length && col[idx].match?(/\s/)
       idx
     end
+  end
+
+  # 式のトークナイズ処理を提供するモジュール
+  module ExpressionTokenizer
+    include ExpressionTokenConsumer
+    def tokenize_math(col)
+      tokens = []
+      idx = 0
+      while idx < col.length
+        res = tokenize_char(col, idx, tokens)
+        return :error if res == :error
+
+        idx, token = res
+        tokens << token if token
+      end
+      process_tokens(tokens)
+    end
+
+    def tokenize_char(col, idx, tokens)
+      char = col[idx]
+      case char
+      when /\s/ then [idx + 1, nil]
+      when '(' then handle_paren(col, idx)
+      when /[a-zA-Z_]/ then handle_ident(col, idx)
+      when %r{[-+*/]} then handle_op(col, idx, tokens)
+      when /[\d.]/ then handle_num(col, idx)
+      else :error
+      end
+    end
+
+    def handle_paren(col, idx)
+      start = idx
+      end_idx = consume_parentheses(col, idx)
+      [end_idx, col[start...end_idx]]
+    end
+
+    def handle_ident(col, idx)
+      res = consume_identifier_or_function(col, idx)
+      return :error if res == :error
+
+      [res[:next_i], res[:token]]
+    end
+
+    def handle_op(col, idx, tokens)
+      res = consume_operator(col, idx, tokens)
+      return :error if res == :error
+
+      [res[:next_i], res[:token]]
+    end
+
+    def handle_num(col, idx)
+      start = idx
+      end_idx = consume_number(col, idx)
+      [end_idx, col[start...end_idx]]
+    end
+
+    def process_tokens(tokens)
+      processed = []
+      tokens.each do |t|
+        res = process_math_token(t)
+        return :error if res == :error
+
+        processed << res
+      end
+      processed
+    end
+
   end
 
   # 式の評価ロジックを提供するモジュール
@@ -238,7 +243,9 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left, op, right = tokens[index - 1], tokens[index], tokens[index + 1]
+      left = tokens[index - 1]
+      op = tokens[index]
+      right = tokens[index + 1]
       return handle_missing_operand(tokens, index) if left.nil? || right.nil?
       return :div_by_zero if op == '/' && right.zero?
 
@@ -257,17 +264,18 @@ module RubyPureMysql
       result = tokens[0]
       idx = 1
       while idx < tokens.size
-        op, val = tokens[idx], tokens[idx + 1]
+        op = tokens[idx]
+        val = tokens[idx + 1]
         result = calculate_sum_diff(result, op, val)
         idx += 2
       end
       result
     end
 
-    def calculate_sum_diff(result, op, value)
+    def calculate_sum_diff(result, operator, value)
       return nil if result.nil? || value.nil?
 
-      op == '+' ? result + value : result - value
+      operator == '+' ? result + value : result - value
     end
   end
 
