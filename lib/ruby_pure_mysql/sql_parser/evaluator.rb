@@ -52,7 +52,7 @@ module RubyPureMysql
     def tokenize_math(col)
       col.scan(%r{([-+]?\d+)|([+\-*/])}).map do |m|
         val = m.compact.first
-        MATH_OPERATORS.include?(val) ? val : val.to_f
+        MATH_OPERATORS.include?(val) ? val : val.to_i
       end
     end
 
@@ -74,8 +74,8 @@ module RubyPureMysql
       right = tokens[index + 1]
 
       res = case op
-            when '*' then left.to_f * right.to_f
-            when '/' then right.to_f == 0.0 ? nil : left.to_f / right.to_f
+            when '*' then left * right
+            when '/' then right == 0 ? nil : left.fdiv(right)
             end
 
       tokens[index - 1] = res
@@ -88,10 +88,10 @@ module RubyPureMysql
       while i < tokens.size
         op = tokens[i]
         right = tokens[i + 1]
-        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res.to_f + right.to_f : res.to_f - right.to_f)
+        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res + right : res - right)
         i += 2
       end
-      res.is_a?(Float) ? res : res
+      res
     end
 
     def finalize_math_result(res, _col)
