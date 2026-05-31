@@ -50,8 +50,7 @@ module RubyPureMysql
     private
 
     def tokenize_math(col)
-      tokens = col.scan(%r{([-+]?\d+)|([+\-*/])}).map { |m| m.compact.first }
-      tokens.map { |t| MATH_OPERATORS.include?(t) ? t : t.to_f }
+      col.scan(%r{([-+]?\d+)|([+\-*/])}).map { |m| m.compact.first }
     end
 
     def process_multiplication_division(tokens)
@@ -79,7 +78,7 @@ module RubyPureMysql
             elsif r_val == 0
               nil
             else
-              l_val / r_val
+              l_val.fdiv(r_val)
             end
 
       tokens[index - 1] = res
@@ -87,7 +86,7 @@ module RubyPureMysql
     end
 
     def process_addition_subtraction(tokens)
-      res = tokens[0]
+      res = tokens[0]&.to_f
       i = 1
       while i < tokens.size
         op = tokens[i]
@@ -101,7 +100,7 @@ module RubyPureMysql
     def finalize_math_result(res, _col)
       return nil if res.nil?
 
-      (res.is_a?(Float) && res % 1 == 0) ? res.to_i : res
+      (res.is_a?(Float) && res == res.to_i) ? res.to_i : res
     end
   end
 end
