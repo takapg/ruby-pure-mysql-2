@@ -3,7 +3,10 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
+    include SqlParser::ExpressionUtils
+
     MD_OPERATORS = %w[* /].freeze
+    MATH_REGEX = %r{\A\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\))(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\)))*\s*\z}.freeze
 
     def evaluate_expression(col)
       col = col.strip
@@ -11,25 +14,21 @@ module RubyPureMysql
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
       return evaluate_function(col) if col.match?(/\A\w+\(.*\)\z/)
-      return evaluate_math(col) if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\))(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+|\w+\(.*\)))*\s*\z}.match?(col)
+      return evaluate_math(col) if MATH_REGEX.match?(col)
 
       :error
     end
 
     def evaluate_system_variable(col)
-      case col.downcase
-      when '@@version_comment' then 'ruby-pure-mysql-2'
-      when '@@max_allowed_packet' then 67_108_864
-      else :error
-      end
+      {
+        '@@version_comment' => 'ruby-pure-mysql-2',
+        '@@max_allowed_packet' => 67_108_864
+      }.fetch(col.downcase, :error)
     end
 
     def evaluate_function(col)
-      match = col.match(/\A(\w+)\((.*)\)\z/)
-      name = match[1].downcase
-      args_str = match[2]
-
-      args = args_str.empty? ? [] : split_args(args_str).map { |a| evaluate_expression(a) }
+      name, _args_str = col.match(/\A(\w+)\((.*)\)\z/).captures
+      name = name.downcase
 
       case name
       when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
@@ -63,37 +62,6 @@ module RubyPureMysql
     end
 
     private
-
-    def tokenize_math(col)
-      col.scan(%r{[-+]?\d*\.?\d+|\w+\(.*\)|[+*/-]}).map do |t|
-        if t.match?(%r{[+*/-]}) && t.length == 1
-          t
-        elsif t.match?(/\A\w+\(.*\)\z/)
-          val = evaluate_expression(t)
-          val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
-        else
-          t.to_f
-        end
-      end
-    end
-
-    def split_args(args_str)
-      args = []
-      buf = +''
-      depth = 0
-      args_str.each_char do |char|
-        depth += 1 if char == '('
-        depth -= 1 if char == ')' && depth.positive?
-        if char == ',' && depth.zero?
-          args << buf.strip
-          buf = +''
-        else
-          buf << char
-        end
-      end
-      args << buf.strip unless buf.strip.empty?
-      args
-    end
 
     def apply_multiplication_division(tokens)
       index = 1

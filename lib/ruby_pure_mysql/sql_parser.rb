@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'sql_parser/expression_utils'
 require_relative 'sql_parser/evaluator'
 require_relative 'aggregate_utils'
 
