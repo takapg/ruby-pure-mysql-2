@@ -25,18 +25,31 @@ module RubyPureMysql
     private
 
     def process_math_token(token)
-      return token if token.match?(%r{[+*/-]}) && token.length == 1
-      if token.start_with?('(') && token.end_with?(')')
-        val = evaluate_expression(token[1...-1])
+      return token if operator?(token)
+
+      if parenthesized?(token) || function_call?(token)
+        val = evaluate_expression(parenthesized?(token) ? token[1...-1] : token)
         return :error if val == :error
 
-        return val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+        return to_float_value(val)
       end
-      return token.to_f unless token.match?(/\A\w+\(.*\)\z/)
 
-      val = evaluate_expression(token)
-      return :error if val == :error
+      token.to_f
+    end
 
+    def operator?(token)
+      token.match?(%r{[+*/-]}) && token.length == 1
+    end
+
+    def parenthesized?(token)
+      token.start_with?('(') && token.end_with?(')')
+    end
+
+    def function_call?(token)
+      token.match?(/\A\w+\(.*\)\z/)
+    end
+
+    def to_float_value(val)
       val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
     end
 
