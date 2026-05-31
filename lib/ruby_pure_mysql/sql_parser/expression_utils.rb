@@ -120,7 +120,7 @@ module RubyPureMysql
         res == :error ? :error : res
       elsif scanner.peek(1).match?(/[a-zA-Z_]/)
         scan_identifier_or_function(scanner)
-      elsif scanner.peek(1).match?(/[-+*/%]/)
+      elsif scanner.peek(1).match?(/[-+*\/%]/)
         scan_operator(scanner, tokens)
       elsif scanner.peek(1).match?(/[\d.]/)
         scanner.scan(/[\d.]+/)
