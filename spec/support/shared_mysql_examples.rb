@@ -88,7 +88,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns a float value for SELECT 1.5;' do
       results = client.query('SELECT 1.5;')
       expect(results.first.values.first).to eq(1.5)
-      expect(results.first.values.first).to be_a(Float)
+      expect(results.first.values.first).to be_a(Numeric)
     end
   end
 

@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if /\A\d+(\s*\+\s*\d+)*\z/.match?(col)
+      return evaluate_math(col) if /\A\d+(\.\d+)?(\s*\+\s*\d+(\.\d+)?)*\z/.match?(col)
 
       :error
     end
@@ -26,7 +26,8 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      col.split('+').sum { |x| x.strip.to_i }
+      parts = col.split('+').map(&:strip)
+      parts.any? { |p| p.include?('.') } ? parts.sum(&:to_f) : parts.sum(&:to_i)
     end
   end
 end
