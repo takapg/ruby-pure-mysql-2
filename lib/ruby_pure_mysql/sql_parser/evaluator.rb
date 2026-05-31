@@ -59,7 +59,8 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left, right = tokens[index - 1], tokens[index + 1]
+      left = tokens[index - 1]
+      right = tokens[index + 1]
       tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
       tokens.slice!(index, 2)
     end
