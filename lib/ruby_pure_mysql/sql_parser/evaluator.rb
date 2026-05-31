@@ -53,16 +53,14 @@ module RubyPureMysql
     end
 
     def apply_multiplication_division(tokens)
-      i = 1
-      while i < tokens.size
-        MD_OPERATORS.include?(tokens[i]) ? process_md_op!(tokens, i) : i += 1
-      end
+      index = 1
+      MD_OPERATORS.include?(tokens[index]) ? process_md_op!(tokens, index) : index += 1 while index < tokens.size
       tokens
     end
 
-    def process_md_op!(tokens, i)
-      tokens[i - 1] = tokens[i] == '*' ? tokens[i - 1] * tokens[i + 1] : tokens[i - 1] / tokens[i + 1]
-      tokens.slice!(i, 2)
+    def process_md_op!(tokens, index)
+      tokens[index - 1] = tokens[index] == '*' ? tokens[index - 1] * tokens[index + 1] : tokens[index - 1] / tokens[index + 1]
+      tokens.slice!(index, 2)
     end
 
     def apply_addition_subtraction(tokens)
