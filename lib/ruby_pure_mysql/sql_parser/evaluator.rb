@@ -28,7 +28,8 @@ module RubyPureMysql
     def evaluate_math(col)
       # evaluate_expression の正規表現で厳格にバリデーションされているため、
       # 数字、小数点、+、-、空白以外の文字は含まれず、eval は安全に使用できます。
-      eval(col)
+      # Rubyのevalは '.5' のような形式をサポートしていないため、'0.5' に変換します。
+      eval(col.gsub(/(?<!\d)\./, '0.'))
     end
   end
 end
