@@ -74,11 +74,11 @@ module RubyPureMysql
       res = if left.nil? || right.nil?
               nil
             elsif op == '*'
-              left * right
-            elsif right == 0
+              left.to_f * right.to_f
+            elsif right.to_f == 0
               nil
             else
-              left / right
+              left.to_f / right.to_f
             end
 
       tokens[index - 1] = res
@@ -91,7 +91,7 @@ module RubyPureMysql
       while i < tokens.size
         op = tokens[i]
         right = tokens[i + 1]
-        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res + right : res - right)
+        res = (res.nil? || right.nil?) ? nil : (op == '+' ? res.to_f + right.to_f : res.to_f - right.to_f)
         i += 2
       end
       res
