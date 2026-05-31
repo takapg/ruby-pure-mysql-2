@@ -100,7 +100,7 @@ module RubyPureMysql
     def finalize_math_result(res, _col)
       return nil if res.nil?
 
-      (res.is_a?(Float) && res == res.to_i) ? res.to_i : res
+      res
     end
   end
 end
