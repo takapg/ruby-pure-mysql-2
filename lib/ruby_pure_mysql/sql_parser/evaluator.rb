@@ -32,7 +32,7 @@ module RubyPureMysql
 
     def evaluate_math(col)
       # 整数除算を避けるため、数値を Float に変換して評価する
-      tokens = col.scan(/([-+]?\d+)|([+\-*/])/).map { |m| m.compact.first }
+      tokens = col.scan(/([-+]?\d+)|([+\-*\/])/).map { |m| m.compact.first }
       tokens = tokens.map { |t| ['+', '-', '*', '/'].include?(t) ? t : t.to_f }
 
       # 乗算と除算を先に処理
