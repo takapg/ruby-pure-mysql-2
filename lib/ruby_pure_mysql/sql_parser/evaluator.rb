@@ -26,24 +26,29 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      # .5 -> 0.5, 1. -> 1.0 に変換し、演算子で分割して計算することで eval を回避します
       has_float = col.include?('.')
       normalized = col.gsub(/(?<!\d)\./, '0.').gsub(/\.(?!\d)/, '.0')
       tokens = normalized.gsub(/([+-])/, ' \1 ').split
 
+      total = calculate_tokens(tokens)
+      total == total.to_i && !has_float ? total.to_i : total
+    end
+
+    private
+
+    def calculate_tokens(tokens)
       total = 0.0
       current_op = 1
       tokens.each do |token|
         case token
-        when '+' then current_op *= 1
+        when '+' then next
         when '-' then current_op *= -1
         else
           total += current_op * token.to_f
           current_op = 1
         end
       end
-
-      (total == total.to_i && !has_float) ? total.to_i : total
+      total
     end
   end
 end
