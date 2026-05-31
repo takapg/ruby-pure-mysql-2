@@ -212,7 +212,7 @@ module RubyPureMysql
     end
 
     def operator?(token)
-      token.match?(%r{[+*/-]}) && token.length == 1
+      token.match?(%r{[+*/%-]}) && token.length == 1
     end
 
     def parenthesized?(token)
@@ -306,6 +306,8 @@ module RubyPureMysql
     end
 
     def calculate_md(left, right, operator)
+      return nil if left.nil? || right.nil?
+
       case operator
       when '*' then left * right
       when '/' then left / right
