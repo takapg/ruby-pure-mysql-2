@@ -43,12 +43,9 @@ module RubyPureMysql
           end
         elsif char =~ /[-+*/]/
           if (char == '-' || char == '+') && (tokens.empty? || operator?(tokens.last))
-            start = i
+            tokens << '0'
+            tokens << char
             i += 1
-            while i < col.length && col[i] =~ /[\d.]/
-              i += 1
-            end
-            tokens << col[start...i]
           else
             tokens << char
             i += 1
