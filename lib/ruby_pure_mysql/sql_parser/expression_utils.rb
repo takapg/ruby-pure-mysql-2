@@ -255,13 +255,10 @@ module RubyPureMysql
 
     def to_float_value(val)
       return val.to_f if val.is_a?(Numeric)
-      return :error if val.nil? || val == :error
+      return :error if val == :error
+      return nil if val.nil?
 
-      if val.is_a?(String) && val.match?(/\A[-+]?\d*\.?\d+\z/)
-        val.to_f
-      else
-        :error
-      end
+      val.to_s.to_f
     end
 
     def update_state(state, char)
