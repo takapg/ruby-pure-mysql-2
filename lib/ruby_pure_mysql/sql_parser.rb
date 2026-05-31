@@ -259,12 +259,12 @@ module RubyPureMysql
       alias_pattern = '(`[^`]+`|[a-zA-Z_]\w*)'
 
       # 1. 明示的な AS: "expr AS alias"
-      if (m = col.match(/(.+)\s+AS\s+#{alias_pattern}\z/i))
+      if (m = col.match(Regexp.new("(.+)\\s+AS\\s+#{alias_pattern}\\z", Regexp::IGNORECASE)))
         return { original: m[1].strip, alias: strip_backticks(m[2]) }
       end
 
       # 2. 暗黙的な AS: "expr alias"
-      if (m = col.match(/(.+)\s+#{alias_pattern}\z/))
+      if (m = col.match(Regexp.new("(.+)\\s+#{alias_pattern}\\z")))
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
         return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
