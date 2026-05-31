@@ -100,6 +100,7 @@ module RubyPureMysql
       when /[a-zA-Z_]/ then handle_ident(col, idx)
       when %r{[-+*/]} then handle_op(col, idx, tokens)
       when /[\d.]/ then handle_num(col, idx)
+      when /['"]/ then handle_string(col, idx)
       else :error
       end
     end
@@ -130,6 +131,20 @@ module RubyPureMysql
       [end_idx, col[start...end_idx]]
     end
 
+    def handle_string(col, idx)
+      quote = col[idx]
+      start = idx
+      idx += 1
+      while idx < col.length
+        if col[idx] == quote && col[idx - 1] != '\\'
+          idx += 1
+          break
+        end
+        idx += 1
+      end
+      [idx, col[start...idx]]
+    end
+
     def process_tokens(tokens)
       processed = []
       tokens.each do |t|
@@ -145,7 +160,7 @@ module RubyPureMysql
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     def split_args(args_str)
-      state = { args: [], buf: +'', depth: 0 }
+      state = { args: [], buf: +'', depth: 0, in_quote: nil }
       args_str.each_char { |char| update_state(state, char) }
       state[:args] << state[:buf].strip unless state[:buf].strip.empty?
       state[:args]
@@ -205,8 +220,17 @@ module RubyPureMysql
     end
 
     def update_state(state, char)
-      state[:depth] = adjust_depth(char, state[:depth])
-      if comma_at_root?(char, state[:depth])
+      if state[:in_quote]
+        if char == state[:in_quote] && state[:buf][-1] != '\\'
+          state[:in_quote] = nil
+        end
+      elsif ["'", '"'].include?(char)
+        state[:in_quote] = char
+      else
+        state[:depth] = adjust_depth(char, state[:depth])
+      end
+
+      if comma_at_root?(char, state[:depth]) && state[:in_quote].nil?
         state[:args] << state[:buf].strip
         state[:buf] = +''
       else
