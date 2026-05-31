@@ -75,7 +75,7 @@ module RubyPureMysql
 
       res = case op
             when '*' then left * right
-            when '/' then right == 0 ? nil : (left / right)
+            when '/' then right == 0 ? nil : left.to_f.fdiv(right.to_f)
             end
 
       tokens[index - 1] = res
