@@ -29,10 +29,11 @@ module RubyPureMysql
       match = col.match(/\A(['"])(.*)\1\z/m)
       return :error unless match
 
-      quote, content = match[1], match[2]
+      quote = match[1]
+      content = match[2]
       content.gsub(/\\(.)/) do |m|
         char = Regexp.last_match(1)
-        (char == quote || char == '\\') ? char : ESCAPE_MAP.fetch(char, m)
+        char == quote || char == '\\' ? char : ESCAPE_MAP.fetch(char, m)
       end
     end
 
