@@ -53,6 +53,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(25)
     end
 
+    it 'returns NULL for division by zero (SELECT 1/0;)' do
+      results = client.query('SELECT 1/0;')
+      expect(results.first.values.first).to be_nil
+    end
+
     it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
       results = client.query('SELECT 1 + 2 * 3;')
       expect(results.first.values.first).to eq(7)
