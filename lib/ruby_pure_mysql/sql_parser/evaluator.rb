@@ -5,6 +5,7 @@ module RubyPureMysql
   module Evaluator
     MATH_OPERATORS = ['+', '-', '*', '/'].freeze
     MD_OPERATORS = ['*', '/'].freeze
+    ESCAPE_MAP = { 'n' => "\n", 'r' => "\r", 't' => "\t" }.freeze
 
     def evaluate_expression(col)
       col = col.strip
@@ -28,17 +29,10 @@ module RubyPureMysql
       match = col.match(/\A(['"])(.*)\1\z/m)
       return :error unless match
 
-      quote = match[1]
-      content = match[2]
-
+      quote, content = match[1], match[2]
       content.gsub(/\\(.)/) do |m|
-        case $1
-        when quote, '\\' then $1
-        when 'n' then "\n"
-        when 'r' then "\r"
-        when 't' then "\t"
-        else m
-        end
+        char = Regexp.last_match(1)
+        (char == quote || char == '\\') ? char : ESCAPE_MAP.fetch(char, m)
       end
     end
 
