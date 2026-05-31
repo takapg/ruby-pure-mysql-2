@@ -4,16 +4,19 @@ module RubyPureMysql
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
   module ExpressionUtils
     def tokenize_math(col)
-      col.scan(%r{[-+]?\d*\.?\d+|\w+\(.*\)|[+*/-]}).map do |t|
+      tokens = []
+      col.scan(%r{[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
         if t.match?(%r{[+*/-]}) && t.length == 1
-          t
+          tokens << t
         elsif t.match?(/\A\w+\(.*\)\z/)
           val = evaluate_expression(t)
-          val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+          return :error if val == :error
+          tokens << (val.is_a?(Numeric) ? val.to_f : val.to_s.to_f)
         else
-          t.to_f
+          tokens << t.to_f
         end
       end
+      tokens
     end
 
     def split_args(args_str)

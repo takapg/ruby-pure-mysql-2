@@ -27,8 +27,16 @@ module RubyPureMysql
     end
 
     def evaluate_function(col)
-      name, _args_str = col.match(/\A(\w+)\((.*)\)\z/).captures
-      name = name.downcase
+      match = col.match(/\A(\w+)\((.*)\)\z/)
+      return :error unless match
+      name = match[1].downcase
+      args_str = match[2]
+
+      args = split_args(args_str).map do |arg|
+        val = evaluate_expression(arg)
+        return :error if val == :error
+        val
+      end
 
       case name
       when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
@@ -53,6 +61,7 @@ module RubyPureMysql
     def evaluate_math(col)
       has_float = col.include?('.')
       tokens = tokenize_math(col)
+      return :error if tokens == :error
       tokens = apply_multiplication_division(tokens)
       return nil if tokens.nil?
 
