@@ -157,6 +157,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'Built-in Functions support' do
+    it 'returns current time for SELECT NOW();' do
+      results = client.query('SELECT NOW();')
+      val = results.first.values.first
+      expect(val).to match(/\A\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\z/)
+    end
+
+    it 'returns current user for SELECT USER();' do
+      results = client.query('SELECT USER();')
+      expect(results.first.values.first).to eq('root@localhost')
+    end
+
+    it 'returns server version for SELECT VERSION();' do
+      results = client.query('SELECT VERSION();')
+      expect(results.first.values.first).to eq('Hi-MySQL-8.0')
+    end
+
+    it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
+      # NOW() returns a string, which to_f converts to a number (e.g. 2026.0)
+      # 1 + 2026.0 = 2027.0
+      results = client.query('SELECT 1 + NOW();')
+      expect(results.first.values.first).to be_a(Numeric)
+    end
+  end
+
   describe 'Schema Management (Storage Engine)' do
     it 'executes CREATE TABLE and returns an OK packet' do
       expect do
