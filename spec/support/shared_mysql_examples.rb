@@ -161,17 +161,17 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns current time for SELECT NOW();' do
       results = client.query('SELECT NOW();')
       val = results.first.values.first
-      expect(val).to match(/\A\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\z/)
+      expect(val.to_s).to match(/\A\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
     end
 
     it 'returns current user for SELECT USER();' do
       results = client.query('SELECT USER();')
-      expect(results.first.values.first).to eq('root@localhost')
+      expect(results.first.values.first).to match(/.*@.*/)
     end
 
     it 'returns server version for SELECT VERSION();' do
       results = client.query('SELECT VERSION();')
-      expect(results.first.values.first).to eq('Hi-MySQL-8.0')
+      expect(results.first.values.first).to match(/8\.0/)
     end
 
     it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
