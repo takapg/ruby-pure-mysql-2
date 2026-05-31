@@ -8,7 +8,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+\-*/]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
+      if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
         return evaluate_math(col)
       end
 
@@ -47,8 +47,8 @@ module RubyPureMysql
     private
 
     def tokenize_math(col)
-      col.scan(%r{[-+]?\d*\.?\d+|[+\-*/]}).map do |t|
-        t.match?(/[+\-*/]/) && t.length == 1 ? t : t.to_f
+      col.scan(%r{[-+]?\d*\.?\d+|[+*/-]}).map do |t|
+        t.match?(/[+*/-]/) && t.length == 1 ? t : t.to_f
       end
     end
 
