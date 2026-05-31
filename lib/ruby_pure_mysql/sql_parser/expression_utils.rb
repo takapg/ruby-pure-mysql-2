@@ -3,6 +3,7 @@
 module RubyPureMysql
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
   module ExpressionUtils
+    MD_OPERATORS = %w[* /].freeze
     def tokenize_math(col)
       tokens = []
       col.scan(%r{[-+]?\d*\.?\d+|\w+\((?:[^()]*|\([^()]*\))*\)|[+*/-]}).each do |t|
@@ -52,6 +53,39 @@ module RubyPureMysql
 
     def comma_at_root?(char, depth)
       char == ',' && depth.zero?
+    end
+
+    def apply_multiplication_division(tokens)
+      index = 1
+      while index < tokens.size
+        if MD_OPERATORS.include?(tokens[index])
+          return nil if process_md_op!(tokens, index) == :div_by_zero
+        else
+          index += 1
+        end
+      end
+      tokens
+    end
+
+    def process_md_op!(tokens, index)
+      left = tokens[index - 1]
+      right = tokens[index + 1]
+      return :div_by_zero if tokens[index] == '/' && right.zero?
+
+      tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
+      tokens.slice!(index, 2)
+      :ok
+    end
+
+    def apply_addition_subtraction(tokens)
+      result = tokens[0]
+      i = 1
+      while i < tokens.size
+        op = tokens[i]
+        result = op == '+' ? result + tokens[i + 1] : result - tokens[i + 1]
+        i += 2
+      end
+      result
     end
   end
 end
