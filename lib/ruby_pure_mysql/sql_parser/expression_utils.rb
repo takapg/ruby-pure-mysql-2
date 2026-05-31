@@ -17,33 +17,33 @@ module RubyPureMysql
     end
 
     def split_args(args_str)
-      args = []
-      buf = +''
-      depth = 0
-
-      args_str.each_char do |c|
-        depth = adjust_depth(c, depth)
-        if comma_at_root?(c, depth)
-          args << buf.strip
-          buf = +''
-        else
-          buf << c
-        end
-      end
-      args << buf.strip unless buf.strip.empty?
-      args
+      state = { args: [], buf: +'', depth: 0 }
+      args_str.each_char { |char| update_state(state, char) }
+      state[:args] << state[:buf].strip unless state[:buf].strip.empty?
+      state[:args]
     end
 
     private
 
-    def adjust_depth(c, depth)
-      return depth + 1 if c == '('
-      return depth - 1 if c == ')' && depth.positive?
+    def update_state(state, char)
+      state[:depth] = adjust_depth(char, state[:depth])
+      if comma_at_root?(char, state[:depth])
+        state[:args] << state[:buf].strip
+        state[:buf] = +''
+      else
+        state[:buf] << char
+      end
+    end
+
+    def adjust_depth(char, depth)
+      return depth + 1 if char == '('
+      return depth - 1 if char == ')' && depth.positive?
+
       depth
     end
 
-    def comma_at_root?(c, depth)
-      c == ',' && depth.zero?
+    def comma_at_root?(char, depth)
+      char == ',' && depth.zero?
     end
   end
 end
