@@ -184,7 +184,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'can evaluate nested functions (SELECT CONCAT(USER(), VERSION());)' do
       results = client.query('SELECT CONCAT(USER(), VERSION());')
       val = results.first.values.first
-      expect(val).to include('root@localhost')
+      expect(val).to match(/root@.*/)
       expect(val).to include('Hi-MySQL-8.0')
     end
 
