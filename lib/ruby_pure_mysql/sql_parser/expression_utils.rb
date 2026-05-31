@@ -22,7 +22,7 @@ module RubyPureMysql
 
       return consume_function_call(col, start, idx) if idx < col.length && col[idx] == '('
 
-      :error
+      { token: token, next_i: idx }
     end
 
     def consume_function_call(col, start, idx)
@@ -168,6 +168,18 @@ module RubyPureMysql
 
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
+    def evaluate_string_literal(col)
+      content = col.match(/\A(['"])(.*?)\1\z/)[2]
+      content.gsub(/\\([nrt'"\\])/) do
+        case Regexp.last_match(1)
+        when 'n' then "\n"
+        when 'r' then "\r"
+        when 't' then "\t"
+        else Regexp.last_match(1)
+        end
+      end
+    end
+
     def split_args(args_str)
       state = { args: [], buf: +'', depth: 0, in_quote: nil }
       args_str.each_char { |char| update_state(state, char) }
@@ -193,12 +205,16 @@ module RubyPureMysql
 
       return nil if val.nil?
 
-      op == '-' ? -to_float_value(val) : to_float_value(val)
+      float_val = to_float_value(val)
+      return :error if float_val == :error
+
+      op == '-' ? -float_val : float_val
     end
 
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
+      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/)
       return token.to_f if token.match?(/\A[-+]?\d*\.?\d+\z/)
 
       :error
@@ -238,7 +254,14 @@ module RubyPureMysql
     end
 
     def to_float_value(val)
-      val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+      return val.to_f if val.is_a?(Numeric)
+      return :error if val.nil? || val == :error
+
+      if val.is_a?(String) && val.match?(/\A[-+]?\d*\.?\d+\z/)
+        val.to_f
+      else
+        :error
+      end
     end
 
     def update_state(state, char)
@@ -285,7 +308,9 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         if MD_OPERATORS.include?(tokens[index])
-          return nil if process_md_op!(tokens, index) == :div_by_zero
+          res = process_md_op!(tokens, index)
+          return nil if res == :div_by_zero
+          return :error if res == :error
         else
           index += 1
         end
@@ -299,6 +324,7 @@ module RubyPureMysql
 
       left = to_float_value(left_raw)
       right = to_float_value(right_raw)
+      return :error if left == :error || right == :error
       return :div_by_zero if op == '/' && right.zero?
 
       tokens[index - 1] = op == '*' ? left * right : left / right
@@ -319,6 +345,7 @@ module RubyPureMysql
         op = tokens[idx]
         val = tokens[idx + 1]
         result = calculate_sum_diff(result, op, val)
+        return :error if result == :error
         idx += 2
       end
       result
@@ -329,6 +356,8 @@ module RubyPureMysql
 
       left = to_float_value(result)
       right = to_float_value(value)
+      return :error if left == :error || right == :error
+
       operator == '+' ? left + right : left - right
     end
   end

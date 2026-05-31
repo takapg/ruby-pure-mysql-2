@@ -36,17 +36,6 @@ module RubyPureMysql
       end
     end
 
-    def evaluate_string_literal(col)
-      content = col.match(/\A(['"])(.*?)\1\z/)[2]
-      content.gsub(/\\([nrt'"\\])/) do
-        case Regexp.last_match(1)
-        when 'n' then "\n"
-        when 'r' then "\r"
-        when 't' then "\t"
-        else Regexp.last_match(1)
-        end
-      end
-    end
 
     def evaluate_math(col)
       has_float = col.include?('.')
