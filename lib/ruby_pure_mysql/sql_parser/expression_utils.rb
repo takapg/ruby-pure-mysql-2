@@ -321,7 +321,6 @@ module RubyPureMysql
 
       val.to_s.to_f
     end
-
   end
 
   # 算術演算の計算ロジックを提供するモジュール
