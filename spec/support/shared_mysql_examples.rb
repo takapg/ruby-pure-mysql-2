@@ -1524,7 +1524,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[2]['val']).to eq(30)
     end
 
-
     it 'deletes rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test_del;')
       client.query('CREATE TABLE offset_test_del (id INT, val INT);')
@@ -1538,7 +1537,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(2)
       expect(results.map { |r| r['id'] }).to eq([2, 3])
     end
-
 
     it 'updates multiple rows using OR in WHERE clause' do
       client.query('DROP TABLE IF EXISTS update_or_test;')
