@@ -87,6 +87,16 @@ module RubyPureMysql
       build_update_result(parts, updates)
     end
 
+    def apply_dml_limit_offset(result, limit, offset)
+      if offset
+        result[:offset] = limit.to_i
+        result[:limit] = offset.to_i
+      else
+        result[:offset] = 0
+        result[:limit] = limit&.to_i
+      end
+    end
+
     def build_update_result(parts, updates)
       res = {
         type: :update,
@@ -94,25 +104,21 @@ module RubyPureMysql
         updates: updates
       }
 
-      if parts[:offset]
-        res[:offset] = parts[:limit].to_i
-        res[:limit] = parts[:offset].to_i
-      else
-        res[:offset] = 0
-        res[:limit] = parts[:limit]&.to_i
-      end
-
+      apply_dml_limit_offset(res, parts[:limit], parts[:offset])
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
-      apply_update_where(res, parts[:where_clause])
+      apply_where_to_result(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
       if (match = query.match(UPDATE_REGEX))
-        { table_name: match[1], set_clause: match[2], where_clause: match[3], order_clause: match[4], limit: match[5], offset: match[6] }
+        {
+          table_name: match[1], set_clause: match[2], where_clause: match[3],
+          order_clause: match[4], limit: match[5], offset: match[6]
+        }
       end
     end
 
-    def apply_update_where(res, where_clause)
+    def apply_where_to_result(res, where_clause)
       return res unless where_clause
 
       where = parse_where_clause(where_clause)
@@ -138,24 +144,10 @@ module RubyPureMysql
       return { error: 'Invalid DELETE syntax' } unless match
 
       result = { type: :delete, table_name: strip_backticks(match[1]) }
-
-      limit_val = match[4]
-      offset_val = match[5]
-      if offset_val
-        result[:offset] = limit_val.to_i
-        result[:limit] = offset_val.to_i
-      else
-        result[:offset] = 0
-        result[:limit] = limit_val&.to_i
-      end
-
+      apply_dml_limit_offset(result, match[4], match[5])
       SqlParser.parse_order_by_clause(result, match[3]) if match[3]
-      return result unless match[2]
 
-      where = parse_where_clause(match[2])
-      return where if where.is_a?(Hash) && where[:error]
-
-      result.merge!(where: where)
+      apply_where_to_result(result, match[2])
     end
   end
 
