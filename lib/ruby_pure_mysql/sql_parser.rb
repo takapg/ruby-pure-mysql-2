@@ -322,7 +322,18 @@ module RubyPureMysql
     end
 
     def handle_where_char(clause, buffer, parts)
-      buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+      char = clause[buffer[:index]]
+      # MySQLのダブルクォートエスケープ ('') を処理
+      if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+        buffer[:current] << char
+        buffer[:index] += 1
+        # 次の文字（2つ目のクォート）も処理してインデックスを進める
+        buffer[:current] << clause[buffer[:index]]
+        buffer[:index] += 1
+        return
+      end
+
+      buffer[:in_quote] = update_quote_state(char, buffer[:index], clause, buffer[:in_quote])
       return process_normal_char(clause, buffer) if buffer[:in_quote]
 
       update_between_state(clause, buffer)
@@ -472,7 +483,11 @@ module RubyPureMysql
     def convert_value(val)
       # 強欲マッチに変更し、エスケープされたクォートを正しく扱う
       m = val.match(/\A(['"])(.*)\1\z/m)
-      return m[2] if m
+      if m
+        content = m[2]
+        # シングルクォート内の '' を ' に置換
+        return m[1] == "'" ? content.gsub("''", "'") : content
+      end
 
       if val.casecmp?('NULL')
         nil

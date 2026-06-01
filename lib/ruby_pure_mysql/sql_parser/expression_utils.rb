@@ -40,15 +40,6 @@ module RubyPureMysql
       (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||'
     end
 
-    def to_float_value(val)
-      return val.to_f if val.is_a?(Numeric)
-      return :error if val == :error
-      return nil if val.nil?
-
-      return :error if val.is_a?(String) && operator?(val)
-
-      val.to_s.to_f
-    end
 
     def scan_string(scanner)
       quote = scanner.getch
@@ -272,6 +263,22 @@ module RubyPureMysql
       [to_float_value(left), to_float_value(right)]
     end
 
+    def to_float_value(val)
+      return val.to_f if val.is_a?(Numeric)
+      return :error if val == :error
+      return nil if val.nil?
+
+      return :error if val.is_a?(String) && operator?(val)
+
+      # 括弧で囲まれている場合は再帰的に評価する
+      if val.is_a?(String) && val.start_with?('(') && val.end_with?(')')
+        evaluated = evaluate_expression(val)
+        return evaluated == :error ? :error : to_float_value(evaluated)
+      end
+
+      val.to_s.to_f
+    end
+
     def calculate_md(left, right, operator)
       return nil if left.nil? || right.nil?
 
@@ -424,7 +431,7 @@ module RubyPureMysql
             if char == '(' then depth += 1
             elsif char == ')' then depth -= 1
             elsif char == ',' && depth == 0
-              scanner.setp(start_pos + (scanner.pos - start_pos - 1))
+              scanner.pos = start_pos + (scanner.pos - start_pos - 1)
               break
             end
           end
