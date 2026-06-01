@@ -697,8 +697,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO mixed_distinct_test VALUES (NULL);')
       results = client.query('SELECT DISTINCT val FROM mixed_distinct_test;')
       values = results.map { |r| r['val'] }
-      expect(values).to include(nil)
-      expect(values.count(nil)).to eq(1)
+      expect(results.count).to eq(2)
+      expect(values).to contain_exactly('1', nil)
     end
 
     it 'combines SELECT DISTINCT with WHERE clause filtering NULLs' do
