@@ -1272,6 +1272,43 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'supports implicit aliases with backticks (SELECT 1 + 1 `total`;)' do
+      results = client.query('SELECT 1 + 1 `total`;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'does not treat the last word as an alias if the expression ends with an operator (SELECT 1 + total;)' do
+      # 'total' がカラムとして存在しない場合、式全体がカラム名となり、評価はエラーまたはNULLになる
+      # ここではカラム名が '1 + total' になっていることを確認する
+      results = client.query('SELECT 1 + total;')
+      expect(results.fields.first).to eq('1 + total')
+    end
+
+    it 'supports implicit aliases with string literals (SELECT "hello" alias;)' do
+      results = client.query('SELECT "hello" alias;')
+      expect(results.fields.first).to eq('alias')
+      expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'supports implicit aliases with parenthesized expressions (SELECT (1 + 1) total;)' do
+      results = client.query('SELECT (1 + 1) total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'supports NULL with an alias (SELECT NULL AS val;)' do
+      results = client.query('SELECT NULL AS val;')
+      expect(results.fields.first).to eq('val')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'supports parenthesized expressions with explicit aliases (SELECT (1 + 1) AS total;)' do
+      results = client.query('SELECT (1 + 1) AS total;')
+      expect(results.fields.first).to eq('total')
+      expect(results.first.values.first).to eq(2)
+    end
+
     it 'returns the expression as column name when no alias is provided (SELECT 1 + 1;)' do
       results = client.query('SELECT 1 + 1;')
       expect(results.fields.first).to eq('1 + 1')
