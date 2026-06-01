@@ -561,7 +561,7 @@ module RubyPureMysql
 
         res[:result]
       end
-      { result: rows, columns: state[:columns] }
+      { result: rows, columns: state[:columns], type: parts.size > 1 ? :union : nil }
     end
 
     def self.process_single_part(part, state, evaluator)
