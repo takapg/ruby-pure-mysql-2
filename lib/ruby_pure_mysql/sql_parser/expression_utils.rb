@@ -404,12 +404,35 @@ module RubyPureMysql
     end
 
     def split_args(args_str)
-      state = { args: [], buf: +'', depth: 0, in_quote: nil }
-      args_str.each_char { |char| update_state(state, char) }
-      return :error if state[:in_quote]
+      scanner = StringScanner.new(args_str)
+      args = []
+      until scanner.eos?
+        scanner.skip(/\s+/)
+        break if scanner.eos?
 
-      state[:args] << state[:buf].strip unless state[:buf].strip.empty?
-      state[:args]
+        if scanner.peek(1) == '('
+          res = scan_balanced_parens(scanner)
+          return :error if res == :error
+          args << res
+        elsif scanner.peek(1) == "'" || scanner.peek(1) == '"'
+          args << scan_string(scanner)
+        else
+          start_pos = scanner.pos
+          depth = 0
+          until scanner.eos?
+            char = scanner.getch
+            if char == '(' then depth += 1
+            elsif char == ')' then depth -= 1
+            elsif char == ',' && depth == 0
+              scanner.setp(start_pos + (scanner.pos - start_pos - 1))
+              break
+            end
+          end
+          args << scanner.string[start_pos...scanner.pos].strip
+        end
+        scanner.scan(/,/)
+      end
+      args
     end
 
     def process_math_token(token)

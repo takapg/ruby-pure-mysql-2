@@ -367,6 +367,10 @@ module RubyPureMysql
 
     def update_quote_state(char, index, clause, in_quote)
       if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
+        # MySQLのダブルクォートエスケープ ('') を処理: 次の文字も同じクォートならエスケープとみなす
+        if in_quote && clause[index + 1] == char
+          return in_quote
+        end
         return in_quote == char ? nil : char
       end
 
@@ -461,7 +465,8 @@ module RubyPureMysql
     end
 
     def split_insert_values(values_str)
-      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+      # MySQLのダブルクォートエスケープ ('') を考慮した正規表現に変更
+      values_str.scan(/(?:'(?:''|[^'])*'|"(?:""|[^"])*"|[^,])+/).map(&:strip)
     end
 
     def convert_value(val)
