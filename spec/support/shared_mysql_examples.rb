@@ -769,7 +769,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
       results = client.query('SELECT DISTINCT a, b FROM composite_distinct_test;')
       expect(results.count).to eq(4)
-      data = results.to_a.map { |r| r.values }
+      data = results.to_a.map(&:values)
       expect(data).to contain_exactly([1, nil], [nil, 1], [nil, nil], [1, 1])
     end
 
