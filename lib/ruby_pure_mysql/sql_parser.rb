@@ -564,7 +564,12 @@ module RubyPureMysql
         distinct_found ||= res[:distinct]
         res[:result]
       end
-      { result: rows, columns: state[:columns], type: parts.size > 1 ? (union_all ? :union_all : :union) : nil, distinct: distinct_found }
+      type = nil
+      if parts.size > 1
+        type = union_all ? :union_all : :union
+      end
+
+      { result: rows, columns: state[:columns], type: type, distinct: distinct_found }
     end
 
     def self.process_single_part(part, state, evaluator)

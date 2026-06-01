@@ -86,17 +86,16 @@ module RubyPureMysql
     def apply_distinct(rows)
       return rows unless rows
 
-      rows.uniq do |row|
-        row.map do |v|
-          if v.nil?
-            :null
-          elsif v.is_a?(String) && v.match?(/\A-?\d+(\.\d+)?\z/)
-            v.include?('.') ? v.to_f : v.to_i
-          else
-            v
-          end
-        end
-      end
+      rows.uniq { |row| row.map { |v| normalize_for_distinct(v) } }
+    end
+
+    private
+
+    def normalize_for_distinct(v)
+      return :null if v.nil?
+      return v.include?('.') ? v.to_f : v.to_i if v.is_a?(String) && v.match?(/\A-?\d+(\.\d+)?\z/)
+
+      v
     end
   end
 end
