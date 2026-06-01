@@ -84,21 +84,6 @@ module RubyPureMysql
 
     private
 
-    def match_row?(row, columns, where_clauses)
-      return true if where_clauses.nil? || where_clauses.empty?
-
-      where_clauses.all? { |clause| match_clause?(row, columns, clause) }
-    end
-
-    def match_clause?(row, columns, clause)
-      c_idx = clause[:col_idx] || columns.index(clause[:column])
-      return false unless c_idx
-
-      val = row[c_idx]
-
-      apply_filter(val, clause[:operator], clause[:value])
-    end
-
     def perform_update_rows(rows, columns, update_map, criteria)
       return if criteria[:limit]&.zero?
 
@@ -117,7 +102,9 @@ module RubyPureMysql
     end
 
     def get_target_indices(rows, columns, criteria)
-      indices = rows.each_index.select { |i| match_row?(rows[i], columns, criteria[:where]) }
+      indices = find_matching_indices(criteria[:client], rows, columns, criteria[:where], criteria[:table_map] || {})
+      return [] if indices.nil?
+
       indices = sort_indices(rows, indices, columns, criteria)
       criteria[:limit] ? indices.first(criteria[:limit]) : indices
     end

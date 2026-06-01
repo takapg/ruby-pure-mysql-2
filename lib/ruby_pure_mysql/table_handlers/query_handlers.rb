@@ -124,14 +124,10 @@ module RubyPureMysql
     end
 
     def filter_rows(client, columns, rows, where, table_map = {})
-      where_clauses = prepare_where_clauses(client, columns, where, table_map)
-      return nil if where_clauses.nil?
+      indices = find_matching_indices(client, rows, columns, where, table_map)
+      return nil if indices.nil?
 
-      rows.select do |row|
-        where_clauses.all? do |c|
-          apply_filter(row[c[:col_idx]], c[:operator], c[:value], c[:regex])
-        end
-      end
+      indices.map { |idx| rows[idx] }
     end
   end
 end

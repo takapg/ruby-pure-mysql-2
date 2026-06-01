@@ -31,6 +31,7 @@ module RubyPureMysql
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
+      # SqlParser は [ [AND_conds], [AND_conds] ] (OR の配列の中に AND の配列がある) 形式で返す
       # where_clauses がフラットな条件配列 [{...}] の場合は、グループの配列 [[{...}]] に変換する
       groups = where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
 
@@ -39,13 +40,14 @@ module RubyPureMysql
       end
       return nil if compiled_groups.any? { |g| g.nil? }
 
-      rows.each_with_index.select do |row, _idx|
+      rows.each_index.select do |idx|
+        row = rows[idx]
         compiled_groups.any? do |group|
           group.all? do |c|
             apply_filter(row[c[:col_idx]], c[:operator], c[:value], c[:regex])
           end
         end
-      end.map(&:last)
+      end
     end
 
     def apply_filter(val, operator, target_value, regex = nil)
