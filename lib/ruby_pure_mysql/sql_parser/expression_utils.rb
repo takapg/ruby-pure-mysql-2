@@ -44,10 +44,10 @@ module RubyPureMysql
 
       return char unless unary_operator?(char, tokens)
 
-      scan_unary_operator_body(scanner, char)
+      scan_unary_operator_body(scanner)
     end
 
-    def scan_unary_operator_body(scanner, char)
+    def scan_unary_operator_body(scanner)
       start_pos = scanner.pos - 1
       return scanner.string[start_pos...scanner.pos] if scan_unary_operand(scanner)
 
@@ -62,6 +62,10 @@ module RubyPureMysql
       scanner.skip(/\s+/)
       return false if scanner.eos?
 
+      consume_unary_token(scanner)
+    end
+
+    def consume_unary_token(scanner)
       case scanner.peek(1)
       when '('
         scan_balanced_parens(scanner)
