@@ -8,11 +8,29 @@ module RubyPureMysql
     def scan_balanced_parens(scanner)
       start_pos = scanner.pos
       depth = 0
+      quote = nil
       until scanner.eos?
         char = scanner.getch
-        depth += 1 if char == '('
-        depth -= 1 if char == ')'
-        break if depth.zero?
+        if quote
+          if char == quote
+            bs_count = 0
+            pos = scanner.pos - 2
+            while pos >= 0 && scanner.string[pos] == '\\'
+              bs_count += 1
+              pos -= 1
+            end
+            quote = nil if bs_count.even?
+          end
+        else
+          if ["'", '"'].include?(char)
+            quote = char
+          elsif char == '('
+            depth += 1
+          elsif char == ')'
+            depth -= 1
+            break if depth.zero?
+          end
+        end
       end
       return :error if depth != 0
 
