@@ -201,7 +201,7 @@ module RubyPureMysql
         scan_identifier_or_function(scanner)
       elsif scanner.scan(/\|\|/)
         '||'
-      elsif scanner.scan(/[-+*/%]/)
+      elsif scanner.scan(/[-+*\/%]/)
         char = scanner.string[scanner.pos - 1]
         scan_operator_with_char(scanner, tokens, char)
       elsif scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
