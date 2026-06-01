@@ -49,7 +49,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        return false unless perform_update_rows(@data[table_name], @tables[table_name], update_map, criteria)
+        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, criteria)
+
         true
       end
     end
@@ -86,7 +87,7 @@ module RubyPureMysql
 
     private
 
-    def perform_update_rows(rows, columns, update_map, criteria)
+    def perform_update_rows?(rows, columns, update_map, criteria)
       return true if criteria[:limit]&.zero?
 
       target_indices = get_target_indices(rows, columns, criteria)

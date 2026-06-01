@@ -63,7 +63,9 @@ module RubyPureMysql
     def handle_in_operator(val, target_value)
       return target_value.include?(val) unless val.is_a?(Numeric)
 
-      target_value.any? { |t| cast_to_numeric_for_comparison(t).is_a?(Numeric) && cast_to_numeric_for_comparison(t) == val }
+      target_value.any? do |t|
+        cast_to_numeric_for_comparison(t).is_a?(Numeric) && cast_to_numeric_for_comparison(t) == val
+      end
     end
 
     def handle_between_operator?(val, operator, target_value)

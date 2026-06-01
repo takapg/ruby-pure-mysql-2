@@ -18,7 +18,7 @@ module RubyPureMysql
 
       groups = normalize_where_groups(where)
       if compile_groups(client, columns, groups, table_map).nil?
-        send_err_packet(client, 1, "Unknown column in WHERE clause", 1054)
+        send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
         return false
       end
       where

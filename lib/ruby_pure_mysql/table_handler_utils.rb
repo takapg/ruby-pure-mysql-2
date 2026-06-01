@@ -36,7 +36,7 @@ module RubyPureMysql
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
       if compiled_groups.nil?
-        send_err_packet(client, 1, "Unknown column in WHERE clause", 1054)
+        send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
         return nil
       end
 
@@ -100,12 +100,17 @@ module RubyPureMysql
       num_cols = rows.first.size
       (0...num_cols).map do |col_idx|
         first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
-        case first_val
-        when Integer then :integer
-        when Float   then :float
-        when String  then :string
-        else nil
-        end
+        map_value_to_type(first_val)
+      end
+    end
+
+    private
+
+    def map_value_to_type(val)
+      case val
+      when Integer then :integer
+      when Float   then :float
+      when String  then :string
       end
     end
   end
