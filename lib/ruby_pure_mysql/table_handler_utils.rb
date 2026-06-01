@@ -51,6 +51,21 @@ module RubyPureMysql
       compiled.any?(&:nil?) ? nil : compiled
     end
 
+    def normalize_value_by_type(val, type)
+      return nil if val.nil?
+      return val if type.nil?
+
+      if type == Integer
+        val.is_a?(Numeric) ? val.to_i : val.to_s.to_i
+      elsif type == Float
+        val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
+      elsif type == String
+        val.to_s
+      else
+        val
+      end
+    end
+
     public
 
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
@@ -64,9 +79,19 @@ module RubyPureMysql
     end
 
     def apply_distinct(rows)
-      return rows unless rows
+      return rows if rows.nil? || rows.empty?
 
-      rows.uniq { |row| row.map { |val| normalize_for_distinct(val) } }
+      # 各カラムの基準型を、最初に見つかった非NULL値から決定する
+      base_types = (0...rows.first.size).map do |col_idx|
+        first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
+        first_val&.class
+      end
+
+      rows.uniq do |row|
+        row.each_with_index.map do |val, i|
+          normalize_value_by_type(val, base_types[i])
+        end
+      end
     end
   end
 end
