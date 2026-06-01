@@ -58,6 +58,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'returns NULL for zero divided by zero (SELECT 0/0;)' do
+      results = client.query('SELECT 0/0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for division by an expression that evaluates to zero (SELECT 1/(2-2);)' do
+      results = client.query('SELECT 1/(2-2);')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for modulo by zero (SELECT 1%0;)' do
+      results = client.query('SELECT 1%0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns a float for division even if the result is a whole number (SELECT 4/2;)' do
+      results = client.query('SELECT 4/2;')
+      expect(results.first.values.first).to eq(2.0)
+      expect(results.first.values.first).to be_a(Float)
+    end
+
     it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
       results = client.query('SELECT 1 + 2 * 3;')
       expect(results.first.values.first).to eq(7)

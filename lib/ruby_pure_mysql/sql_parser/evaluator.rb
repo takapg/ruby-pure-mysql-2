@@ -44,10 +44,13 @@ module RubyPureMysql
 
     def evaluate_math(col)
       has_float = col.match?(/\d+\.\d+|\d+\.|\.\d+|[eE][+-]?\d+/)
+      has_div = col.include?('/')
       result = process_math_tokens(col)
       return result if result == :error || result.nil?
 
-      result == result.to_i && !has_float ? result.to_i : result
+      # MySQL 8.0: 除算結果は常に浮動小数点数となる。
+      # 結果が整数で、かつ浮動小数点リテラルが含まれず、除算も行われていない場合のみ Integer を返す。
+      result == result.to_i && !has_float && !has_div ? result.to_i : result
     end
 
     def process_math_tokens(col)
