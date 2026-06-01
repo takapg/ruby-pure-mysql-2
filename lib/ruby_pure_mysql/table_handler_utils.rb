@@ -87,17 +87,7 @@ module RubyPureMysql
       return rows unless rows
 
       rows.uniq do |row|
-        row.map do |v|
-          if v.nil?
-            :null
-          elsif v.is_a?(Numeric)
-            v.to_f
-          elsif v.is_a?(String) && v.match?(/\A-?\d+(\.\d+)?\z/)
-            v.to_f
-          else
-            v
-          end
-        end
+        row.map { |v| v.nil? ? :null : v.to_s }
       end
     end
   end
