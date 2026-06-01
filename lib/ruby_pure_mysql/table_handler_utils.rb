@@ -92,7 +92,7 @@ module RubyPureMysql
     private
 
     def normalize_for_distinct(value)
-      value.nil? ? :null : value
+      value.nil? ? :null : value.to_s
     end
   end
 end
