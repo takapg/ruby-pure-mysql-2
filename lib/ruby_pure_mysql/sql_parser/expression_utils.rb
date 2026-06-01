@@ -188,32 +188,41 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
-      char = scanner.peek(1)
-      return :error if char.nil?
-
-      if char == '('
+      if scanner.scan(/\(/)
+        # scanで消費してしまったので、scan_balanced_parensの内部で
+        # 最初の '(' を考慮した処理が必要だが、現状のscan_balanced_parensは
+        # 内部で getch しているため、ここでは peek を使うか、
+        # scan_balanced_parens を修正する必要がある。
+        # 安全のため、ここだけ peek に戻し、条件一致時のみ scan する。
+        scanner.pos -= 1
         scan_balanced_parens(scanner)
-      elsif char =~ /[a-zA-Z_]/
+      elsif scanner.scan(/[a-zA-Z_]/)
+        scanner.pos -= 1
         scan_identifier_or_function(scanner)
-      elsif char == '|'
-        handle_pipe_operator(scanner)
-      elsif char =~ /[-+*/%]/
-        scan_operator(scanner, tokens)
-      elsif char =~ /[\d.]/
-        scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
-      elsif char =~ /['"]/
+      elsif scanner.scan(/\|\|/)
+        '||'
+      elsif scanner.scan(/[-+*/%]/)
+        char = scanner.string[scanner.pos - 1]
+        scan_operator_with_char(scanner, tokens, char)
+      elsif scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
+        scanner.matched
+      elsif scanner.scan(/['"]/)
+        scanner.pos -= 1
         scan_string(scanner)
       else
         :error
       end
     end
 
+    def scan_operator_with_char(scanner, tokens, char)
+      return char unless unary_operator?(char, tokens)
+      scan_unary_operator_body(scanner)
+    end
+
+    # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
+    # このメソッドは不要になりますが、互換性のために残すか削除します。
     def handle_pipe_operator(scanner)
-      if scanner.scan(/\|\|/)
-        '||'
-      else
-        :error
-      end
+      scanner.scan(/\|\|/) ? '||' : :error
     end
 
     def process_tokens(tokens)
@@ -489,15 +498,17 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
-      # 文字列リテラルの判定を厳格化
-      if token.match?(/\A(['"])(.*?)\1\z/m)
+      # 文字列リテラルの判定を極めて厳格化
+      # 1. クォートで囲まれていること
+      # 2. 内部にエスケープされていないクォートが含まれていないこと
+      if token.match?(/\A(['"])(.*)\1\z/m)
         quote = token[0]
         content = token[1...-1]
-        # 内部にエスケープされていない同じクォートが存在する場合、それは単一の文字列リテラルではない
-        # (例: "hello" || " world" はマッチするが、内部に " があるため除外される)
-        unless content.gsub(/\\./, '').include?(quote)
-          return evaluate_string_literal(token)
+        # エスケープを除去した状態で、同じクォートが含まれていれば、それは単一のリテラルではない
+        if content.gsub(/\\./, '').include?(quote)
+          return :error
         end
+        return evaluate_string_literal(token)
       end
 
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
