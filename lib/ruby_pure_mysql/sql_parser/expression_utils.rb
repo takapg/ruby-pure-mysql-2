@@ -37,7 +37,7 @@ module RubyPureMysql
     end
 
     def operator?(token)
-      token.match?(%r{[+*/%-]}) && token.length == 1
+      (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||'
     end
 
     def to_float_value(val)
@@ -306,6 +306,8 @@ module RubyPureMysql
       while i < tokens.size
         op = tokens[i]
         val = tokens[i + 1]
+        return nil if result.nil? || val.nil?
+
         result = "#{result}#{val}"
         i += 2
       end
