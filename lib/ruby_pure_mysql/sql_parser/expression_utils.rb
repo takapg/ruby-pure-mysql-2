@@ -168,7 +168,13 @@ module RubyPureMysql
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     def evaluate_string_literal(col)
-      content = col.match(/\A(['"])(.*?)\1\z/)[2]
+      match = col.match(/\A(['"])(.*?)\1\z/)
+      return nil unless match
+      quote, content = match[1], match[2]
+
+      # MySQL allows escaping single quotes by doubling them ('')
+      content = content.gsub("''", "'") if quote == "'"
+
       content.gsub(/\\([nrt'"\\])/) do
         case Regexp.last_match(1)
         when 'n' then "\n"
@@ -267,7 +273,16 @@ module RubyPureMysql
 
     def update_quote_and_depth(state, char)
       if state[:in_quote]
-        state[:in_quote] = nil if char == state[:in_quote] && state[:buf][-1] != '\\'
+        if char == state[:in_quote]
+          # Count trailing backslashes to check if the quote is escaped
+          bs_count = 0
+          pos = state[:buf].length - 1
+          while pos >= 0 && state[:buf][pos] == '\\'
+            bs_count += 1
+            pos -= 1
+          end
+          state[:in_quote] = nil if bs_count.even?
+        end
       elsif ["'", '"'].include?(char)
         state[:in_quote] = char
       else

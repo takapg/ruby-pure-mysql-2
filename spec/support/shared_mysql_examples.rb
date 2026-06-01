@@ -130,6 +130,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq("It's a test")
     end
 
+    it 'handles escaped backslashes in strings (SELECT "C:\\";)' do
+      results = client.query('SELECT "C:\\";')
+      expect(results.first.values.first).to eq('C:\')
+    end
+
+    it 'handles doubled single quotes (SELECT \'It\'\'s a test\';)' do
+      results = client.query("SELECT 'It''s a test';")
+      expect(results.first.values.first).to eq("It's a test")
+    end
+
     it 'returns nil for SELECT NULL;' do
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil
@@ -186,6 +196,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       val = results.first.values.first
       expect(val).to match(/root@.*/)
       expect(val).to match(/8\.0/)
+    end
+
+    it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
+      results = client.query('SELECT (1 + 2) * 3;')
+      expect(results.first.values.first).to eq(9)
     end
 
     it 'returns an error for invalid syntax (missing closing parenthesis)' do
