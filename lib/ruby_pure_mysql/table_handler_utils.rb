@@ -7,6 +7,7 @@ require_relative 'join_utils'
 require_relative 'projection_utils'
 require_relative 'having_utils'
 require_relative 'sort_utils'
+require_relative 'filter_evaluator'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
@@ -18,6 +19,7 @@ module RubyPureMysql
     include ProjectionUtils
     include HavingUtils
     include SortUtils
+    include FilterEvaluator
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -31,64 +33,25 @@ module RubyPureMysql
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
-      # SqlParser は [ [AND_conds], [AND_conds] ] (OR の配列の中に AND の配列がある) 形式で返す
-      # where_clauses がフラットな条件配列 [{...}] の場合は、グループの配列 [[{...}]] に変換する
-      groups = where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
-
-      compiled_groups = groups.map do |group|
-        compile_where_clauses(client, table_columns, group, table_map)
-      end
-      return nil if compiled_groups.any?(&:nil?)
+      groups = normalize_where_groups(where_clauses)
+      compiled_groups = compile_groups(client, table_columns, groups, table_map)
+      return nil if compiled_groups.nil?
 
       rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
-    def apply_filter(val, operator, target_value, regex = nil)
-      return val.nil? if operator == 'IS NULL'
-      return !val.nil? if operator == 'IS NOT NULL'
-      return false if val.nil? && operator != 'IS NULL'
+    private
 
-      # regex が提供されている場合は優先的に使用 (LIKE, REGEXP用)
-      return regex.match?(val.to_s) if regex.is_a?(Regexp)
-
-      compare_value(val, operator, target_value)
-    rescue StandardError
-      false
+    def normalize_where_groups(where_clauses)
+      where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
     end
 
-    def compare_value(val, operator, target_value)
-      case operator
-      when 'LIKE' then match_pattern?(val, target_value, :like)
-      when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
-      when 'IN'
-        handle_in_operator(val, target_value)
-      when 'BETWEEN', 'NOT BETWEEN'
-        handle_between_operator(val, operator, target_value)
-      when '='
-        v1, v2 = normalize_for_comparison(val, target_value)
-        v1 == v2
-      when '!=', '<>'
-        v1, v2 = normalize_for_comparison(val, target_value)
-        v1 != v2
-      else
-        v1, v2 = normalize_for_comparison(val, target_value)
-        begin
-          v1.public_send(operator.to_sym, v2)
-        rescue StandardError
-          false
-        end
-      end
+    def compile_groups(client, table_columns, groups, table_map)
+      compiled = groups.map { |group| compile_where_clauses(client, table_columns, group, table_map) }
+      compiled.any?(&:nil?) ? nil : compiled
     end
 
-    def match_pattern?(val, target, type)
-      return target.match?(val.to_s) if target.is_a?(Regexp)
-
-      (type == :like ? build_like_regex(target) : Regexp.new(target.to_s, Regexp::IGNORECASE)).match?(val.to_s)
-    end
-
-    def match_between?(val, operator, target)
-      operator == 'BETWEEN' ? val.between?(*target) : !val.between?(*target)
-    end
+    public
 
     def get_group_column_indices(client, columns, group_by_str, table_map = {})
       group_by_str.split(',').map do |col_name|
@@ -106,58 +69,5 @@ module RubyPureMysql
       rows.uniq { |row| row.map { |val| normalize_for_distinct(val) } }
     end
 
-    private
-
-    def row_matches_compiled_groups?(row, compiled_groups)
-      compiled_groups.any? do |group|
-        group.all? do |c|
-          apply_filter(row[c[:col_idx]], c[:operator], c[:value], c[:regex])
-        end
-      end
-    end
-
-    def handle_in_operator(val, target_value)
-      return target_value.include?(val) unless val.is_a?(Numeric)
-
-      target_value.any? { |t| cast_to_numeric(t).is_a?(Numeric) && cast_to_numeric(t) == val }
-    end
-
-    def handle_between_operator(val, operator, target_value)
-      if val.is_a?(Numeric)
-        normalized_target = target_value.map { |t| cast_to_numeric(t) }
-        return false if normalized_target.any? { |t| !t.is_a?(Numeric) }
-
-        begin
-          return match_between?(val, operator, normalized_target)
-        rescue StandardError
-          return false
-        end
-      end
-      match_between?(val, operator, target_value)
-    end
-
-    def normalize_for_distinct(value)
-      value.nil? ? :null : value.to_s
-    end
-
-    def normalize_for_comparison(val1, val2)
-      return [val1, val2] if val1.nil? || val2.nil?
-      return [val1, val2] unless val1.is_a?(Numeric) || val2.is_a?(Numeric)
-
-      n1 = cast_to_numeric(val1)
-      n2 = cast_to_numeric(val2)
-      n1.is_a?(Numeric) && n2.is_a?(Numeric) ? [n1, n2] : [val1, val2]
-    end
-
-    def cast_to_numeric(val)
-      return val if val.is_a?(Numeric)
-      return nil if val.nil?
-
-      begin
-        Float(val)
-      rescue StandardError
-        val
-      end
-    end
   end
 end
