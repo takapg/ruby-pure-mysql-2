@@ -154,6 +154,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(3.5)
     end
 
+    it 'can calculate 1 + 2 * 3 and returns 7 (Integer)' do
+      results = client.query('SELECT 1 + 2 * 3;')
+      val = results.first.values.first
+      expect(val).to eq(7)
+      expect(val).to be_a(Integer)
+    end
+
+    it 'can calculate (10 - 2) * 3 and returns 24 (Integer)' do
+      results = client.query('SELECT (10 - 2) * 3;')
+      val = results.first.values.first
+      expect(val).to eq(24)
+      expect(val).to be_a(Integer)
+    end
+
+    it 'can calculate 100 + 100.5 and returns 200.5 (Float)' do
+      results = client.query('SELECT 100 + 100.5;')
+      val = results.first.values.first
+      expect(val).to eq(200.5)
+      expect(val).to be_a(Float)
+    end
+
     it 'can handle very large numeric operations (SELECT 1000000 * 1000000;)' do
       results = client.query('SELECT 1000000 * 1000000;')
       expect(results.first.values.first).to eq(1_000_000_000_000)
