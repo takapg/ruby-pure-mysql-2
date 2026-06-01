@@ -803,6 +803,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # 結果として 1 行になる。互換性テストとしてこの挙動に合わせる。
       expect(results.count).to eq(1)
     end
+
+    it 'treats 1.0 and 1 as identical in SELECT DISTINCT' do
+      results = client.query('SELECT DISTINCT 1.0 UNION SELECT DISTINCT 1;')
+      expect(results.count).to eq(1)
+    end
+
+    it 'treats "1.0" and 1 as identical in SELECT DISTINCT' do
+      results = client.query('SELECT DISTINCT "1.0" UNION SELECT DISTINCT 1;')
+      expect(results.count).to eq(1)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do

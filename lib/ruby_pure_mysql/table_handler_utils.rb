@@ -42,6 +42,16 @@ module RubyPureMysql
 
     private
 
+    def normalize_for_distinct(val)
+      return nil if val.nil?
+
+      if val.is_a?(Numeric) || (val.is_a?(String) && val.match?(/\A-?\d+(\.\d+)?\z/))
+        val.to_f.to_s
+      else
+        val
+      end
+    end
+
     def normalize_where_groups(where_clauses)
       where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
     end
