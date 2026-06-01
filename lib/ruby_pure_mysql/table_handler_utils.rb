@@ -43,7 +43,6 @@ module RubyPureMysql
       rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
-
     def apply_distinct(rows)
       return rows if rows.nil? || rows.empty?
 
