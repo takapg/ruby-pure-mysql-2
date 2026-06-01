@@ -334,9 +334,7 @@ module RubyPureMysql
 
           tokens[index - 1] = calculate_sum_diff(left, op, right)
           tokens.slice!(index, 2)
-          # index はそのまま（次のトークンをチェック）
-        elsif op == '||'
-          index += 1
+          # 配列が短くなったため index はそのまま
         else
           index += 1
         end
@@ -347,9 +345,6 @@ module RubyPureMysql
     def apply_string_concatenation(tokens)
       return nil if tokens.empty?
 
-      # 演算子が一つもない場合は、最初の要素を返す
-      return tokens[0] unless tokens.include?('||')
-
       result = tokens[0]
       i = 1
       while i < tokens.size
@@ -358,12 +353,13 @@ module RubyPureMysql
           val = tokens[i + 1]
           return nil if val.nil?
 
-          # 左辺がnilの場合は空文字として扱う
           left_val = result.nil? ? '' : format_for_concat(result)
           right_val = format_for_concat(val)
           result = "#{left_val}#{right_val}"
           i += 2
         else
+          # 結合演算子以外のトークン（数値など）が残っている場合は、
+          # それを結果に含めるのではなく、単にスキップして次の演算子を探す
           i += 1
         end
       end
