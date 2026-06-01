@@ -41,17 +41,18 @@ module RubyPureMysql
     end
 
     def resolve_md_operands(left, right)
-      [to_float_value(left), to_float_value(right)]
+      [resolve_numeric_value(left), resolve_numeric_value(right)]
     end
 
-    def to_float_value(val)
-      return val.to_f if val.is_a?(Numeric)
+    def resolve_numeric_value(val)
+      return val if val.is_a?(Numeric)
       return val if %i[error nil].include?(val)
 
       return :error if string_operator?(val)
-      return evaluate_parenthesized_float(val) if parenthesized_string?(val)
+      return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
-      val.to_s.to_f
+      str = val.to_s
+      str.match?(/\A-?\d+\z/) ? str.to_i : str.to_f
     end
 
     def string_operator?(val)
@@ -62,9 +63,9 @@ module RubyPureMysql
       val.is_a?(String) && val.start_with?('(') && val.end_with?(')')
     end
 
-    def evaluate_parenthesized_float(val)
+    def evaluate_parenthesized_numeric(val)
       evaluated = evaluate_expression(val)
-      evaluated == :error ? :error : to_float_value(evaluated)
+      evaluated == :error ? :error : resolve_numeric_value(evaluated)
     end
 
     def calculate_md(left, right, operator)
@@ -72,7 +73,7 @@ module RubyPureMysql
 
       case operator
       when '*' then left * right
-      when '/' then left / right
+      when '/' then left.to_f / right
       when '%' then left % right
       end
     end
@@ -100,8 +101,8 @@ module RubyPureMysql
       right_raw = tokens[index + 1]
       return :error if left_raw.nil? || right_raw.nil?
 
-      left = to_float_value(left_raw)
-      right = to_float_value(right_raw)
+      left = resolve_numeric_value(left_raw)
+      right = resolve_numeric_value(right_raw)
       return :error if left == :error || right == :error
 
       tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
