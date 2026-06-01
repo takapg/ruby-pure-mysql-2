@@ -39,7 +39,7 @@ module RubyPureMysql
       \AUPDATE\s+(`[^`]+`|\w+)\s+SET\s+(.+?)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?
+      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+))?)?
       \s*;?\s*\z
     /ix
 
@@ -47,7 +47,7 @@ module RubyPureMysql
       \ADELETE\s+FROM\s+(`[^`]+`|\w+)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?)?
+      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+))?)?
       \s*;?\s*\z
     /ix
 
@@ -91,10 +91,17 @@ module RubyPureMysql
       res = {
         type: :update,
         table_name: strip_backticks(parts[:table_name]),
-        updates: updates,
-        limit: parts[:limit]&.to_i,
-        offset: parts[:offset]&.to_i
+        updates: updates
       }
+
+      if parts[:offset]
+        res[:offset] = parts[:limit].to_i
+        res[:limit] = parts[:offset].to_i
+      else
+        res[:offset] = 0
+        res[:limit] = parts[:limit]&.to_i
+      end
+
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_update_where(res, parts[:where_clause])
     end
@@ -130,7 +137,18 @@ module RubyPureMysql
       match = query.match(DELETE_REGEX)
       return { error: 'Invalid DELETE syntax' } unless match
 
-      result = { type: :delete, table_name: strip_backticks(match[1]), limit: match[4]&.to_i, offset: match[5]&.to_i }
+      result = { type: :delete, table_name: strip_backticks(match[1]) }
+
+      limit_val = match[4]
+      offset_val = match[5]
+      if offset_val
+        result[:offset] = limit_val.to_i
+        result[:limit] = offset_val.to_i
+      else
+        result[:offset] = 0
+        result[:limit] = limit_val&.to_i
+      end
+
       SqlParser.parse_order_by_clause(result, match[3]) if match[3]
       return result unless match[2]
 

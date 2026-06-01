@@ -1515,12 +1515,13 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO offset_test VALUES (2, 20);')
       client.query('INSERT INTO offset_test VALUES (3, 30);')
 
-      # 2番目の行から1件更新
-      client.query('UPDATE offset_test SET val = 99 ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      # 2番目の行から1件更新 (MySQLのUPDATE/DELETEでは LIMIT offset, count 構文を使用)
+      client.query('UPDATE offset_test SET val = 99 ORDER BY id ASC LIMIT 1, 1;')
       results = client.query('SELECT id, val FROM offset_test ORDER BY id ASC;')
-      expect(results[1]['val']).to eq(99)
-      expect(results[0]['val']).to eq(10)
-      expect(results[2]['val']).to eq(30)
+      rows = results.to_a
+      expect(rows[1]['val']).to eq(99)
+      expect(rows[0]['val']).to eq(10)
+      expect(rows[2]['val']).to eq(30)
     end
 
     it 'deletes rows with LIMIT and OFFSET' do
@@ -1530,8 +1531,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO offset_test_del VALUES (2, 20);')
       client.query('INSERT INTO offset_test_del VALUES (3, 30);')
 
-      # 2番目の行から1件削除
-      client.query('DELETE FROM offset_test_del ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      # 2番目の行から1件削除 (MySQLのUPDATE/DELETEでは LIMIT offset, count 構文を使用)
+      client.query('DELETE FROM offset_test_del ORDER BY id ASC LIMIT 1, 1;')
       results = client.query('SELECT id FROM offset_test_del ORDER BY id ASC;')
       expect(results.count).to eq(2)
       expect(results.map { |r| r['id'] }).to eq([1, 3])
