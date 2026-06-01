@@ -41,8 +41,10 @@ module RubyPureMysql
       val_a = row_a[cond[:index]]
       val_b = row_b[cond[:index]]
 
-      res = (val_a.nil? ? 0 : 1) <=> (val_b.nil? ? 0 : 1)
-      return res unless res.zero?
+      if val_a.nil? || val_b.nil?
+        return 0 if val_a.nil? && val_b.nil?
+        return val_a.nil? ? -1 : 1
+      end
 
       begin
         (val_a <=> val_b) || 0
