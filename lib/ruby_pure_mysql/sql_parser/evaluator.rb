@@ -44,6 +44,13 @@ module RubyPureMysql
 
     def evaluate_math(col)
       has_float = col.include?('.')
+      result = process_math_tokens(col)
+      return result if result == :error || result.nil?
+
+      result == result.to_i && !has_float ? result.to_i : result
+    end
+
+    def process_math_tokens(col)
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
@@ -51,12 +58,7 @@ module RubyPureMysql
       return :error if tokens == :error
       return nil if tokens.nil?
 
-      result = apply_addition_subtraction(tokens)
-      return :error if result == :error
-
-      return nil if result.nil?
-
-      result == result.to_i && !has_float ? result.to_i : result
+      apply_addition_subtraction(tokens)
     end
 
     private

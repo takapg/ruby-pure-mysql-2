@@ -6,16 +6,22 @@ module RubyPureMysql
   # 引用符と括弧のバランス状態を管理する共通ロジック
   module BalancedStateUtils
     def calculate_next_state(char, quote, depth, escaped)
-      if quote
-        return [quote == char && !escaped ? nil : quote, depth]
-      end
+      return handle_quote_state(char, quote, depth, escaped) if quote
 
+      handle_bracket_state(char, depth)
+    end
+
+    def handle_quote_state(char, quote, depth, escaped)
+      [quote == char && !escaped ? nil : quote, depth]
+    end
+
+    def handle_bracket_state(char, depth)
       if ["'", '"'].include?(char)
         [char, depth]
       elsif char == '('
         [nil, depth + 1]
       elsif char == ')'
-        [nil, depth > 0 ? depth - 1 : 0]
+        [nil, depth.positive? ? depth - 1 : 0]
       else
         [nil, depth]
       end
