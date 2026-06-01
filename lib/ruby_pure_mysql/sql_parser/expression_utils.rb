@@ -165,16 +165,70 @@ module RubyPureMysql
     end
   end
 
+  # 式の状態管理を支援するモジュール
+  module ExpressionStateHelper
+    def update_state(state, char)
+      update_quote_and_depth(state, char)
+      handle_buffer(state, char)
+    end
+
+    def update_quote_and_depth(state, char)
+      if state[:in_quote]
+        state[:in_quote] = nil if char == state[:in_quote] && !quote_escaped?(state)
+      elsif ["'", '"'].include?(char)
+        state[:in_quote] = char
+      else
+        state[:depth] = adjust_depth(char, state[:depth])
+      end
+    end
+
+    def quote_escaped?(state)
+      bs_count = 0
+      pos = state[:buf].length - 1
+      while pos >= 0 && state[:buf][pos] == '\\'
+        bs_count += 1
+        pos -= 1
+      end
+      bs_count.odd?
+    end
+
+    def handle_buffer(state, char)
+      if comma_at_root?(char, state[:depth]) && state[:in_quote].nil?
+        state[:args] << state[:buf].strip
+        state[:buf] = +''
+      else
+        state[:buf] << char
+      end
+    end
+
+    def adjust_depth(char, depth)
+      return depth + 1 if char == '('
+      return depth - 1 if char == ')' && depth.positive?
+
+      depth
+    end
+
+    def comma_at_root?(char, depth)
+      char == ',' && depth.zero?
+    end
+  end
+
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
+    include ExpressionStateHelper
+
     def evaluate_string_literal(col)
       match = col.match(/\A(['"])(.*?)\1\z/)
       return nil unless match
-      quote, content = match[1], match[2]
 
-      # MySQL allows escaping single quotes by doubling them ('')
+      quote = match[1]
+      content = match[2]
+
       content = content.gsub("''", "'") if quote == "'"
+      unescape_string_content(content)
+    end
 
+    def unescape_string_content(content)
       content.gsub(/\\([nrt'"\\])/) do
         case Regexp.last_match(1)
         when 'n' then "\n"
@@ -268,49 +322,6 @@ module RubyPureMysql
       val.to_s.to_f
     end
 
-    def update_state(state, char)
-      update_quote_and_depth(state, char)
-      handle_buffer(state, char)
-    end
-
-    def update_quote_and_depth(state, char)
-      if state[:in_quote]
-        if char == state[:in_quote]
-          # Count trailing backslashes to check if the quote is escaped
-          bs_count = 0
-          pos = state[:buf].length - 1
-          while pos >= 0 && state[:buf][pos] == '\\'
-            bs_count += 1
-            pos -= 1
-          end
-          state[:in_quote] = nil if bs_count.even?
-        end
-      elsif ["'", '"'].include?(char)
-        state[:in_quote] = char
-      else
-        state[:depth] = adjust_depth(char, state[:depth])
-      end
-    end
-
-    def handle_buffer(state, char)
-      if comma_at_root?(char, state[:depth]) && state[:in_quote].nil?
-        state[:args] << state[:buf].strip
-        state[:buf] = +''
-      else
-        state[:buf] << char
-      end
-    end
-
-    def adjust_depth(char, depth)
-      return depth + 1 if char == '('
-      return depth - 1 if char == ')' && depth.positive?
-
-      depth
-    end
-
-    def comma_at_root?(char, depth)
-      char == ',' && depth.zero?
-    end
   end
 
   # 算術演算の計算ロジックを提供するモジュール
