@@ -23,7 +23,7 @@ module RubyPureMysql
       left = tokens[index - 1]
       right = tokens[index + 1]
 
-      tokens[index - 1] = (left.nil? || right.nil?) ? nil : "#{format_for_concat(left)}#{format_for_concat(right)}"
+      tokens[index - 1] = left.nil? || right.nil? ? nil : "#{format_for_concat(left)}#{format_for_concat(right)}"
       tokens.slice!(index, 2)
     end
   end
