@@ -43,15 +43,6 @@ module RubyPureMysql
       rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
-    def get_group_column_indices(client, columns, group_by_str, table_map = {})
-      group_by_str.split(',').map do |col_name|
-        name = col_name.strip
-        idx = get_column_index(client, columns, name, table_map)
-        return nil unless idx
-
-        idx
-      end
-    end
 
     def apply_distinct(rows)
       return rows if rows.nil? || rows.empty?
