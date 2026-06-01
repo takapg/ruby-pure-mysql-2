@@ -39,17 +39,19 @@ module RubyPureMysql
       rows.each_with_index.select do |row, _idx|
         compiled_groups.any? do |group|
           group.all? do |c|
-            target = c[:regex] || c[:value]
-            apply_filter(row[c[:col_idx]], c[:operator], target)
+            apply_filter(row[c[:col_idx]], c[:operator], c[:value], c[:regex])
           end
         end
       end.map(&:last)
     end
 
-    def apply_filter(val, operator, target_value)
+    def apply_filter(val, operator, target_value, regex = nil)
       return val.nil? if operator == 'IS NULL'
       return !val.nil? if operator == 'IS NOT NULL'
-      return false if val.nil?
+      return false if val.nil? && operator != 'IS NULL'
+
+      # regex が提供されている場合は優先的に使用 (LIKE, REGEXP用)
+      return regex.match?(val.to_s) if regex.is_a?(Regexp)
 
       compare_value(val, operator, target_value)
     rescue StandardError
@@ -60,10 +62,13 @@ module RubyPureMysql
       case operator
       when 'LIKE' then match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
-      when 'IN' then val.nil? ? false : target_value.include?(val)
+      when 'IN' then target_value.include?(val)
       when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
+      when '=' then val == target_value
+      when '!=', '<>' then val != target_value
       else
-        val.public_send(operator == '=' ? :== : operator.to_sym, target_value)
+        # 比較演算子 (>, <, >=, <=) の場合は Ruby のメソッドとして呼べる
+        val.public_send(operator.to_sym, target_value)
       end
     end
 

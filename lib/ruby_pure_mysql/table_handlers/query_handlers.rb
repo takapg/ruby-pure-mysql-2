@@ -129,8 +129,7 @@ module RubyPureMysql
 
       rows.select do |row|
         where_clauses.all? do |c|
-          target = c[:regex] || c[:value]
-          apply_filter(row[c[:col_idx]], c[:operator], target)
+          apply_filter(row[c[:col_idx]], c[:operator], c[:value], c[:regex])
         end
       end
     end
