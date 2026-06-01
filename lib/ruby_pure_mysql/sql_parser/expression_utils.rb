@@ -1,109 +1,17 @@
 # frozen_string_literal: true
 
 require 'strscan'
+require_relative 'expression_common'
+require_relative 'expression_scanner_utils'
+require_relative 'expression_math_calculator'
+require_relative 'expression_string_calculator'
+require_relative 'expression_arg_splitter'
 
 module RubyPureMysql
-  # 式解析の共通ユーティリティ
-  module ExpressionCommon
-    def count_backslashes(string, pos)
-      count = 0
-      while pos >= 0 && string[pos] == '\\'
-        count += 1
-        pos -= 1
-      end
-      count
-    end
-
-    def calculate_next_state(char, quote, depth, escaped)
-      return handle_quote_state(char, quote, depth, escaped) if quote
-
-      handle_bracket_state(char, depth)
-    end
-
-    def handle_quote_state(char, quote, depth, escaped)
-      [quote == char && !escaped ? nil : quote, depth]
-    end
-
-    def handle_bracket_state(char, depth)
-      if ["'", '"'].include?(char)
-        [char, depth]
-      elsif char == '('
-        [nil, depth + 1]
-      elsif char == ')'
-        [nil, depth.positive? ? depth - 1 : 0]
-      else
-        [nil, depth]
-      end
-    end
-
-    def operator?(token)
-      token.match?(%r{[+*/%-]}) && token.length == 1
-    end
-
-    def to_float_value(val)
-      return val.to_f if val.is_a?(Numeric)
-      return :error if val == :error
-      return nil if val.nil?
-
-      return :error if val.is_a?(String) && operator?(val)
-
-      val.to_s.to_f
-    end
-
-    def scan_string(scanner)
-      quote = scanner.getch
-      start_pos = scanner.pos - 1
-      until scanner.eos?
-        break if scanner.peek(1) == quote && count_backslashes(scanner.string, scanner.pos - 1).even?
-
-        scanner.getch
-      end
-      scanner.getch unless scanner.eos?
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def scan_balanced_parens(scanner)
-      start_pos = scanner.pos
-      depth = 0
-      quote = nil
-      until scanner.eos?
-        char = scanner.getch
-        quote, depth = update_balanced_state(char, quote, depth, scanner)
-        break if depth.zero? && char == ')'
-      end
-      return :error if depth != 0
-
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def update_balanced_state(char, quote, depth, scanner)
-      escaped = count_backslashes(scanner.string, scanner.pos - 2).odd?
-      calculate_next_state(char, quote, depth, escaped)
-    end
-
-    def scan_identifier_or_function(scanner)
-      token = scanner.scan(/[a-zA-Z0-9_]+/)
-      return nil unless token
-
-      return token if token.casecmp?('NULL')
-
-      return scan_function_body(scanner, token) if scanner.peek(1) == '('
-
-      token
-    end
-
-    def scan_function_body(scanner, token)
-      start_pos = scanner.pos - token.length
-      res = scan_balanced_parens(scanner)
-      return :error if res == :error
-
-      scanner.string[start_pos...scanner.pos]
-    end
-  end
-
   # 単項演算子のスキャン処理を提供するモジュール
   module ExpressionUnaryScanner
     include ExpressionCommon
+    include ExpressionScannerUtils
 
     def scan_unary_operator_body(scanner)
       start_pos = scanner.pos - 1
@@ -163,6 +71,7 @@ module RubyPureMysql
   # 式のトークナイズ処理を提供するモジュール
   module ExpressionTokenizer
     include ExpressionCommon
+    include ExpressionScannerUtils
     include ExpressionUnaryScanner
 
     def scan_operator(scanner, tokens)
@@ -189,14 +98,49 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
-      case scanner.peek(1)
-      when '(' then scan_balanced_parens(scanner)
-      when /[a-zA-Z_]/ then scan_identifier_or_function(scanner)
-      when %r{[-+*/%]} then scan_operator(scanner, tokens)
-      when /[\d.]/ then scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
-      when /['"]/ then scan_string(scanner)
-      else :error
-      end
+      scan_token_by_type(scanner, tokens)
+    end
+
+    def scan_token_by_type(scanner, tokens)
+      return scan_paren_token(scanner) if scanner.scan('(')
+      return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
+      return '||' if scanner.scan('||')
+      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
+      return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
+      return scan_str_token(scanner) if scanner.scan(/['"]/)
+
+      :error
+    end
+
+    def scan_paren_token(scanner)
+      scanner.pos -= 1
+      scan_balanced_parens(scanner)
+    end
+
+    def scan_id_token(scanner)
+      scanner.pos -= 1
+      scan_identifier_or_function(scanner)
+    end
+
+    def scan_op_token(scanner, tokens)
+      scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
+    end
+
+    def scan_str_token(scanner)
+      scanner.pos -= 1
+      scan_string(scanner)
+    end
+
+    def scan_operator_with_char(scanner, tokens, char)
+      return char unless unary_operator?(char, tokens)
+
+      scan_unary_operator_body(scanner)
+    end
+
+    # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
+    # このメソッドは不要になりますが、互換性のために残すか削除します。
+    def handle_pipe_operator(scanner)
+      scanner.scan('||') ? '||' : :error
     end
 
     def process_tokens(tokens)
@@ -211,94 +155,12 @@ module RubyPureMysql
     end
   end
 
-  # 算術演算の計算ロジックを提供するモジュール
-  module ExpressionCalculator
-    include ExpressionCommon
-
-    MD_OPERATORS = %w[* / %].freeze
-
-    def apply_multiplication_division(tokens)
-      index = 1
-      while index < tokens.size
-        res = process_md_if_operator(tokens, index)
-        return nil if res == :div_by_zero
-        return :error if res == :error
-
-        index += 1 if res == :ok
-      end
-      tokens
-    end
-
-    def process_md_if_operator(tokens, index)
-      if MD_OPERATORS.include?(tokens[index])
-        res = process_md_op!(tokens, index)
-        return res == :ok ? :performed : res
-      end
-      :ok
-    end
-
-    def process_md_op!(tokens, index)
-      left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
-
-      left, right = resolve_md_operands(left_raw, right_raw)
-      return :error if left == :error || right == :error
-      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
-
-      tokens[index - 1] = calculate_md(left, right, operator)
-      tokens.slice!(index, 2)
-      :ok
-    end
-
-    def resolve_md_operands(left, right)
-      [to_float_value(left), to_float_value(right)]
-    end
-
-    def calculate_md(left, right, operator)
-      return nil if left.nil? || right.nil?
-
-      case operator
-      when '*' then left * right
-      when '/' then left / right
-      when '%' then left % right
-      end
-    end
-
-    def handle_missing_operand(tokens, index)
-      tokens[index - 1] = nil
-      tokens.slice!(index, 2)
-      :ok
-    end
-
-    def apply_addition_subtraction(tokens)
-      result = tokens[0]
-      idx = 1
-      while idx < tokens.size
-        op = tokens[idx]
-        val = tokens[idx + 1]
-        result = calculate_sum_diff(result, op, val)
-        return :error if result == :error
-
-        idx += 2
-      end
-      result
-    end
-
-    def calculate_sum_diff(result, operator, value)
-      return nil if result.nil? || value.nil?
-
-      left = to_float_value(result)
-      right = to_float_value(value)
-      return :error if left == :error || right == :error
-
-      operator == '+' ? left + right : left - right
-    end
-  end
-
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     include ExpressionCommon
-    include ExpressionCalculator
+    include ExpressionMathCalculator
+    include ExpressionStringCalculator
+    include ExpressionArgSplitter
 
     def update_state(state, char)
       update_quote_and_depth(state, char)
@@ -328,7 +190,8 @@ module RubyPureMysql
     end
 
     def evaluate_string_literal(col)
-      match = col.match(/\A(['"])(.*?)\1\z/)
+      # 強欲マッチに変更し、末尾のクォートまで正しくマッチさせる
+      match = col.match(/\A(['"])(.*)\1\z/m)
       return nil unless match
 
       quote = match[1]
@@ -336,26 +199,6 @@ module RubyPureMysql
 
       content = content.gsub("''", "'") if quote == "'"
       unescape_string_content(content)
-    end
-
-    def unescape_string_content(content)
-      content.gsub(/\\([nrt'"\\])/) do
-        case Regexp.last_match(1)
-        when 'n' then "\n"
-        when 'r' then "\r"
-        when 't' then "\t"
-        else Regexp.last_match(1)
-        end
-      end
-    end
-
-    def split_args(args_str)
-      state = { args: [], buf: +'', depth: 0, in_quote: nil }
-      args_str.each_char { |char| update_state(state, char) }
-      return :error if state[:in_quote]
-
-      state[:args] << state[:buf].strip unless state[:buf].strip.empty?
-      state[:args]
     end
 
     def process_math_token(token)
@@ -385,7 +228,8 @@ module RubyPureMysql
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
-      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/)
+
+      return evaluate_string_literal(token) if string_literal?(token)
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
@@ -424,7 +268,11 @@ module RubyPureMysql
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
   module ExpressionUtils
     include ExpressionCommon
+    include ExpressionScannerUtils
     include ExpressionTokenizer
+    include ExpressionMathCalculator
+    include ExpressionStringCalculator
+    include ExpressionArgSplitter
     include ExpressionEvaluator
   end
 end

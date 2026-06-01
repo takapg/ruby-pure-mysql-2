@@ -322,9 +322,26 @@ module RubyPureMysql
     end
 
     def handle_where_char(clause, buffer, parts)
-      buffer[:in_quote] = update_quote_state(clause[buffer[:index]], buffer[:index], clause, buffer[:in_quote])
+      char = clause[buffer[:index]]
+      return if quote_escaped?(clause, buffer, char)
+
+      buffer[:in_quote] = update_quote_state(char, buffer[:index], clause, buffer[:in_quote])
       return process_normal_char(clause, buffer) if buffer[:in_quote]
 
+      process_where_logic(clause, buffer, parts)
+    end
+
+    def quote_escaped?(clause, buffer, char)
+      return false unless buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+
+      buffer[:current] << char
+      buffer[:index] += 1
+      buffer[:current] << clause[buffer[:index]]
+      buffer[:index] += 1
+      true
+    end
+
+    def process_where_logic(clause, buffer, parts)
       update_between_state(clause, buffer)
       return if handle_and_operator?(clause, buffer, parts)
 
@@ -366,11 +383,11 @@ module RubyPureMysql
     end
 
     def update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
-        return in_quote == char ? nil : char
-      end
+      return in_quote unless quote_char?(char) && not_escaped?(clause, index) && compatible_quote?(char, in_quote)
 
-      in_quote
+      return in_quote if escaped_quote?(clause, index, char, in_quote)
+
+      in_quote == char ? nil : char
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
@@ -380,26 +397,6 @@ module RubyPureMysql
       return res if res
 
       parse_standard_where_condition(condition, column_pattern)
-    end
-
-    def parse_is_null_condition(condition, column_pattern)
-      m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
-      if m
-        operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
-        return { column: m[1], operator: operator, value: nil }
-      end
-
-      nil
-    end
-
-    def parse_standard_where_condition(condition, column_pattern)
-      res = parse_between_condition(condition, column_pattern)
-      return res if res
-
-      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
-      return { error: 'Invalid WHERE clause' } unless where_match
-
-      build_standard_condition(where_match)
     end
 
     def parse_between_condition(condition, column_pattern)
@@ -431,6 +428,40 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    def parse_is_null_condition(condition, column_pattern)
+      m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
+      return nil unless m
+
+      operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
+      { column: m[1], operator: operator, value: nil }
+    end
+
+    def parse_standard_where_condition(condition, column_pattern)
+      res = parse_between_condition(condition, column_pattern)
+      return res if res
+
+      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      return { error: 'Invalid WHERE clause' } unless where_match
+
+      build_standard_condition(where_match)
+    end
+
+    def quote_char?(char)
+      ["'", '"'].include?(char)
+    end
+
+    def not_escaped?(clause, index)
+      index.zero? || clause[index - 1] != '\\'
+    end
+
+    def compatible_quote?(char, in_quote)
+      in_quote.nil? || in_quote == char
+    end
+
+    def escaped_quote?(clause, index, char, in_quote)
+      in_quote && clause[index + 1] == char
+    end
+
     def strip_backticks(str)
       str.delete_prefix('`').delete_suffix('`')
     end
@@ -461,20 +492,20 @@ module RubyPureMysql
     end
 
     def split_insert_values(values_str)
-      values_str.scan(/(?:'[^']*'|"[^"]*"|[^,])+/).map(&:strip)
+      # MySQLのダブルクォートエスケープ ('') を考慮した正規表現に変更
+      values_str.scan(/(?:'(?:''|[^'])*'|"(?:""|[^"])*"|[^,])+/).map(&:strip)
     end
 
     def convert_value(val)
-      m = val.match(/\A(['"])(.*?)\1\z/)
-      return m[2] if m
-
-      if val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
+      if (m = val.match(/\A(['"])(.*)\1\z/m))
+        content = m[2]
+        return m[1] == "'" ? content.gsub("''", "'") : content
       end
+
+      return nil if val.casecmp?('NULL')
+      return val.to_i if val.match?(/\A-?\d+\z/)
+
+      { error: "Invalid INSERT value: #{val}" }
     end
   end
 

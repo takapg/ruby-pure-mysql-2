@@ -8,18 +8,49 @@ module RubyPureMysql
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
+
+      # 外側の括弧が式全体を囲んでいる場合は剥離して再帰的に評価する
+      col = col[1...-1].strip while fully_parenthesized?(col)
+
       return evaluate_system_variable(col) if col.start_with?('@@')
-      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
       return evaluate_function(col) if single_function_call?(col)
 
       evaluate_math(col)
     end
 
-    def evaluate_system_variable(col)
-      {
-        '@@version_comment' => 'ruby-pure-mysql-2',
-        '@@max_allowed_packet' => 67_108_864
-      }.fetch(col.downcase, :error)
+    def fully_parenthesized?(col)
+      return false unless col.start_with?('(') && col.end_with?(')')
+
+      depth = 0
+      quote = nil
+      col.each_char.with_index do |char, index|
+        quote, depth = update_paren_state(char, index, col, quote, depth)
+        return false if depth.zero? && index < col.length - 1 && char == ')'
+      end
+      depth.zero?
+    end
+
+    def update_paren_state(char, index, col, quote, depth)
+      return handle_quote_paren_state(char, index, col, quote, depth) if quote
+
+      handle_bracket_paren_state(char, depth)
+    end
+
+    def handle_quote_paren_state(char, index, col, quote, depth)
+      new_quote = quote == char && (index.zero? || col[index - 1] != '\\') ? nil : quote
+      [new_quote, depth]
+    end
+
+    def handle_bracket_paren_state(char, depth)
+      if ["'", '"'].include?(char)
+        [char, depth]
+      elsif char == '('
+        [nil, depth + 1]
+      elsif char == ')'
+        [nil, depth.positive? ? depth - 1 : 0]
+      else
+        [nil, depth]
+      end
     end
 
     def evaluate_function(col)
@@ -32,16 +63,6 @@ module RubyPureMysql
       call_builtin_function(match[1].downcase, args)
     end
 
-    def call_builtin_function(name, args)
-      case name
-      when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
-      when 'user' then 'root@localhost'
-      when 'version' then 'Hi-MySQL-8.0'
-      when 'concat' then args.join
-      else :error
-      end
-    end
-
     def evaluate_math(col)
       has_float = col.match?(/\d+\.\d+|\d+\.|\.\d+|[eE][+-]?\d+/)
       has_div = col.include?('/')
@@ -50,18 +71,26 @@ module RubyPureMysql
 
       # MySQL 8.0: 除算結果は常に浮動小数点数となる。
       # 結果が整数で、かつ浮動小数点リテラルが含まれず、除算も行われていない場合のみ Integer を返す。
-      result == result.to_i && !has_float && !has_div ? result.to_i : result
+      if result.is_a?(Numeric) && result == result.to_i && !has_float && !has_div
+        result.to_i
+      else
+        result
+      end
     end
 
     def process_math_tokens(col)
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
+      # 優先順位: 乗除算 -> 加減算 -> 文字列結合
       tokens = apply_multiplication_division(tokens)
       return :error if tokens == :error
       return nil if tokens.nil?
 
-      apply_addition_subtraction(tokens)
+      tokens = apply_addition_subtraction(tokens)
+      return :error if tokens == :error
+
+      apply_string_concatenation(tokens)
     end
 
     private

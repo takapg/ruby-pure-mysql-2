@@ -11,6 +11,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     )
   end
 
+  before do
+    client.query("SET SESSION sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT'))")
+  rescue StandardError
+    nil
+  end
+
   after do
     client&.close
   rescue StandardError
@@ -89,6 +95,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'can calculate complex arithmetic (SELECT 10 - 2 * 3 + 4 / 2;)' do
       results = client.query('SELECT 10 - 2 * 3 + 4 / 2;')
       expect(results.first.values.first).to eq(6)
+    end
+
+    it 'can calculate complex arithmetic with mixed operators (SELECT 1 + 2 * 3 - 4 / 2;)' do
+      results = client.query('SELECT 1 + 2 * 3 - 4 / 2;')
+      expect(results.first.values.first).to eq(5.0)
+    end
+
+    it 'can evaluate constant expressions in UNION (SELECT 1 + 1 UNION SELECT 2 + 2;)' do
+      results = client.query('SELECT 1 + 1 UNION SELECT 2 + 2;')
+      expect(results.to_a.map { |r| r.values.first }).to eq([2, 4])
+    end
+
+    it 'returns NULL for division by zero in any SELECT pattern (SELECT 1/0;)' do
+      results = client.query('SELECT 1/0;')
+      expect(results.first.values.first).to be_nil
     end
 
     it 'returns an error for invalid arithmetic (SELECT 1 + * 2;)' do
@@ -245,6 +266,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       val = results.first.values.first
       expect(val).to match(/root@.*/)
       expect(val).to match(/8\.0/)
+    end
+
+    it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
+      # NOW() returns a string, which to_f converts to a number (e.g. 2026.0)
+      # 1 + 2026.0 = 2027.0
+      results = client.query('SELECT 1 + NOW();')
+      expect(results.first.values.first).to be_a(Numeric)
+    end
+
+    it 'can evaluate string concatenation using || (SELECT "hello" || " world";)' do
+      results = client.query('SELECT "hello" || " world";')
+      expect(results.first.values.first).to eq('hello world')
+    end
+
+    it 'can evaluate mixed arithmetic and concatenation (SELECT (1 + 1) || " is two";)' do
+      results = client.query('SELECT (1 + 1) || " is two";')
+      expect(results.first.values.first).to eq('2 is two')
+    end
+
+    it 'can evaluate CONCAT with arithmetic (SELECT CONCAT("Result: ", 1 + 1);)' do
+      results = client.query('SELECT CONCAT("Result: ", 1 + 1);')
+      expect(results.first.values.first).to eq('Result: 2')
     end
 
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
