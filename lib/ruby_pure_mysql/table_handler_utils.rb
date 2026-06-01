@@ -31,11 +31,15 @@ module RubyPureMysql
     end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
-      return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
+      return (0...rows.size).to_a if where_clauses.nil?
+      return [] if where_clauses.empty?
 
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
-      return [] if compiled_groups.nil?
+      if compiled_groups.nil?
+        send_err_packet(client, 1, "Unknown column in WHERE clause", 1054)
+        return nil
+      end
 
       rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end

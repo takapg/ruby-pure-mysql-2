@@ -63,7 +63,7 @@ module RubyPureMysql
       return unless columns
 
       where_clauses = prepare_where_clauses(client, columns, result[:where])
-      return unless where_clauses
+      return if where_clauses == false
 
       update_map = build_update_map(client, columns, result[:updates])
       if update_map.is_a?(Hash) && update_map.key?(:error)
@@ -96,7 +96,7 @@ module RubyPureMysql
       return unless columns
 
       where_clauses = prepare_where_clauses(client, columns, result[:where])
-      return unless where_clauses
+      return if where_clauses == false
 
       criteria = { where: where_clauses, limit: result[:limit], order: result[:order], client: client }
       if @storage_engine.delete_rows_with_where(result[:table_name], criteria)
