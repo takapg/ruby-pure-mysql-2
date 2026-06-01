@@ -87,7 +87,7 @@ module RubyPureMysql
       return rows unless rows
 
       rows.uniq do |row|
-        key = String.new
+        key = +""
         row.each do |v|
           key << (v.nil? ? "\x00" : v.to_s)
           key << "\x01"
