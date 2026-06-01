@@ -48,6 +48,7 @@ module RubyPureMysql
       return :error if tokens == :error
 
       tokens = apply_multiplication_division(tokens)
+      return :error if tokens == :error
       return nil if tokens.nil?
 
       result = apply_addition_subtraction(tokens)
