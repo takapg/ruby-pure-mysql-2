@@ -560,6 +560,7 @@ module RubyPureMysql
       rows = parts.map do |part|
         res = process_single_part(part, state, evaluator)
         return res if res.key?(:error)
+
         distinct_found ||= res[:distinct]
         res[:result]
       end
@@ -569,6 +570,7 @@ module RubyPureMysql
 
     def self.determine_union_type(size, union_all)
       return nil if size <= 1
+
       union_all ? :union_all : :union
     end
 
