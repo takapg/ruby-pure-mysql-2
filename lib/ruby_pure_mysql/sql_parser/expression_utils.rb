@@ -8,7 +8,11 @@ module RubyPureMysql
     def format_for_concat(val)
       return '' if val.nil?
 
-      val.is_a?(Numeric) ? (val == val.to_i ? val.to_i.to_s : val.to_s) : val.to_s
+      if val.is_a?(Numeric)
+        val == val.to_i ? val.to_i.to_s : val.to_s
+      else
+        val.to_s
+      end
     end
 
     def calculate_sum_diff(left, operator, right)
@@ -429,8 +433,6 @@ module RubyPureMysql
       tokens[index - 1] = "#{format_for_concat(left_raw)}#{format_for_concat(right_raw)}"
       tokens.slice!(index, 2)
     end
-
-
   end
 
   # 式の評価ロジックを提供するモジュール
@@ -476,7 +478,6 @@ module RubyPureMysql
       content = content.gsub("''", "'") if quote == "'"
       unescape_string_content(content)
     end
-
 
     def split_args(args_str)
       return [] if args_str.nil? || args_str.strip.empty?
@@ -551,7 +552,6 @@ module RubyPureMysql
 
       :error
     end
-
 
     def evaluate_string_literal_token(token)
       evaluate_string_literal(token)
