@@ -68,6 +68,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(6)
     end
 
+    it 'returns an error for invalid arithmetic (SELECT 1 + * 2;)' do
+      expect do
+        client.query('SELECT 1 + * 2;')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'can return a simple negative integer (SELECT -1;)' do
       results = client.query('SELECT -1;')
       expect(results.first.values.first).to eq(-1)
@@ -130,6 +136,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq("It's a test")
     end
 
+    it 'handles escaped backslashes in strings (SELECT "C:\\";)' do
+      results = client.query('SELECT "C:\\\\";')
+      expect(results.first.values.first).to eq('C:\\')
+    end
+
+    it 'handles doubled single quotes (SELECT \'It\'\'s a test\';)' do
+      results = client.query("SELECT 'It''s a test';")
+      expect(results.first.values.first).to eq("It's a test")
+    end
+
     it 'returns nil for SELECT NULL;' do
       results = client.query('SELECT NULL;')
       expect(results.first.values.first).to be_nil
@@ -154,6 +170,49 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT @@version_comment;')
       expect(results.first.values.first).to be_a(String)
       expect(results.fields.first).to eq('@@version_comment')
+    end
+  end
+
+  describe 'Built-in Functions support' do
+    it 'returns current time for SELECT NOW();' do
+      results = client.query('SELECT NOW();')
+      val = results.first.values.first
+      expect(val.to_s).to match(/\A\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
+    end
+
+    it 'returns current user for SELECT USER();' do
+      results = client.query('SELECT USER();')
+      expect(results.first.values.first).to match(/.*@.*/)
+    end
+
+    it 'returns server version for SELECT VERSION();' do
+      results = client.query('SELECT VERSION();')
+      expect(results.first.values.first).to match(/8\.0/)
+    end
+
+    it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
+      # NOW() returns a string, which to_f converts to a number (e.g. 2026.0)
+      # 1 + 2026.0 = 2027.0
+      results = client.query('SELECT 1 + NOW();')
+      expect(results.first.values.first).to be_a(Numeric)
+    end
+
+    it 'can evaluate nested functions (SELECT CONCAT(USER(), VERSION());)' do
+      results = client.query('SELECT CONCAT(USER(), VERSION());')
+      val = results.first.values.first
+      expect(val).to match(/root@.*/)
+      expect(val).to match(/8\.0/)
+    end
+
+    it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
+      results = client.query('SELECT (1 + 2) * 3;')
+      expect(results.first.values.first).to eq(9)
+    end
+
+    it 'returns an error for invalid syntax (missing closing parenthesis)' do
+      expect do
+        client.query('SELECT NOW(;')
+      end.to raise_error(Mysql2::Error)
     end
   end
 

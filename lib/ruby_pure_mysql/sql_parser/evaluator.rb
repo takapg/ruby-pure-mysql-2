@@ -3,88 +3,90 @@
 module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
-    MD_OPERATORS = %w[* /].freeze
+    include ExpressionUtils
 
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
-      return evaluate_math(col) if %r{\A\s*[-+]?(\d+\.?\d*|\.\d+)(\s*[+*/-]\s*[-+]?(\d+\.?\d*|\.\d+))*\s*\z}.match?(col)
+      return evaluate_function(col) if single_function_call?(col)
 
-      :error
+      evaluate_math(col)
     end
 
     def evaluate_system_variable(col)
-      case col.downcase
-      when '@@version_comment' then 'ruby-pure-mysql-2'
-      when '@@max_allowed_packet' then 67_108_864
-      else :error
-      end
+      {
+        '@@version_comment' => 'ruby-pure-mysql-2',
+        '@@max_allowed_packet' => 67_108_864
+      }.fetch(col.downcase, :error)
     end
 
-    def evaluate_string_literal(col)
-      content = col.match(/\A(['"])(.*?)\1\z/)[2]
-      content.gsub(/\\([nrt'"\\])/) do
-        case Regexp.last_match(1)
-        when 'n' then "\n"
-        when 'r' then "\r"
-        when 't' then "\t"
-        else Regexp.last_match(1)
-        end
+    def evaluate_function(col)
+      match = col.match(/\A(\w+)\s*\((.*)\)\z/)
+      return :error unless match
+
+      args = evaluate_function_args(match[2])
+      return :error if args == :error
+
+      call_builtin_function(match[1].downcase, args)
+    end
+
+    def call_builtin_function(name, args)
+      case name
+      when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      when 'user' then 'root@localhost'
+      when 'version' then 'Hi-MySQL-8.0'
+      when 'concat' then args.join
+      else :error
       end
     end
 
     def evaluate_math(col)
       has_float = col.include?('.')
-      tokens = tokenize_math(col)
-      tokens = apply_multiplication_division(tokens)
-      return nil if tokens.nil?
-
-      result = apply_addition_subtraction(tokens)
+      result = process_math_tokens(col)
+      return result if result == :error || result.nil?
 
       result == result.to_i && !has_float ? result.to_i : result
     end
 
+    def process_math_tokens(col)
+      tokens = tokenize_math(col)
+      return :error if tokens == :error
+
+      tokens = apply_multiplication_division(tokens)
+      return :error if tokens == :error
+      return nil if tokens.nil?
+
+      apply_addition_subtraction(tokens)
+    end
+
     private
 
-    def tokenize_math(col)
-      col.scan(%r{[-+]?\d*\.?\d+|[+*/-]}).map do |t|
-        t.match?(%r{[+*/-]}) && t.length == 1 ? t : t.to_f
+    def single_function_call?(col)
+      return false unless col.match?(/\A\w+\s*\(.*\)\z/)
+
+      depth = 0
+      first_paren_idx = col.index('(')
+      return false if first_paren_idx.nil?
+
+      col[first_paren_idx..].each_char do |char|
+        depth += 1 if char == '('
+        depth -= 1 if char == ')'
+        return false if depth.negative?
       end
+      depth.zero?
     end
 
-    def apply_multiplication_division(tokens)
-      index = 1
-      while index < tokens.size
-        if MD_OPERATORS.include?(tokens[index])
-          return nil if process_md_op!(tokens, index) == :div_by_zero
-        else
-          index += 1
-        end
+    def evaluate_function_args(args_str)
+      return [] if args_str.strip.empty?
+
+      split_args(args_str).map do |arg|
+        val = evaluate_expression(arg)
+        return :error if val == :error
+
+        val
       end
-      tokens
-    end
-
-    def process_md_op!(tokens, index)
-      left = tokens[index - 1]
-      right = tokens[index + 1]
-      return :div_by_zero if tokens[index] == '/' && right.zero?
-
-      tokens[index - 1] = tokens[index] == '*' ? left * right : left / right
-      tokens.slice!(index, 2)
-      :ok
-    end
-
-    def apply_addition_subtraction(tokens)
-      result = tokens[0]
-      i = 1
-      while i < tokens.size
-        op = tokens[i]
-        result = op == '+' ? result + tokens[i + 1] : result - tokens[i + 1]
-        i += 2
-      end
-      result
     end
   end
 end
