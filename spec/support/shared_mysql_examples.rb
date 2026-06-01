@@ -675,6 +675,43 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query("SELECT DISTINCT name FROM distinct_test WHERE name = 'non_existent';")
       expect(results.count).to eq(0)
     end
+
+    it 'returns only one NULL when multiple NULLs are present in SELECT DISTINCT' do
+      client.query('DROP TABLE IF EXISTS null_distinct_test;')
+      client.query('CREATE TABLE null_distinct_test (val INT);')
+      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
+      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
+      client.query('INSERT INTO null_distinct_test VALUES (1);')
+      results = client.query('SELECT DISTINCT val FROM null_distinct_test;')
+      expect(results.count).to eq(2)
+      values = results.map { |r| r['val'] }
+      expect(values).to contain_exactly(nil, 1)
+    end
+
+    it 'handles SELECT DISTINCT with mixed types (Integer, String, NULL)' do
+      client.query('DROP TABLE IF EXISTS mixed_distinct_test;')
+      client.query('CREATE TABLE mixed_distinct_test (val VARCHAR(255));')
+      client.query("INSERT INTO mixed_distinct_test VALUES ('1');")
+      client.query("INSERT INTO mixed_distinct_test VALUES (1);")
+      client.query("INSERT INTO mixed_distinct_test VALUES (NULL);")
+      client.query("INSERT INTO mixed_distinct_test VALUES (NULL);")
+      results = client.query('SELECT DISTINCT val FROM mixed_distinct_test;')
+      values = results.map { |r| r['val'] }
+      expect(values).to include(nil)
+      expect(values.count(nil)).to eq(1)
+    end
+
+    it 'combines SELECT DISTINCT with WHERE clause filtering NULLs' do
+      client.query('DROP TABLE IF EXISTS where_distinct_test;')
+      client.query('CREATE TABLE where_distinct_test (val INT);')
+      client.query('INSERT INTO where_distinct_test VALUES (1);')
+      client.query('INSERT INTO where_distinct_test VALUES (1);')
+      client.query('INSERT INTO where_distinct_test VALUES (NULL);')
+      client.query('INSERT INTO where_distinct_test VALUES (NULL);')
+      results = client.query('SELECT DISTINCT val FROM where_distinct_test WHERE val IS NOT NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to eq(1)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do
