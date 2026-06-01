@@ -67,31 +67,31 @@ module RubyPureMysql
 
     def consume_unary_token(scanner)
       case scanner.peek(1)
-      when '(' then consume_unary_parens(scanner)
-      when /[a-zA-Z_]/ then consume_unary_id_func(scanner)
-      when /[\d.]/ then consume_unary_numeric(scanner)
-      when /['"]/ then consume_unary_string(scanner)
+      when '(' then consume_unary_parens?(scanner)
+      when /[a-zA-Z_]/ then consume_unary_id_func?(scanner)
+      when /[\d.]/ then consume_unary_numeric?(scanner)
+      when /['"]/ then consume_unary_string?(scanner)
       when /[-+]/ then scan_recursive_unary(scanner)
       else false
       end
     end
 
-    def consume_unary_parens(scanner)
+    def consume_unary_parens?(scanner)
       scan_balanced_parens(scanner)
       true
     end
 
-    def consume_unary_id_func(scanner)
+    def consume_unary_id_func?(scanner)
       scan_identifier_or_function(scanner)
       true
     end
 
-    def consume_unary_numeric(scanner)
+    def consume_unary_numeric?(scanner)
       scanner.scan(/[\d.]+/)
       true
     end
 
-    def consume_unary_string(scanner)
+    def consume_unary_string?(scanner)
       scan_string(scanner)
       true
     end
