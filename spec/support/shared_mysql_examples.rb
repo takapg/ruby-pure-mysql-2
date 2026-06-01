@@ -12,7 +12,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
   end
 
   before do
-    client.query("SET SESSION sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT'))") rescue nil
+    client.query("SET SESSION sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT'))")
+  rescue StandardError
+    nil
   end
 
   after do

@@ -195,7 +195,7 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
-      if scanner.scan(/\(/)
+      if scanner.scan('(')
         # scanで消費してしまったので、scan_balanced_parensの内部で
         # 最初の '(' を考慮した処理が必要だが、現状のscan_balanced_parensは
         # 内部で getch しているため、ここでは peek を使うか、
@@ -206,9 +206,9 @@ module RubyPureMysql
       elsif scanner.scan(/[a-zA-Z_]/)
         scanner.pos -= 1
         scan_identifier_or_function(scanner)
-      elsif scanner.scan(/\|\|/)
+      elsif scanner.scan('||')
         '||'
-      elsif scanner.scan(/[-+*\/%]/)
+      elsif scanner.scan(%r{[-+*/%]})
         char = scanner.string[scanner.pos - 1]
         scan_operator_with_char(scanner, tokens, char)
       elsif scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
@@ -229,7 +229,7 @@ module RubyPureMysql
     # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
     # このメソッドは不要になりますが、互換性のために残すか削除します。
     def handle_pipe_operator(scanner)
-      scanner.scan(/\|\|/) ? '||' : :error
+      scanner.scan('||') ? '||' : :error
     end
 
     def process_tokens(tokens)
@@ -323,7 +323,7 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         op = tokens[index]
-        if op == '+' || op == '-'
+        if ['+', '-'].include?(op)
           left_raw = tokens[index - 1]
           right_raw = tokens[index + 1]
           return :error if left_raw.nil? || right_raw.nil?
@@ -447,9 +447,7 @@ module RubyPureMysql
 
       args_str.each_char.with_index do |char, i|
         if quote
-          if char == quote && (i == 0 || args_str[i - 1] != '\\')
-            quote = nil
-          end
+          quote = nil if char == quote && (i.zero? || args_str[i - 1] != '\\')
           current_arg << char
         elsif ["'", '"'].include?(char)
           quote = char
@@ -460,7 +458,7 @@ module RubyPureMysql
         elsif char == ')'
           depth -= 1
           current_arg << char
-        elsif char == ',' && depth == 0
+        elsif char == ',' && depth.zero?
           args << current_arg.strip
           current_arg = +''
         else
