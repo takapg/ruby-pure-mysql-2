@@ -84,7 +84,7 @@ module RubyPureMysql
 
     def perform_update(client, result, where_clauses, update_map)
       criteria = {
-        where: where_clauses, limit: result[:limit],
+        where: where_clauses, limit: result[:limit], offset: result[:offset],
         order: result[:order], client: client
       }
       if @storage_engine.update_rows_with_where(result[:table_name], criteria, update_map)
@@ -96,7 +96,7 @@ module RubyPureMysql
 
     def execute_delete(client, result, where_clauses)
       criteria = {
-        where: where_clauses, limit: result[:limit],
+        where: where_clauses, limit: result[:limit], offset: result[:offset],
         order: result[:order], client: client
       }
       if @storage_engine.delete_rows_with_where(result[:table_name], criteria)
