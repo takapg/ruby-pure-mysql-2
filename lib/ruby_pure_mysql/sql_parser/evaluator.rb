@@ -23,7 +23,7 @@ module RubyPureMysql
     end
 
     def evaluate_function(col)
-      match = col.match(/\A(\w+)\((.*)\)\z/)
+      match = col.match(/\A(\w+)\s*\((.*)\)\z/)
       return :error unless match
 
       args = evaluate_function_args(match[2])
@@ -57,10 +57,12 @@ module RubyPureMysql
     private
 
     def single_function_call?(col)
-      return false unless col.match?(/\A\w+\(.*\)\z/)
+      return false unless col.match?(/\A\w+\s*\(.*\)\z/)
 
       depth = 0
       first_paren_idx = col.index('(')
+      return false if first_paren_idx.nil?
+
       col[first_paren_idx..].each_char do |char|
         depth += 1 if char == '('
         depth -= 1 if char == ')'
