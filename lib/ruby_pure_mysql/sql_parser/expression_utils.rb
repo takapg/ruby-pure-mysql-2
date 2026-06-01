@@ -296,40 +296,46 @@ module RubyPureMysql
     end
 
     def apply_addition_subtraction(tokens)
-      res_tokens = []
-      current_val = tokens[0]
-      i = 1
-      while i < tokens.size
-        op = tokens[i]
-        if op == '||'
-          res_tokens << current_val
-          res_tokens << '||'
-          current_val = tokens[i + 1]
-          i += 2
-        elsif op == '+' || op == '-'
-          val = tokens[i + 1]
-          current_val = calculate_sum_diff(current_val, op, val)
-          return :error if current_val == :error
+      index = 1
+      while index < tokens.size
+        op = tokens[index]
+        if op == '+' || op == '-'
+          left_raw = tokens[index - 1]
+          right_raw = tokens[index + 1]
+          return :error if left_raw.nil? || right_raw.nil?
 
-          i += 2
+          left = to_float_value(left_raw)
+          right = to_float_value(right_raw)
+          return :error if left == :error || right == :error
+
+          tokens[index - 1] = calculate_sum_diff(left, op, right)
+          tokens.slice!(index, 2)
+          # index はそのまま（次のトークンをチェック）
+        elsif op == '||'
+          index += 1
         else
-          i += 1
+          index += 1
         end
       end
-      res_tokens << current_val
-      res_tokens
+      tokens
     end
 
     def apply_string_concatenation(tokens)
+      return nil if tokens.empty?
+      
       result = tokens[0]
       i = 1
       while i < tokens.size
         op = tokens[i]
-        val = tokens[i + 1]
-        return nil if result.nil? || val.nil?
+        if op == '||'
+          val = tokens[i + 1]
+          return nil if result.nil? || val.nil?
 
-        result = "#{format_for_concat(result)}#{format_for_concat(val)}"
-        i += 2
+          result = "#{format_for_concat(result)}#{format_for_concat(val)}"
+          i += 2
+        else
+          i += 1
+        end
       end
       result
     end
@@ -344,12 +350,8 @@ module RubyPureMysql
       end
     end
 
-    def calculate_sum_diff(result, operator, value)
-      return nil if result.nil? || value.nil?
-
-      left = to_float_value(result)
-      right = to_float_value(value)
-      return :error if left == :error || right == :error
+    def calculate_sum_diff(left, operator, right)
+      return nil if left.nil? || right.nil?
 
       operator == '+' ? left + right : left - right
     end
