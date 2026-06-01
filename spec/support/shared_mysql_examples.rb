@@ -583,7 +583,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(1)
     end
   end
-  end
 
   describe 'IS NULL / IS NOT NULL support' do
     before do
