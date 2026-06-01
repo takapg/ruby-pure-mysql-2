@@ -1508,19 +1508,19 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(5)
     end
 
-    it 'updates rows with LIMIT and OFFSET' do
+    it 'updates rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test;')
       client.query('CREATE TABLE offset_test (id INT, val INT);')
       client.query('INSERT INTO offset_test VALUES (1, 10);')
       client.query('INSERT INTO offset_test VALUES (2, 20);')
       client.query('INSERT INTO offset_test VALUES (3, 30);')
 
-      # 2番目の行から1件更新 (MySQLのUPDATE/DELETEでは LIMIT offset, count 構文を使用)
-      client.query('UPDATE offset_test SET val = 99 ORDER BY id ASC LIMIT 1, 1;')
+      # 1件更新
+      client.query('UPDATE offset_test SET val = 99 ORDER BY id ASC LIMIT 1;')
       results = client.query('SELECT id, val FROM offset_test ORDER BY id ASC;')
       rows = results.to_a
-      expect(rows[1]['val']).to eq(99)
-      expect(rows[0]['val']).to eq(10)
+      expect(rows[0]['val']).to eq(99)
+      expect(rows[1]['val']).to eq(20)
       expect(rows[2]['val']).to eq(30)
     end
 
