@@ -740,9 +740,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO mixed_distinct_test VALUES (NULL);')
       results = client.query('SELECT DISTINCT val FROM mixed_distinct_test;')
       values = results.map { |r| r['val'] }
-      # チケット #150 の厳格な型判定に基づき、'1' (String) と 1 (Integer) は区別される
-      expect(results.count).to eq(3)
-      expect(values).to contain_exactly('1', 1, nil)
+      # MySQL 8.0 では VARCHAR カラムへの挿入時にキャストされるため、'1' と 1 は同一視される
+      expect(results.count).to eq(2)
+      expect(values).to contain_exactly('1', nil)
     end
 
     it 'combines SELECT DISTINCT with WHERE clause filtering NULLs' do
