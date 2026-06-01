@@ -555,13 +555,15 @@ module RubyPureMysql
 
     def self.process_parts(parts, evaluator)
       state = { expected: nil, columns: nil }
+      distinct_found = false
       rows = parts.map do |part|
         res = process_single_part(part, state, evaluator)
         return res if res.key?(:error)
 
+        distinct_found ||= res[:distinct]
         res[:result]
       end
-      { result: rows, columns: state[:columns], type: parts.size > 1 ? :union : nil }
+      { result: rows, columns: state[:columns], type: parts.size > 1 ? :union : nil, distinct: distinct_found }
     end
 
     def self.process_single_part(part, state, evaluator)
@@ -581,7 +583,7 @@ module RubyPureMysql
         return { error: 'The used SELECT statements have a different number of columns' }
       end
 
-      { result: result[:result], columns: result[:columns], size: result[:result].size }
+      { result: result[:result], columns: result[:columns], size: result[:result].size, distinct: result[:distinct] }
     end
 
     def self.parse_part(part, evaluator)
@@ -595,7 +597,7 @@ module RubyPureMysql
       values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
-      { result: values, columns: columns }
+      { result: values, columns: columns, distinct: !match[:distinct].nil? }
     end
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,

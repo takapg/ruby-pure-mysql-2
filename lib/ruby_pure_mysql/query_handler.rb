@@ -41,7 +41,8 @@ module RubyPureMysql
       else
         rows = result[:result]
         # UNION (non-ALL) は暗黙的に DISTINCT であるため、重複排除を適用する
-        rows = apply_distinct(rows) if result[:type] == :union
+        # または、SELECT DISTINCT の場合
+        rows = apply_distinct(rows) if result[:type] == :union || result[:distinct]
         send_result_set(client, rows, result[:columns])
       end
     end
