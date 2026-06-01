@@ -82,5 +82,13 @@ module RubyPureMysql
         idx
       end
     end
+
+    def apply_distinct(rows)
+      return rows unless rows
+
+      rows.uniq do |row|
+        row.map { |v| v.nil? ? :null : v.to_s }
+      end
+    end
   end
 end
