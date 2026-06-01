@@ -535,7 +535,8 @@ module RubyPureMysql
       parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
       return send(parser_method, query) if parser_method
 
-      is_all = query.match?(/\s+UNION\s+ALL\s+/i)
+      # UNION (without ALL) が一つでもあれば、全体として重複排除が必要な :union とみなす
+      is_all = !query.match?(/\s+UNION\s+(?!ALL\s+)/i)
       parts = query.split(/\s+UNION\s+(?:ALL\s+)?/i).map(&:strip)
       process_parts(parts, self, union_all: is_all)
     end

@@ -92,10 +92,7 @@ module RubyPureMysql
     private
 
     def normalize_for_distinct(value)
-      return :null if value.nil?
-      return value.include?('.') ? value.to_f : value.to_i if value.is_a?(String) && value.match?(/\A-?\d+(\.\d+)?\z/)
-
-      value
+      value.nil? ? :null : value
     end
   end
 end
