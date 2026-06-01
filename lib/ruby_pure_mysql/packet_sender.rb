@@ -70,7 +70,7 @@ module RubyPureMysql
       send_packet(client, 1, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, 2, cols, rows.first, original_columns)
+      seq = send_column_definitions(client, 2, cols, rows, original_columns)
 
       # 3. EOF (seq N)
       send_eof(client, seq & 0xFF)
@@ -123,11 +123,14 @@ module RubyPureMysql
       send_eof(client, current_seq & 0xFF)
     end
 
-    def send_column_definitions(client, start_seq, column_names, sample_row, original_names = nil)
+    def send_column_definitions(client, start_seq, column_names, rows, original_names = nil)
       seq = start_seq
+      rows ||= []
       column_names.each_with_index do |name_info, index|
         name, org_name = resolve_column_names(name_info, index, original_names)
-        type = determine_column_type(sample_row ? sample_row[index] : nil)
+        # 最初の非NULL値を探して型を決定する
+        sample_val = rows.lazy.map { |row| row[index] }.find { |v| !v.nil? }
+        type = determine_column_type(sample_val)
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end
