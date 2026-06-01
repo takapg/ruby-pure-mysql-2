@@ -43,7 +43,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      has_float = col.include?('.')
+      has_float = col.match?(/\d+\.\d+|\d+\.|\.\d+|[eE][+-]?\d+/)
       result = process_math_tokens(col)
       return result if result == :error || result.nil?
 

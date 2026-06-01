@@ -100,6 +100,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(-1.0)
     end
 
+    it 'can calculate mixed numeric types (SELECT 1 + 1.5;)' do
+      results = client.query('SELECT 1 + 1.5;')
+      expect(results.first.values.first).to eq(2.5)
+    end
+
+    it 'can calculate deeply nested arithmetic (SELECT (1 + (2 * 3)) / 2;)' do
+      results = client.query('SELECT (1 + (2 * 3)) / 2;')
+      expect(results.first.values.first).to eq(3.5)
+    end
+
+    it 'can handle very large numeric operations (SELECT 1000000 * 1000000;)' do
+      results = client.query('SELECT 1000000 * 1000000;')
+      expect(results.first.values.first).to eq(1_000_000_000_000)
+    end
+
+    it 'can handle scientific notation (SELECT 1e1 + 1;)' do
+      results = client.query('SELECT 1e1 + 1;')
+      expect(results.first.values.first).to eq(11.0)
+    end
+
     it 'returns an error for unsupported syntax' do
       expect do
         client.query('INVALID SQL')

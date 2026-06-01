@@ -193,7 +193,7 @@ module RubyPureMysql
       when '(' then scan_balanced_parens(scanner)
       when /[a-zA-Z_]/ then scan_identifier_or_function(scanner)
       when %r{[-+*/%]} then scan_operator(scanner, tokens)
-      when /[\d.]/ then scanner.scan(/[\d.]+/)
+      when /[\d.]/ then scanner.scan(/\d*\.?\d+([eE][+-]?\d+)?/)
       when /['"]/ then scan_string(scanner)
       else :error
       end
@@ -386,7 +386,7 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
       return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/)
-      return token.to_f if token.match?(/\A[-+]?\d*\.?\d+\z/)
+      return token.to_f if token.match?(/\A[-+]?\d*\.?\d+([eE][+-]?\d+)?\z/)
 
       :error
     end
