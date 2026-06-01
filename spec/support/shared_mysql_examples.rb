@@ -1279,10 +1279,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'does not treat the last word as an alias if the expression ends with an operator (SELECT 1 + total;)' do
-      # 'total' がカラムとして存在しない場合、式全体がカラム名となり、評価はエラーまたはNULLになる
-      # ここではカラム名が '1 + total' になっていることを確認する
-      results = client.query('SELECT 1 + total;')
-      expect(results.fields.first).to eq('1 + total')
+      # 'total' がカラムとして存在しないため、定数式としては不正であり、エラーになることが期待される
+      expect { client.query('SELECT 1 + total;') }.to raise_error(Mysql2::Error)
     end
 
     it 'supports implicit aliases with string literals (SELECT "hello" alias;)' do
