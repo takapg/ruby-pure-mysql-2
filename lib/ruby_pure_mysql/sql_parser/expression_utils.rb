@@ -3,8 +3,14 @@
 require 'strscan'
 
 module RubyPureMysql
+  # 文字列スキャンに関する補助ロジックを提供するモジュール
+  module ExpressionStringUtils
+  end
+
   # トークンの消費ロジックを提供するモジュール
   module ExpressionTokenConsumer
+    include ExpressionStringUtils
+
     def scan_balanced_parens(scanner)
       start_pos = scanner.pos
       depth = 0
@@ -12,24 +18,14 @@ module RubyPureMysql
       until scanner.eos?
         char = scanner.getch
         if quote
-          if char == quote
-            bs_count = 0
-            pos = scanner.pos - 2
-            while pos >= 0 && scanner.string[pos] == '\\'
-              bs_count += 1
-              pos -= 1
-            end
-            quote = nil if bs_count.even?
-          end
-        else
-          if ["'", '"'].include?(char)
-            quote = char
-          elsif char == '('
-            depth += 1
-          elsif char == ')'
-            depth -= 1
-            break if depth.zero?
-          end
+          quote = nil if char == quote && count_backslashes(scanner).even?
+        elsif ["'", '"'].include?(char)
+          quote = char
+        elsif char == '('
+          depth += 1
+        elsif char == ')'
+          depth -= 1
+          break if depth.zero?
         end
       end
       return :error if depth != 0
