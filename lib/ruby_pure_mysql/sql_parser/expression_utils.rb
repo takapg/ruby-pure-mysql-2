@@ -5,62 +5,31 @@ require 'strscan'
 module RubyPureMysql
   # 文字列スキャンに関する補助ロジックを提供するモジュール
   module ExpressionStringUtils
+    def scan_string(scanner)
+      quote = scanner.getch
+      start_pos = scanner.pos - 1
+      until scanner.eos?
+        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
+
+        scanner.getch
+      end
+      scanner.getch unless scanner.eos?
+      scanner.string[start_pos...scanner.pos]
+    end
+
+    def count_backslashes(scanner)
+      count = 0
+      pos = scanner.pos - 1
+      while pos >= 0 && scanner.string[pos] == '\\'
+        count += 1
+        pos -= 1
+      end
+      count
+    end
   end
 
-  # トークンの消費ロジックを提供するモジュール
-  module ExpressionTokenConsumer
-    include ExpressionStringUtils
-
-    def scan_balanced_parens(scanner)
-      start_pos = scanner.pos
-      depth = 0
-      quote = nil
-      until scanner.eos?
-        char = scanner.getch
-        if quote
-          quote = nil if char == quote && count_backslashes(scanner).even?
-        elsif ["'", '"'].include?(char)
-          quote = char
-        elsif char == '('
-          depth += 1
-        elsif char == ')'
-          depth -= 1
-          break if depth.zero?
-        end
-      end
-      return :error if depth != 0
-
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def scan_identifier_or_function(scanner)
-      token = scanner.scan(/[a-zA-Z0-9_]+/)
-      return nil unless token
-
-      return token if token.casecmp?('NULL')
-
-      return scan_function_body(scanner, token) if scanner.peek(1) == '('
-
-      token
-    end
-
-    def scan_function_body(scanner, token)
-      start_pos = scanner.pos - token.length
-      res = scan_balanced_parens(scanner)
-      return :error if res == :error
-
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def scan_operator(scanner, tokens)
-      char = scanner.getch
-      return nil unless char
-
-      return char unless unary_operator?(char, tokens)
-
-      scan_unary_operator_body(scanner)
-    end
-
+  # 単項演算子の処理を支援するモジュール
+  module ExpressionUnaryHandler
     def scan_unary_operator_body(scanner)
       start_pos = scanner.pos - 1
       return scanner.string[start_pos...scanner.pos] if scan_unary_operand(scanner)
@@ -114,28 +83,69 @@ module RubyPureMysql
       scanner.getch
       scan_unary_operand(scanner)
     end
+  end
 
-    def scan_string(scanner)
-      quote = scanner.getch
-      start_pos = scanner.pos - 1
+  # トークンの消費ロジックを提供するモジュール
+  module ExpressionTokenConsumer
+    include ExpressionStringUtils
+    include ExpressionUnaryHandler
+
+    def scan_balanced_parens(scanner)
+      start_pos = scanner.pos
+      depth = 0
+      quote = nil
       until scanner.eos?
-        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
-
-        scanner.getch
+        char = scanner.getch
+        quote, depth = update_balanced_state(char, quote, depth, scanner)
+        break if depth.zero? && char == ')'
       end
-      scanner.getch unless scanner.eos?
+      return :error if depth != 0
+
       scanner.string[start_pos...scanner.pos]
     end
 
-    def count_backslashes(scanner)
-      count = 0
-      pos = scanner.pos - 1
-      while pos >= 0 && scanner.string[pos] == '\\'
-        count += 1
-        pos -= 1
+    def update_balanced_state(char, quote, depth, scanner)
+      return [quote == char && count_backslashes(scanner).even? ? nil : quote, depth] if quote
+
+      if ["'", '"'].include?(char)
+        [char, depth]
+      elsif char == '('
+        [nil, depth + 1]
+      elsif char == ')'
+        [nil, depth - 1]
+      else
+        [nil, depth]
       end
-      count
     end
+
+    def scan_identifier_or_function(scanner)
+      token = scanner.scan(/[a-zA-Z0-9_]+/)
+      return nil unless token
+
+      return token if token.casecmp?('NULL')
+
+      return scan_function_body(scanner, token) if scanner.peek(1) == '('
+
+      token
+    end
+
+    def scan_function_body(scanner, token)
+      start_pos = scanner.pos - token.length
+      res = scan_balanced_parens(scanner)
+      return :error if res == :error
+
+      scanner.string[start_pos...scanner.pos]
+    end
+
+    def scan_operator(scanner, tokens)
+      char = scanner.getch
+      return nil unless char
+
+      return char unless unary_operator?(char, tokens)
+
+      scan_unary_operator_body(scanner)
+    end
+
   end
 
   # 式のトークナイズ処理を提供するモジュール
