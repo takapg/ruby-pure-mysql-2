@@ -20,11 +20,14 @@ module RubyPureMysql
     end
 
     def process_concat_op!(tokens, index)
-      left_raw = tokens[index - 1]
-      right_raw = tokens[index + 1]
-      return if left_raw.nil? || right_raw.nil?
+      left = tokens[index - 1]
+      right = tokens[index + 1]
 
-      tokens[index - 1] = "#{format_for_concat(left_raw)}#{format_for_concat(right_raw)}"
+      if left.nil? || right.nil?
+        tokens[index - 1] = nil
+      else
+        tokens[index - 1] = "#{format_for_concat(left)}#{format_for_concat(right)}"
+      end
       tokens.slice!(index, 2)
     end
   end

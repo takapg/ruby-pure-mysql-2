@@ -229,14 +229,10 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
-      return evaluate_string_literal_token(token) if string_literal?(token)
+      return evaluate_string_literal(token) if string_literal?(token)
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
-    end
-
-    def evaluate_string_literal_token(token)
-      evaluate_string_literal(token)
     end
 
     def evaluate_complex_token(token)
