@@ -94,13 +94,7 @@ module RubyPureMysql
       end
     end
 
-    def handle_delete(client, result)
-      columns = validate_table(client, result[:table_name])
-      return unless columns
-
-      where_clauses = prepare_where_clauses(client, columns, result[:where])
-      return if where_clauses == false
-
+    def execute_delete(client, result, where_clauses)
       criteria = {
         where: where_clauses, limit: result[:limit], offset: result[:offset],
         order: result[:order], client: client
@@ -110,6 +104,16 @@ module RubyPureMysql
       else
         send_err_packet(client, 1, 'Delete failed', 1000)
       end
+    end
+
+    def handle_delete(client, result)
+      columns = validate_table(client, result[:table_name])
+      return unless columns
+
+      where_clauses = prepare_where_clauses(client, columns, result[:where])
+      return if where_clauses == false
+
+      execute_delete(client, result, where_clauses)
     end
   end
 end
