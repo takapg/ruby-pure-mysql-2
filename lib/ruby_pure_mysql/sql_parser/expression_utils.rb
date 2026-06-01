@@ -188,14 +188,20 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
-      case scanner.peek(1)
-      when '(' then scan_balanced_parens(scanner)
-      when /[a-zA-Z_]/ then scan_identifier_or_function(scanner)
-      when %r{[-+*/%]} then scan_operator(scanner, tokens)
-      when '|' then handle_pipe_operator(scanner)
-      when /[\d.]/ then scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
-      when /['"]/ then scan_string(scanner)
-      else :error
+      if scanner.peek(1) == '('
+        scan_balanced_parens(scanner)
+      elsif scanner.peek(1) =~ /[a-zA-Z_]/
+        scan_identifier_or_function(scanner)
+      elsif scanner.peek(1) =~ /[-+*/%]/
+        scan_operator(scanner, tokens)
+      elsif scanner.peek(1) == '|'
+        handle_pipe_operator(scanner)
+      elsif scanner.peek(1) =~ /[\d.]/
+        scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
+      elsif scanner.peek(1) =~ /['"]/
+        scan_string(scanner)
+      else
+        :error
       end
     end
 
@@ -479,8 +485,20 @@ module RubyPureMysql
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
-      # 非強欲マッチに変更し、1つのトークンが複数のクォートを含む場合に誤判定しないようにする
-      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/m)
+
+      # 文字列リテラルとして評価する場合、内部にクォートが含まれていないか、
+      # または正しくエスケープされている必要がある。
+      # 単純に \A(['"])(.*?)\1\z\m でマッチさせると "a" || "b" もマッチしてしまうため、
+      # 内部にクォートがある場合は、それがエスケープされているかを確認する。
+      if token.match?(/\A(['"])(.*?)\1\z/m)
+        quote = token[0]
+        content = token[1...-1]
+        # クォートが内部に含まれており、かつそれがエスケープされていない場合は文字列リテラルではない
+        unless content.include?(quote) && !content.gsub(/\\./, '').include?(quote)
+          return evaluate_string_literal(token)
+        end
+      end
+
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
