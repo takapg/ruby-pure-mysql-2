@@ -309,7 +309,7 @@ module RubyPureMysql
     def parse_where_clause(clause, allow_aggregates: false)
       or_parts = split_by_operator(clause, 'OR')
 
-      and_groups = or_parts.map do |or_part|
+      or_parts.map do |or_part|
         and_parts = split_by_operator(or_part, 'AND')
         and_parts.map do |cond_str|
           res = parse_single_where_condition(cond_str, allow_aggregates: allow_aggregates)
@@ -318,8 +318,6 @@ module RubyPureMysql
           res
         end
       end
-
-      and_groups
     end
 
     def split_by_operator(clause, operator)
@@ -329,36 +327,13 @@ module RubyPureMysql
       while buffer[:index] < clause.length
         char = clause[buffer[:index]]
 
-        if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
-          buffer[:current] << char * 2
-          buffer[:index] += 2
-          next
-        end
+        next if handle_quote_escape(clause, buffer, char)
+        next if handle_quote_toggle(clause, buffer, char)
 
-        if quote_char?(char) && not_escaped?(clause, buffer[:index]) && (buffer[:in_quote].nil? || buffer[:in_quote] == char)
-          buffer[:in_quote] = buffer[:in_quote] == char ? nil : char
-          buffer[:current] << char
-          buffer[:index] += 1
-          next
-        end
+        unless buffer[:in_quote]
+          next if handle_operator(clause, buffer, operator, parts)
 
-        if !buffer[:in_quote]
-          op_match = clause[buffer[:index]..].match(/\A\s+#{operator}\s+/i)
-          if op_match
-            if operator == 'AND' && buffer[:in_between]
-              buffer[:current] << op_match[0]
-              buffer[:index] += op_match[0].length
-              buffer[:in_between] = false
-              next
-            end
-
-            parts << buffer[:current].strip
-            buffer[:current] = +''
-            buffer[:index] += op_match[0].length
-            next
-          end
-
-          buffer[:in_between] = true if operator == 'AND' && clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
+          update_between_state(clause, buffer, operator)
         end
 
         buffer[:current] << char
@@ -367,6 +342,46 @@ module RubyPureMysql
 
       parts << buffer[:current].strip
       parts
+    end
+
+    def handle_quote_escape(clause, buffer, char)
+      if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+        buffer[:current] << (char * 2)
+        buffer[:index] += 2
+        return true
+      end
+      false
+    end
+
+    def handle_quote_toggle(clause, buffer, char)
+      return false unless quote_char?(char) && not_escaped?(clause, buffer[:index])
+      return false unless buffer[:in_quote].nil? || buffer[:in_quote] == char
+
+      buffer[:in_quote] = buffer[:in_quote] == char ? nil : char
+      buffer[:current] << char
+      buffer[:index] += 1
+      true
+    end
+
+    def handle_operator(clause, buffer, operator, parts)
+      op_match = clause[buffer[:index]..].match(/\A\s+#{operator}\s+/i)
+      return false unless op_match
+
+      if operator == 'AND' && buffer[:in_between]
+        buffer[:current] << op_match[0]
+        buffer[:index] += op_match[0].length
+        buffer[:in_between] = false
+        return true
+      end
+
+      parts << buffer[:current].strip
+      buffer[:current] = +''
+      buffer[:index] += op_match[0].length
+      true
+    end
+
+    def update_between_state(clause, buffer, operator)
+      buffer[:in_between] = true if operator == 'AND' && clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
