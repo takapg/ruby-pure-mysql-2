@@ -38,7 +38,7 @@ module RubyPureMysql
       compiled_groups = groups.map do |group|
         compile_where_clauses(client, table_columns, group, table_map)
       end
-      return nil if compiled_groups.any? { |g| g.nil? }
+      return nil if compiled_groups.any?(&:nil?)
 
       rows.each_index.select do |idx|
         row = rows[idx]
@@ -131,17 +131,22 @@ module RubyPureMysql
 
     def normalize_for_comparison(v1, v2)
       return [v1, v2] if v1.nil? || v2.nil?
-      return [v1, v2] unless (v1.is_a?(Numeric) || v2.is_a?(Numeric))
+      return [v1, v2] unless v1.is_a?(Numeric) || v2.is_a?(Numeric)
 
       n1 = cast_to_numeric(v1)
       n2 = cast_to_numeric(v2)
-      (n1.is_a?(Numeric) && n2.is_a?(Numeric)) ? [n1, n2] : [v1, v2]
+      n1.is_a?(Numeric) && n2.is_a?(Numeric) ? [n1, n2] : [v1, v2]
     end
 
     def cast_to_numeric(val)
       return val if val.is_a?(Numeric)
       return nil if val.nil?
-      Float(val) rescue val
+
+      begin
+        Float(val)
+      rescue StandardError
+        val
+      end
     end
   end
 end

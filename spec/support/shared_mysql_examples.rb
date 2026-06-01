@@ -1455,7 +1455,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query("INSERT INTO delete_or_test VALUES (2, 'b');")
       client.query("INSERT INTO delete_or_test VALUES (3, 'c');")
 
-      client.query("DELETE FROM delete_or_test WHERE id = 1 OR id = 2;")
+      client.query('DELETE FROM delete_or_test WHERE id = 1 OR id = 2;')
       results = client.query('SELECT id FROM delete_or_test;')
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(3)
