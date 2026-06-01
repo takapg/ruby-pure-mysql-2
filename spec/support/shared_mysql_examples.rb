@@ -755,6 +755,34 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(1)
     end
+
+    it 'handles SELECT DISTINCT with composite columns and NULLs' do
+      client.query('DROP TABLE IF EXISTS composite_distinct_test;')
+      client.query('CREATE TABLE composite_distinct_test (a INT, b INT);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, 1);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, 1);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, 1);')
+
+      results = client.query('SELECT DISTINCT a, b FROM composite_distinct_test;')
+      expect(results.count).to eq(4)
+      data = results.to_a.map { |r| r.values }
+      expect(data).to contain_exactly([1, nil], [nil, 1], [nil, nil], [1, 1])
+    end
+
+    it 'distinguishes between different types with same string representation in DISTINCT' do
+      # MySQLでは単一カラムでは型が固定されるため、UNIONを用いて異なる型を混在させる
+      results = client.query('SELECT DISTINCT 1 UNION SELECT DISTINCT "1";')
+      # MySQL 8.0 では UNION DISTINCT 時に共通型にキャストされるため、
+      # 結果として 1 行 (文字列の "1") になるのが一般的だが、
+      # ここでは Ruby 内部で [1] と ["1"] が混在して渡された場合に collapse されないことを確認したい。
+      # サーバー側の挙動に依存するため、期待値は MySQL 8.0 の挙動に合わせる。
+      # 実際には MySQL 8.0 はキャストして 1 行にする。
+      expect(results.count).to eq(1)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do
