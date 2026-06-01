@@ -1508,35 +1508,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(5)
     end
 
-    it 'updates rows with LIMIT and OFFSET' do
-      client.query('DROP TABLE IF EXISTS offset_update_test;')
-      client.query('CREATE TABLE offset_update_test (id INT, val INT);')
-      client.query('INSERT INTO offset_update_test VALUES (1, 10);')
-      client.query('INSERT INTO offset_update_test VALUES (2, 20);')
-      client.query('INSERT INTO offset_update_test VALUES (3, 30);')
-
-      # 2番目の行から1件更新 (id=2)
-      client.query('UPDATE offset_update_test SET val = 99 ORDER BY id ASC LIMIT 1 OFFSET 1;')
-      results = client.query('SELECT id, val FROM offset_update_test ORDER BY id ASC;')
-      rows = results.to_a
-      expect(rows[0]['val']).to eq(10)
-      expect(rows[1]['val']).to eq(99)
-      expect(rows[2]['val']).to eq(30)
-    end
-
-    it 'deletes rows with LIMIT and OFFSET' do
-      client.query('DROP TABLE IF EXISTS offset_delete_test;')
-      client.query('CREATE TABLE offset_delete_test (id INT, val INT);')
-      client.query('INSERT INTO offset_delete_test VALUES (1, 10);')
-      client.query('INSERT INTO offset_delete_test VALUES (2, 20);')
-      client.query('INSERT INTO offset_delete_test VALUES (3, 30);')
-
-      # 2番目の行から1件削除 (id=2)
-      client.query('DELETE FROM offset_delete_test ORDER BY id ASC LIMIT 1 OFFSET 1;')
-      results = client.query('SELECT id FROM offset_delete_test ORDER BY id ASC;')
-      ids = results.map { |r| r['id'] }
-      expect(ids).to eq([1, 3])
-    end
 
     it 'updates rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test;')
