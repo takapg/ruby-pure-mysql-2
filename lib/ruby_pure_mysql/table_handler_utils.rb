@@ -81,9 +81,9 @@ module RubyPureMysql
       return val if type.nil?
 
       case type
-      when Integer then cast_to_numeric(val, :to_i)
-      when Float   then cast_to_numeric(val, :to_f)
-      when String  then val.to_s
+      when :integer then cast_to_numeric(val, :to_i)
+      when :float   then cast_to_numeric(val, :to_f)
+      when :string  then val.to_s
       else val
       end
     end
@@ -100,7 +100,12 @@ module RubyPureMysql
       num_cols = rows.first.size
       (0...num_cols).map do |col_idx|
         first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
-        first_val&.class
+        case first_val
+        when Integer then :integer
+        when Float   then :float
+        when String  then :string
+        else nil
+        end
       end
     end
   end
