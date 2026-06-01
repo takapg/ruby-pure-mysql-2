@@ -16,8 +16,12 @@ module RubyPureMysql
     end
 
     def evaluate_group_having(group_val, group_rows, having_clauses, group_ctx)
-      having_clauses.all? do |clause|
-        evaluate_having_condition(group_val, group_rows, clause, group_ctx)
+      groups = having_clauses.first.is_a?(Hash) ? [having_clauses] : having_clauses
+
+      groups.any? do |group|
+        group.all? do |clause|
+          evaluate_having_condition(group_val, group_rows, clause, group_ctx)
+        end
       end
     end
 
