@@ -58,6 +58,29 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'returns NULL for zero divided by zero (SELECT 0/0;)' do
+      results = client.query('SELECT 0/0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for division by an expression that evaluates to zero (SELECT 1/(2-2);)' do
+      results = client.query('SELECT 1/(2-2);')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for modulo by zero (SELECT 1%0;)' do
+      results = client.query('SELECT 1%0;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns a float for division even if the result is a whole number (SELECT 4/2;)' do
+      results = client.query('SELECT 4/2;')
+      val = results.first.values.first
+      expect(val).to eq(2.0)
+      expect(val).to be_a(Numeric)
+      expect(val).not_to be_a(Integer)
+    end
+
     it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
       results = client.query('SELECT 1 + 2 * 3;')
       expect(results.first.values.first).to eq(7)
@@ -98,6 +121,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'can calculate with negative numbers and leading dots (SELECT -1.5 + .5;)' do
       results = client.query('SELECT -1.5 + .5;')
       expect(results.first.values.first).to eq(-1.0)
+    end
+
+    it 'can calculate mixed numeric types (SELECT 1 + 1.5;)' do
+      results = client.query('SELECT 1 + 1.5;')
+      expect(results.first.values.first).to eq(2.5)
+    end
+
+    it 'can calculate deeply nested arithmetic (SELECT (1 + (2 * 3)) / 2;)' do
+      results = client.query('SELECT (1 + (2 * 3)) / 2;')
+      expect(results.first.values.first).to eq(3.5)
+    end
+
+    it 'can handle very large numeric operations (SELECT 1000000 * 1000000;)' do
+      results = client.query('SELECT 1000000 * 1000000;')
+      expect(results.first.values.first).to eq(1_000_000_000_000)
+    end
+
+    it 'can handle scientific notation (SELECT 1e1 + 1;)' do
+      results = client.query('SELECT 1e1 + 1;')
+      expect(results.first.values.first).to eq(11.0)
     end
 
     it 'returns an error for unsupported syntax' do
