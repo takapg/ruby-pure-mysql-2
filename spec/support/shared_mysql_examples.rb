@@ -68,6 +68,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(6)
     end
 
+    it 'returns an error for invalid arithmetic (SELECT 1 + * 2;)' do
+      expect do
+        client.query('SELECT 1 + * 2;')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'can return a simple negative integer (SELECT -1;)' do
       results = client.query('SELECT -1;')
       expect(results.first.values.first).to eq(-1)

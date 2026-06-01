@@ -3,6 +3,25 @@
 require 'strscan'
 
 module RubyPureMysql
+  # 引用符と括弧のバランス状態を管理する共通ロジック
+  module BalancedStateUtils
+    def calculate_next_state(char, quote, depth, escaped)
+      if quote
+        return [quote == char && !escaped ? nil : quote, depth]
+      end
+
+      if ["'", '"'].include?(char)
+        [char, depth]
+      elsif char == '('
+        [nil, depth + 1]
+      elsif char == ')'
+        [nil, depth > 0 ? depth - 1 : 0]
+      else
+        [nil, depth]
+      end
+    end
+  end
+
   # 文字列スキャンに関する補助ロジックを提供するモジュール
   module ExpressionStringUtils
     def scan_string(scanner)
@@ -89,6 +108,7 @@ module RubyPureMysql
   module ExpressionTokenConsumer
     include ExpressionStringUtils
     include ExpressionUnaryHandler
+    include BalancedStateUtils
 
     def scan_balanced_parens(scanner)
       start_pos = scanner.pos
@@ -105,17 +125,8 @@ module RubyPureMysql
     end
 
     def update_balanced_state(char, quote, depth, scanner)
-      return [quote == char && count_backslashes(scanner).even? ? nil : quote, depth] if quote
-
-      if ["'", '"'].include?(char)
-        [char, depth]
-      elsif char == '('
-        [nil, depth + 1]
-      elsif char == ')'
-        [nil, depth - 1]
-      else
-        [nil, depth]
-      end
+      escaped = count_backslashes(scanner).odd?
+      calculate_next_state(char, quote, depth, escaped)
     end
 
     def scan_identifier_or_function(scanner)
@@ -190,19 +201,16 @@ module RubyPureMysql
 
   # 式の状態管理を支援するモジュール
   module ExpressionStateHelper
+    include BalancedStateUtils
+
     def update_state(state, char)
       update_quote_and_depth(state, char)
       handle_buffer(state, char)
     end
 
     def update_quote_and_depth(state, char)
-      if state[:in_quote]
-        state[:in_quote] = nil if char == state[:in_quote] && !quote_escaped?(state)
-      elsif ["'", '"'].include?(char)
-        state[:in_quote] = char
-      else
-        state[:depth] = adjust_depth(char, state[:depth])
-      end
+      escaped = quote_escaped?(state)
+      state[:in_quote], state[:depth] = calculate_next_state(char, state[:in_quote], state[:depth], escaped)
     end
 
     def quote_escaped?(state)
@@ -222,13 +230,6 @@ module RubyPureMysql
       else
         state[:buf] << char
       end
-    end
-
-    def adjust_depth(char, depth)
-      return depth + 1 if char == '('
-      return depth - 1 if char == ')' && depth.positive?
-
-      depth
     end
 
     def comma_at_root?(char, depth)
@@ -341,6 +342,8 @@ module RubyPureMysql
       return val.to_f if val.is_a?(Numeric)
       return :error if val == :error
       return nil if val.nil?
+
+      return :error if val.is_a?(String) && operator?(val)
 
       val.to_s.to_f
     end
