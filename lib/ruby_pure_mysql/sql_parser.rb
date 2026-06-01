@@ -585,10 +585,10 @@ module RubyPureMysql
     end
 
     def self.parse_part(part, evaluator)
-      match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
+      match = part.match(/\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<cols>.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
 
-      col_strs = evaluator.split_args(match[1])
+      col_strs = evaluator.split_args(match[:cols])
       return { error: 'Invalid SQL' } if col_strs == :error
 
       columns = col_strs.map { |col| parse_column_alias(col) }
