@@ -42,9 +42,9 @@ module RubyPureMysql
       scanner.string[start_pos...scanner.pos]
     end
 
-    def count_backslashes(scanner)
+    def count_backslashes(scanner, start_pos = scanner.pos - 1)
       count = 0
-      pos = scanner.pos - 1
+      pos = start_pos
       while pos >= 0 && scanner.string[pos] == '\\'
         count += 1
         pos -= 1
@@ -131,7 +131,7 @@ module RubyPureMysql
     end
 
     def update_balanced_state(char, quote, depth, scanner)
-      escaped = count_backslashes(scanner).odd?
+      escaped = count_backslashes(scanner, scanner.pos - 2).odd?
       calculate_next_state(char, quote, depth, escaped)
     end
 
