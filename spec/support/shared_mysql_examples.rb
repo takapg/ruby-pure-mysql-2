@@ -679,9 +679,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'returns only one NULL when multiple NULLs are present in SELECT DISTINCT' do
       client.query('DROP TABLE IF EXISTS null_distinct_test;')
       client.query('CREATE TABLE null_distinct_test (val INT);')
-      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
-      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
       client.query('INSERT INTO null_distinct_test VALUES (1);')
+      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
+      client.query('INSERT INTO null_distinct_test VALUES (NULL);')
       results = client.query('SELECT DISTINCT val FROM null_distinct_test;')
       expect(results.count).to eq(2)
       values = results.map { |r| r['val'] }
