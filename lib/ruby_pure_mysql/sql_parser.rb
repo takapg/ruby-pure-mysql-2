@@ -324,9 +324,7 @@ module RubyPureMysql
       parts = []
       buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
 
-      while buffer[:index] < clause.length
-        process_split_char(clause, buffer, operator, parts)
-      end
+      process_split_char(clause, buffer, operator, parts) while buffer[:index] < clause.length
 
       parts << buffer[:current].strip
       parts

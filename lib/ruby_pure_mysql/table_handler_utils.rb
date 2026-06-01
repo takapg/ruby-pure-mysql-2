@@ -68,6 +68,5 @@ module RubyPureMysql
 
       rows.uniq { |row| row.map { |val| normalize_for_distinct(val) } }
     end
-
   end
 end

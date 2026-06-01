@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # フィルタリング条件の評価ロジックを提供するモジュール
   module FilterEvaluator
     def apply_filter(val, operator, target_value, regex = nil)
       return val.nil? if operator == 'IS NULL'
@@ -20,7 +21,7 @@ module RubyPureMysql
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
       when 'IN' then handle_in_operator(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
-      when '=', '!=', '<>' then compare_equality(val, operator, target_value)
+      when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
       else compare_generic_operator(val, operator, target_value)
       end
     end
@@ -45,14 +46,18 @@ module RubyPureMysql
 
     private
 
-    def compare_equality(val, operator, target_value)
+    def compare_equality?(val, operator, target_value)
       v1, v2 = normalize_for_comparison(val, target_value)
       operator == '=' ? v1 == v2 : v1 != v2
     end
 
     def compare_generic_operator(val, operator, target_value)
       v1, v2 = normalize_for_comparison(val, target_value)
-      v1.public_send(operator.to_sym, v2) rescue false
+      begin
+        v1.public_send(operator.to_sym, v2)
+      rescue StandardError
+        false
+      end
     end
 
     def handle_in_operator(val, target_value)
@@ -92,7 +97,11 @@ module RubyPureMysql
       return val if val.is_a?(Numeric)
       return nil if val.nil?
 
-      Float(val) rescue val
+      begin
+        Float(val)
+      rescue StandardError
+        val
+      end
     end
   end
 end
