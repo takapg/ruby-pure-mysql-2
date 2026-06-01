@@ -86,7 +86,7 @@ module RubyPureMysql
     def apply_distinct(rows)
       return rows unless rows
 
-      rows.uniq
+      rows.uniq { |row| row.map { |v| v.nil? ? nil : v.to_s } }
     end
   end
 end
