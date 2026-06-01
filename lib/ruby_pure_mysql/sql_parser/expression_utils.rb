@@ -322,16 +322,22 @@ module RubyPureMysql
 
     def apply_string_concatenation(tokens)
       return nil if tokens.empty?
-      
+
+      # 演算子が一つもない場合は、最初の要素を返す
+      return tokens[0] unless tokens.include?('||')
+
       result = tokens[0]
       i = 1
       while i < tokens.size
         op = tokens[i]
         if op == '||'
           val = tokens[i + 1]
-          return nil if result.nil? || val.nil?
+          return nil if val.nil?
 
-          result = "#{format_for_concat(result)}#{format_for_concat(val)}"
+          # 左辺がnilの場合は空文字として扱う
+          left_val = result.nil? ? '' : format_for_concat(result)
+          right_val = format_for_concat(val)
+          result = "#{left_val}#{right_val}"
           i += 2
         else
           i += 1
@@ -341,10 +347,11 @@ module RubyPureMysql
     end
 
     def format_for_concat(val)
-      return val if val.nil?
+      return '' if val.nil?
 
-      if val.is_a?(Numeric) && val == val.to_i
-        val.to_i.to_s
+      if val.is_a?(Numeric)
+        # 整数値の場合は小数点を除去して文字列化
+        val == val.to_i ? val.to_i.to_s : val.to_s
       else
         val.to_s
       end
@@ -473,8 +480,8 @@ module RubyPureMysql
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
-      # 強欲マッチに変更し、エスケープされたクォートを含む文字列全体を正しく判定する
-      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*)\1\z/m)
+      # 非強欲マッチに変更し、1つのトークンが複数のクォートを含む場合に誤判定しないようにする
+      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/m)
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
