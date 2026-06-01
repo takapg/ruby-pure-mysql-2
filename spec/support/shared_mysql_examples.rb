@@ -132,7 +132,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'handles escaped backslashes in strings (SELECT "C:\\";)' do
       results = client.query('SELECT "C:\\";')
-      expect(results.first.values.first).to eq('C:\')
+      expect(results.first.values.first).to eq('C:\\')
     end
 
     it 'handles doubled single quotes (SELECT \'It\'\'s a test\';)' do
