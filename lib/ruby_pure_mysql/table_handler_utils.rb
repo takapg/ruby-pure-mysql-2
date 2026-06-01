@@ -29,9 +29,12 @@ module RubyPureMysql
     end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
-      return (0...rows.size).to_a unless where_clauses
+      return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
-      compiled_groups = where_clauses.map do |group|
+      # where_clauses がフラットな条件配列 [{...}] の場合は、グループの配列 [[{...}]] に変換する
+      groups = where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
+
+      compiled_groups = groups.map do |group|
         compile_where_clauses(client, table_columns, group, table_map)
       end
       return nil if compiled_groups.any? { |g| g.nil? }
