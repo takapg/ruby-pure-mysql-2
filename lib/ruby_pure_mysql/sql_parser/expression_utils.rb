@@ -219,10 +219,10 @@ module RubyPureMysql
 
       return nil if val.nil?
 
-      float_val = to_float_value(val)
-      return :error if float_val == :error
+      numeric_val = resolve_numeric_value(val)
+      return :error if numeric_val == :error
 
-      op == '-' ? -float_val : float_val
+      op == '-' ? -numeric_val : numeric_val
     end
 
     def evaluate_inner_token(token)
@@ -230,7 +230,7 @@ module RubyPureMysql
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
       return evaluate_string_literal(token) if string_literal?(token)
-      return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
+      return token.match?(/\A[-+]?\d+\z/) ? token.to_i : token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
     end
