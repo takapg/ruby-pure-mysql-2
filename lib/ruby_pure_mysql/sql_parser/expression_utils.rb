@@ -188,17 +188,20 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
-      if scanner.peek(1) == '('
+      char = scanner.peek(1)
+      return :error if char.nil?
+
+      if char == '('
         scan_balanced_parens(scanner)
-      elsif scanner.peek(1) =~ /[a-zA-Z_]/
+      elsif char =~ /[a-zA-Z_]/
         scan_identifier_or_function(scanner)
-      elsif scanner.peek(1) =~ /[-+*/%]/
-        scan_operator(scanner, tokens)
-      elsif scanner.peek(1) == '|'
+      elsif char == '|'
         handle_pipe_operator(scanner)
-      elsif scanner.peek(1) =~ /[\d.]/
+      elsif char =~ /[-+*/%]/
+        scan_operator(scanner, tokens)
+      elsif char =~ /[\d.]/
         scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
-      elsif scanner.peek(1) =~ /['"]/
+      elsif char =~ /['"]/
         scan_string(scanner)
       else
         :error
@@ -486,15 +489,13 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
-      # 文字列リテラルとして評価する場合、内部にクォートが含まれていないか、
-      # または正しくエスケープされている必要がある。
-      # 単純に \A(['"])(.*?)\1\z\m でマッチさせると "a" || "b" もマッチしてしまうため、
-      # 内部にクォートがある場合は、それがエスケープされているかを確認する。
+      # 文字列リテラルの判定を厳格化
       if token.match?(/\A(['"])(.*?)\1\z/m)
         quote = token[0]
         content = token[1...-1]
-        # クォートが内部に含まれており、かつそれがエスケープされていない場合は文字列リテラルではない
-        unless content.include?(quote) && !content.gsub(/\\./, '').include?(quote)
+        # 内部にエスケープされていない同じクォートが存在する場合、それは単一の文字列リテラルではない
+        # (例: "hello" || " world" はマッチするが、内部に " があるため除外される)
+        unless content.gsub(/\\./, '').include?(quote)
           return evaluate_string_literal(token)
         end
       end
