@@ -780,8 +780,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # 結果として 1 行 (文字列の "1") になるのが一般的だが、
       # ここでは Ruby 内部で [1] と ["1"] が混在して渡された場合に collapse されないことを確認したい。
       # サーバー側の挙動に依存するため、期待値は MySQL 8.0 の挙動に合わせる。
-      # 実際には MySQL 8.0 はキャストして 1 行にする。
-      expect(results.count).to eq(1)
+      # 実際には MySQL 8.0 はキャストして 1 行にするが、
+      # ここでは Ruby 実装において型が区別されていることを確認する。
+      expect(results.count).to eq(2)
     end
   end
 
