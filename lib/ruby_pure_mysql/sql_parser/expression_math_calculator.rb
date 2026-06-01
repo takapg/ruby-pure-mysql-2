@@ -73,7 +73,7 @@ module RubyPureMysql
 
       case operator
       when '*' then left * right
-      when '/' then left.to_f / right.to_f
+      when '/' then left.to_f / right
       when '%' then left % right
       end
     end
