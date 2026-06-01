@@ -62,13 +62,33 @@ module RubyPureMysql
       case operator
       when 'LIKE' then match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
-      when 'IN' then target_value.include?(val)
-      when 'BETWEEN', 'NOT BETWEEN' then match_between?(val, operator, target_value)
-      when '=' then val == target_value
-      when '!=', '<>' then val != target_value
+      when 'IN'
+        return target_value.include?(val) unless val.is_a?(Numeric)
+        target_value.any? { |t| cast_to_numeric(t).is_a?(Numeric) && cast_to_numeric(t) == val }
+      when 'BETWEEN', 'NOT BETWEEN'
+        if val.is_a?(Numeric)
+          normalized_target = target_value.map { |t| cast_to_numeric(t) }
+          return false if normalized_target.any? { |t| !t.is_a?(Numeric) }
+          begin
+            return match_between?(val, operator, normalized_target)
+          rescue StandardError
+            return false
+          end
+        end
+        match_between?(val, operator, target_value)
+      when '='
+        v1, v2 = normalize_for_comparison(val, target_value)
+        v1 == v2
+      when '!=', '<>'
+        v1, v2 = normalize_for_comparison(val, target_value)
+        v1 != v2
       else
-        # 比較演算子 (>, <, >=, <=) の場合は Ruby のメソッドとして呼べる
-        val.public_send(operator.to_sym, target_value)
+        v1, v2 = normalize_for_comparison(val, target_value)
+        begin
+          v1.public_send(operator.to_sym, v2)
+        rescue StandardError
+          false
+        end
       end
     end
 
@@ -102,6 +122,21 @@ module RubyPureMysql
 
     def normalize_for_distinct(value)
       value.nil? ? :null : value.to_s
+    end
+
+    def normalize_for_comparison(v1, v2)
+      return [v1, v2] if v1.nil? || v2.nil?
+      return [v1, v2] unless (v1.is_a?(Numeric) || v2.is_a?(Numeric))
+
+      n1 = cast_to_numeric(v1)
+      n2 = cast_to_numeric(v2)
+      (n1.is_a?(Numeric) && n2.is_a?(Numeric)) ? [n1, n2] : [v1, v2]
+    end
+
+    def cast_to_numeric(val)
+      return val if val.is_a?(Numeric)
+      return nil if val.nil?
+      Float(val) rescue val
     end
   end
 end
