@@ -692,9 +692,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('DROP TABLE IF EXISTS mixed_distinct_test;')
       client.query('CREATE TABLE mixed_distinct_test (val VARCHAR(255));')
       client.query("INSERT INTO mixed_distinct_test VALUES ('1');")
-      client.query("INSERT INTO mixed_distinct_test VALUES (1);")
-      client.query("INSERT INTO mixed_distinct_test VALUES (NULL);")
-      client.query("INSERT INTO mixed_distinct_test VALUES (NULL);")
+      client.query('INSERT INTO mixed_distinct_test VALUES (1);')
+      client.query('INSERT INTO mixed_distinct_test VALUES (NULL);')
+      client.query('INSERT INTO mixed_distinct_test VALUES (NULL);')
       results = client.query('SELECT DISTINCT val FROM mixed_distinct_test;')
       values = results.map { |r| r['val'] }
       expect(values).to include(nil)
