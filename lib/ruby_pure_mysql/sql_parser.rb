@@ -535,8 +535,9 @@ module RubyPureMysql
       parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
       return send(parser_method, query) if parser_method
 
-      parts = query.split(/\s+UNION\s+/i).map(&:strip)
-      process_parts(parts, self)
+      is_all = query.match?(/\s+UNION\s+ALL\s+/i)
+      parts = query.split(/\s+UNION\s+(?:ALL\s+)?/i).map(&:strip)
+      process_parts(parts, self, union_all: is_all)
     end
 
     # --- ユーティリティメソッド ---
@@ -553,7 +554,7 @@ module RubyPureMysql
       [depth, buf]
     end
 
-    def self.process_parts(parts, evaluator)
+    def self.process_parts(parts, evaluator, union_all: false)
       state = { expected: nil, columns: nil }
       distinct_found = false
       rows = parts.map do |part|
@@ -563,7 +564,7 @@ module RubyPureMysql
         distinct_found ||= res[:distinct]
         res[:result]
       end
-      { result: rows, columns: state[:columns], type: parts.size > 1 ? :union : nil, distinct: distinct_found }
+      { result: rows, columns: state[:columns], type: parts.size > 1 ? (union_all ? :union_all : :union) : nil, distinct: distinct_found }
     end
 
     def self.process_single_part(part, state, evaluator)
