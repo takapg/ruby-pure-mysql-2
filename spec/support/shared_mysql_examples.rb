@@ -776,12 +776,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'distinguishes between different types with same string representation in DISTINCT' do
       # MySQLでは単一カラムでは型が固定されるため、UNIONを用いて異なる型を混在させる
       results = client.query('SELECT DISTINCT 1 UNION SELECT DISTINCT "1";')
-      # MySQL 8.0 では UNION DISTINCT 時に共通型にキャストされるため、
-      # 結果として 1 行 (文字列の "1") になるのが一般的だが、
-      # ここでは Ruby 内部で [1] と ["1"] が混在して渡された場合に collapse されないことを確認したい。
-      # サーバー側の挙動に依存するため、期待値は MySQL 8.0 の挙動に合わせる。
-      # MySQL 8.0 では型が異なっても文字列表現が同じ場合は同一視される
-      expect(results.count).to eq(1)
+      # チケット #150 の要件に基づき、異なる型（整数 1 と文字列 "1"）は区別されるべきである
+      expect(results.count).to eq(2)
     end
   end
 
