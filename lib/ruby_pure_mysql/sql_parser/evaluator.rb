@@ -8,10 +8,38 @@ module RubyPureMysql
     def evaluate_expression(col)
       col = col.strip
       return nil if col.casecmp?('NULL')
+
+      # 外側の括弧が式全体を囲んでいる場合は剥離して再帰的に評価する
+      while fully_parenthesized?(col)
+        col = col[1...-1].strip
+      end
+
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_function(col) if single_function_call?(col)
 
       evaluate_math(col)
+    end
+
+    def fully_parenthesized?(col)
+      return false unless col.start_with?('(') && col.end_with?(')')
+
+      depth = 0
+      quote = nil
+      col.each_char.with_index do |char, i|
+        if quote
+          if char == quote && (i == 0 || col[i - 1] != '\\')
+            quote = nil
+          end
+        elsif ["'", '"'].include?(char)
+          quote = char
+        elsif char == '('
+          depth += 1
+        elsif char == ')'
+          depth -= 1
+          return false if depth == 0 && i < col.length - 1
+        end
+      end
+      depth == 0
     end
 
     def evaluate_system_variable(col)

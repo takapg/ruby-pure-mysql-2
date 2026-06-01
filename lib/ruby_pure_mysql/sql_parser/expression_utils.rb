@@ -47,7 +47,7 @@ module RubyPureMysql
       until scanner.eos?
         if scanner.peek(1) == quote
           # MySQLのダブルクォートエスケープ ('') を処理
-          if scanner.peek(2) == quote
+          if scanner.peek(2)&.start_with?(quote, quote)
             scanner.getch # 1つ目のクォートを消費
             scanner.getch # 2つ目のクォートを消費
             next
