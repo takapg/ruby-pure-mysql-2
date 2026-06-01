@@ -35,11 +35,32 @@ module RubyPureMysql
         [nil, depth]
       end
     end
+
+    def operator?(token)
+      token.match?(%r{[+*/%-]}) && token.length == 1
+    end
+
+    def to_float_value(val)
+      return val.to_f if val.is_a?(Numeric)
+      return :error if val == :error
+      return nil if val.nil?
+
+      return :error if val.is_a?(String) && operator?(val)
+
+      val.to_s.to_f
+    end
+  end
+
+  # 単項演算子のスキャン処理を提供するモジュール
+  module ExpressionUnaryScanner
+    include ExpressionCommon
+
   end
 
   # 式のトークナイズ処理を提供するモジュール
   module ExpressionTokenizer
     include ExpressionCommon
+    include ExpressionUnaryScanner
 
     def scan_string(scanner)
       quote = scanner.getch
@@ -191,9 +212,94 @@ module RubyPureMysql
     end
   end
 
+  # 算術演算の計算ロジックを提供するモジュール
+  module ExpressionCalculator
+    include ExpressionCommon
+
+    MD_OPERATORS = %w[* / %].freeze
+
+    def apply_multiplication_division(tokens)
+      index = 1
+      while index < tokens.size
+        res = process_md_if_operator(tokens, index)
+        return nil if res == :div_by_zero
+        return :error if res == :error
+
+        index += 1 if res == :ok
+      end
+      tokens
+    end
+
+    def process_md_if_operator(tokens, index)
+      if MD_OPERATORS.include?(tokens[index])
+        res = process_md_op!(tokens, index)
+        return res == :ok ? :performed : res
+      end
+      :ok
+    end
+
+    def process_md_op!(tokens, index)
+      left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
+      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
+
+      left, right = resolve_md_operands(left_raw, right_raw)
+      return :error if left == :error || right == :error
+      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
+
+      tokens[index - 1] = calculate_md(left, right, operator)
+      tokens.slice!(index, 2)
+      :ok
+    end
+
+    def resolve_md_operands(left, right)
+      [to_float_value(left), to_float_value(right)]
+    end
+
+    def calculate_md(left, right, operator)
+      return nil if left.nil? || right.nil?
+
+      case operator
+      when '*' then left * right
+      when '/' then left / right
+      when '%' then left % right
+      end
+    end
+
+    def handle_missing_operand(tokens, index)
+      tokens[index - 1] = nil
+      tokens.slice!(index, 2)
+      :ok
+    end
+
+    def apply_addition_subtraction(tokens)
+      result = tokens[0]
+      idx = 1
+      while idx < tokens.size
+        op = tokens[idx]
+        val = tokens[idx + 1]
+        result = calculate_sum_diff(result, op, val)
+        return :error if result == :error
+
+        idx += 2
+      end
+      result
+    end
+
+    def calculate_sum_diff(result, operator, value)
+      return nil if result.nil? || value.nil?
+
+      left = to_float_value(result)
+      right = to_float_value(value)
+      return :error if left == :error || right == :error
+
+      operator == '+' ? left + right : left - right
+    end
+  end
+
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     include ExpressionCommon
+    include ExpressionCalculator
 
     def update_state(state, char)
       update_quote_and_depth(state, char)
@@ -307,10 +413,6 @@ module RubyPureMysql
       val
     end
 
-    def operator?(token)
-      token.match?(%r{[+*/%-]}) && token.length == 1
-    end
-
     def parenthesized?(token)
       token.start_with?('(') && token.end_with?(')')
     end
@@ -319,95 +421,6 @@ module RubyPureMysql
       token.match?(/\A\w+\(.*\)\z/)
     end
 
-    def to_float_value(val)
-      return val.to_f if val.is_a?(Numeric)
-      return :error if val == :error
-      return nil if val.nil?
-
-      return :error if val.is_a?(String) && operator?(val)
-
-      val.to_s.to_f
-    end
-
-    # --- Calculation Logic ---
-    MD_OPERATORS = %w[* / %].freeze
-
-    def apply_multiplication_division(tokens)
-      index = 1
-      while index < tokens.size
-        res = process_md_if_operator(tokens, index)
-        return nil if res == :div_by_zero
-        return :error if res == :error
-
-        index += 1 if res == :ok
-      end
-      tokens
-    end
-
-    def process_md_if_operator(tokens, index)
-      if MD_OPERATORS.include?(tokens[index])
-        res = process_md_op!(tokens, index)
-        return res == :ok ? :performed : res
-      end
-      :ok
-    end
-
-    def process_md_op!(tokens, index)
-      left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
-
-      left, right = resolve_md_operands(left_raw, right_raw)
-      return :error if left == :error || right == :error
-      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
-
-      tokens[index - 1] = calculate_md(left, right, operator)
-      tokens.slice!(index, 2)
-      :ok
-    end
-
-    def resolve_md_operands(left, right)
-      [to_float_value(left), to_float_value(right)]
-    end
-
-    def calculate_md(left, right, operator)
-      return nil if left.nil? || right.nil?
-
-      case operator
-      when '*' then left * right
-      when '/' then left / right
-      when '%' then left % right
-      end
-    end
-
-    def handle_missing_operand(tokens, index)
-      tokens[index - 1] = nil
-      tokens.slice!(index, 2)
-      :ok
-    end
-
-    def apply_addition_subtraction(tokens)
-      result = tokens[0]
-      idx = 1
-      while idx < tokens.size
-        op = tokens[idx]
-        val = tokens[idx + 1]
-        result = calculate_sum_diff(result, op, val)
-        return :error if result == :error
-
-        idx += 2
-      end
-      result
-    end
-
-    def calculate_sum_diff(result, operator, value)
-      return nil if result.nil? || value.nil?
-
-      left = to_float_value(result)
-      right = to_float_value(value)
-      return :error if left == :error || right == :error
-
-      operator == '+' ? left + right : left - right
-    end
   end
 
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
