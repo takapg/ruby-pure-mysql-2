@@ -39,7 +39,11 @@ module RubyPureMysql
       if handler
         send(handler, client, result)
       else
-        send_result_set(client, result[:result], result[:columns])
+        rows = result[:result]
+        # UNION (non-ALL) は暗黙的に DISTINCT であるため、重複排除を適用する
+        # または、SELECT DISTINCT の場合
+        rows = apply_distinct(rows) if result[:type] == :union || result[:distinct]
+        send_result_set(client, rows, result[:columns])
       end
     end
   end

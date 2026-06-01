@@ -535,8 +535,10 @@ module RubyPureMysql
       parser_method = PARSERS.find { |regex, _| query.match?(regex) }&.last
       return send(parser_method, query) if parser_method
 
-      parts = query.split(/\s+UNION\s+/i).map(&:strip)
-      process_parts(parts, self)
+      # UNION (without ALL) が一つでもあれば、全体として重複排除が必要な :union とみなす
+      is_all = !query.match?(/\s+UNION\s+(?!ALL\s+)/i)
+      parts = query.split(/\s+UNION\s+(?:ALL\s+)?/i).map(&:strip)
+      process_parts(parts, self, union_all: is_all)
     end
 
     # --- ユーティリティメソッド ---
@@ -553,15 +555,24 @@ module RubyPureMysql
       [depth, buf]
     end
 
-    def self.process_parts(parts, evaluator)
+    def self.process_parts(parts, evaluator, union_all: false)
       state = { expected: nil, columns: nil }
+      distinct_found = false
       rows = parts.map do |part|
         res = process_single_part(part, state, evaluator)
         return res if res.key?(:error)
 
+        distinct_found ||= res[:distinct]
         res[:result]
       end
-      { result: rows, columns: state[:columns] }
+      type = determine_union_type(parts.size, union_all)
+      { result: rows, columns: state[:columns], type: type, distinct: distinct_found }
+    end
+
+    def self.determine_union_type(size, union_all)
+      return nil if size <= 1
+
+      union_all ? :union_all : :union
     end
 
     def self.process_single_part(part, state, evaluator)
@@ -581,27 +592,28 @@ module RubyPureMysql
         return { error: 'The used SELECT statements have a different number of columns' }
       end
 
-      { result: result[:result], columns: result[:columns], size: result[:result].size }
+      { result: result[:result], columns: result[:columns], size: result[:result].size, distinct: result[:distinct] }
     end
 
     def self.parse_part(part, evaluator)
-      match = part.match(/\ASELECT\s+(.+?)\s*;?\s*\z/i)
+      match = part.match(/\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<cols>.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
 
-      col_strs = evaluator.split_args(match[1])
+      col_strs = evaluator.split_args(match[:cols])
       return { error: 'Invalid SQL' } if col_strs == :error
 
       columns = col_strs.map { |col| parse_column_alias(col) }
       values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
       return { error: 'Unsupported expression' } if values.include?(:error)
 
-      { result: values, columns: columns }
+      { result: values, columns: columns, distinct: !match[:distinct].nil? }
     end
 
     private_class_method :parse_insert, :parse_select_from, :parse_create_table,
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part, :extract_update_parts, :build_update_result
+                         :parse_part, :extract_update_parts, :build_update_result,
+                         :determine_union_type
   end
 end

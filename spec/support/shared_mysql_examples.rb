@@ -740,6 +740,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO mixed_distinct_test VALUES (NULL);')
       results = client.query('SELECT DISTINCT val FROM mixed_distinct_test;')
       values = results.map { |r| r['val'] }
+      # MySQL 8.0 では VARCHAR カラムへの挿入時にキャストされるため、'1' と 1 は同一視される
       expect(results.count).to eq(2)
       expect(values).to contain_exactly('1', nil)
     end
@@ -754,6 +755,31 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT DISTINCT val FROM where_distinct_test WHERE val IS NOT NULL;')
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(1)
+    end
+
+    it 'handles SELECT DISTINCT with composite columns and NULLs' do
+      client.query('DROP TABLE IF EXISTS composite_distinct_test;')
+      client.query('CREATE TABLE composite_distinct_test (a INT, b INT);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, 1);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, 1);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (NULL, NULL);')
+      client.query('INSERT INTO composite_distinct_test VALUES (1, 1);')
+
+      results = client.query('SELECT DISTINCT a, b FROM composite_distinct_test;')
+      expect(results.count).to eq(4)
+      data = results.to_a.map(&:values)
+      expect(data).to contain_exactly([1, nil], [nil, 1], [nil, nil], [1, 1])
+    end
+
+    it 'distinguishes between different types with same string representation in DISTINCT' do
+      # MySQLでは単一カラムでは型が固定されるため、UNIONを用いて異なる型を混在させる
+      results = client.query('SELECT DISTINCT 1 UNION SELECT DISTINCT "1";')
+      # 本物の MySQL 8.0 では UNION DISTINCT 時に共通型にキャストされるため、
+      # 結果として 1 行になる。互換性テストとしてこの挙動に合わせる。
+      expect(results.count).to eq(1)
     end
   end
 
