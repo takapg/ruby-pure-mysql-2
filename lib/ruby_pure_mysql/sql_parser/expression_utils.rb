@@ -45,15 +45,22 @@ module RubyPureMysql
       quote = scanner.getch
       start_pos = scanner.pos - 1
       until scanner.eos?
-        if scanner.peek(1) == quote
-          # MySQLのダブルクォートエスケープ ('') を処理
-          if scanner.peek(2)&.start_with?(quote, quote)
+        char = scanner.peek(1)
+        if char == quote
+          # MySQLのシングルクォートエスケープ ('') を処理
+          if quote == "'" && scanner.peek(2)&.start_with?("''")
             scanner.getch # 1つ目のクォートを消費
             scanner.getch # 2つ目のクォートを消費
             next
           end
+
           # バックスラッシュエスケープを確認
-          break if count_backslashes(scanner.string, scanner.pos - 1).even?
+          if count_backslashes(scanner.string, scanner.pos - 1).odd?
+            scanner.getch
+            next
+          end
+
+          break # 閉じクォートに到達
         end
         scanner.getch
       end
@@ -505,9 +512,11 @@ module RubyPureMysql
         quote = token[0]
         content = token[1...-1]
         # エスケープを除去した状態で、同じクォートが含まれていれば、それは単一のリテラルではない
-        if content.gsub(/\\./, '').include?(quote)
-          return :error
-        end
+        # MySQLのシングルクォートエスケープ ('') も考慮する
+        cleaned_content = content.gsub(/\\./, '')
+        cleaned_content = cleaned_content.gsub("''", '') if quote == "'"
+        return :error if cleaned_content.include?(quote)
+
         return evaluate_string_literal(token)
       end
 
