@@ -1197,21 +1197,40 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'sorts NULL values correctly (NULLs first for ASC, last for DESC)' do
-      client.query('DROP TABLE IF EXISTS null_sort;')
-      client.query('CREATE TABLE null_sort (id INT, val VARCHAR(255));')
-      client.query('INSERT INTO null_sort VALUES (1, NULL);')
-      client.query("INSERT INTO null_sort VALUES (2, 'A');")
-      client.query('INSERT INTO null_sort VALUES (3, NULL);')
+      client.query('DROP TABLE IF EXISTS null_sort_test;')
+      client.query('CREATE TABLE null_sort_test (id INT, val_int INT, val_str VARCHAR(255));')
+      client.query('INSERT INTO null_sort_test VALUES (1, NULL, NULL);')
+      client.query("INSERT INTO null_sort_test VALUES (2, 10, 'B');")
+      client.query("INSERT INTO null_sort_test VALUES (3, NULL, 'A');")
+      client.query('INSERT INTO null_sort_test VALUES (4, 20, NULL);')
 
-      # ASC: NULLs first
-      results_asc = client.query('SELECT id FROM null_sort ORDER BY val ASC;')
-      expect(results_asc.map { |r| r['id'] }).to include(1, 3)
-      expect(results_asc.to_a.last['id']).to eq(2)
+      # ASC: NULLs first (integers)
+      results_int_asc = client.query('SELECT id FROM null_sort_test ORDER BY val_int ASC;')
+      ids_int_asc = results_int_asc.map { |r| r['id'] }
+      expect(ids_int_asc.first(2)).to contain_exactly(1, 3)
+      expect(ids_int_asc[2..]).to eq([2, 4])
 
-      # DESC: NULLs last
-      results_desc = client.query('SELECT id FROM null_sort ORDER BY val DESC;')
-      expect(results_desc.first['id']).to eq(2)
-      expect(results_desc.map { |r| r['id'] }).to include(1, 3)
+      # DESC: NULLs last (integers)
+      results_int_desc = client.query('SELECT id FROM null_sort_test ORDER BY val_int DESC;')
+      ids_int_desc = results_int_desc.map { |r| r['id'] }
+      expect(ids_int_desc.first(2)).to eq([4, 2])
+      expect(ids_int_desc[2..]).to contain_exactly(1, 3)
+
+      # ASC: NULLs first (strings)
+      results_str_asc = client.query('SELECT id FROM null_sort_test ORDER BY val_str ASC;')
+      ids_str_asc = results_str_asc.map { |r| r['id'] }
+      expect(ids_str_asc.first(2)).to contain_exactly(1, 4)
+      expect(ids_str_asc[2..]).to eq([3, 2])
+
+      # DESC: NULLs last (strings)
+      results_str_desc = client.query('SELECT id FROM null_sort_test ORDER BY val_str DESC;')
+      ids_str_desc = results_str_desc.map { |r| r['id'] }
+      expect(ids_str_desc.first(2)).to eq([2, 3])
+      expect(ids_str_desc[2..]).to contain_exactly(1, 4)
+
+      # Multiple columns with NULLs
+      results_multi = client.query('SELECT id FROM null_sort_test ORDER BY val_int ASC, val_str ASC;')
+      expect(results_multi.map { |r| r['id'] }).to eq([1, 3, 2, 4])
     end
 
     it 'returns an error for non-existent columns in ORDER BY' do
