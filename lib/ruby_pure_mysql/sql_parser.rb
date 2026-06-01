@@ -602,6 +602,7 @@ module RubyPureMysql
       columns.map do |col_info|
         val = evaluator.evaluate_expression(col_info[:original])
         return { error: 'Unsupported expression' } if val == :error
+
         val
       end
     end
