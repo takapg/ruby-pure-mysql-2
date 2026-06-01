@@ -49,7 +49,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        perform_update_rows(@data[table_name], @tables[table_name], update_map, criteria)
+        return false unless perform_update_rows(@data[table_name], @tables[table_name], update_map, criteria)
         true
       end
     end
@@ -59,6 +59,8 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         indices = collect_indices_to_delete(@data[table_name], @tables[table_name], criteria)
+        return false if indices.nil?
+
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
         true
       end
@@ -85,10 +87,13 @@ module RubyPureMysql
     private
 
     def perform_update_rows(rows, columns, update_map, criteria)
-      return if criteria[:limit]&.zero?
+      return true if criteria[:limit]&.zero?
 
       target_indices = get_target_indices(rows, columns, criteria)
+      return false if target_indices.nil?
+
       target_indices.each { |i| update_row(rows[i], update_map) }
+      true
     end
 
     def update_row(row, update_map)
@@ -103,7 +108,7 @@ module RubyPureMysql
 
     def get_target_indices(rows, columns, criteria)
       indices = find_matching_indices(criteria[:client], rows, columns, criteria[:where], criteria[:table_map] || {})
-      return [] if indices.nil?
+      return nil if indices.nil?
 
       indices = sort_indices(rows, indices, columns, criteria)
       criteria[:limit] ? indices.first(criteria[:limit]) : indices

@@ -97,11 +97,7 @@ module RubyPureMysql
       return val if val.is_a?(Numeric)
       return nil if val.nil?
 
-      begin
-        Float(val)
-      rescue StandardError
-        val
-      end
+      val.to_s.to_f
     end
   end
 end
