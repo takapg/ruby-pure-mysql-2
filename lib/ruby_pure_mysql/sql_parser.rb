@@ -323,7 +323,7 @@ module RubyPureMysql
 
     def handle_where_char(clause, buffer, parts)
       char = clause[buffer[:index]]
-      return if handle_quote_escape(clause, buffer, char)
+      return if quote_escaped?(clause, buffer, char)
 
       buffer[:in_quote] = update_quote_state(char, buffer[:index], clause, buffer[:in_quote])
       return process_normal_char(clause, buffer) if buffer[:in_quote]
@@ -331,7 +331,7 @@ module RubyPureMysql
       process_where_logic(clause, buffer, parts)
     end
 
-    def handle_quote_escape(clause, buffer, char)
+    def quote_escaped?(clause, buffer, char)
       return false unless buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
 
       buffer[:current] << char
@@ -383,9 +383,9 @@ module RubyPureMysql
     end
 
     def update_quote_state(char, index, clause, in_quote)
-      return in_quote unless ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
+      return in_quote unless quote_char?(char) && not_escaped?(clause, index) && compatible_quote?(char, in_quote)
 
-      return in_quote if in_quote && clause[index + 1] == char
+      return in_quote if escaped_quote?(clause, index, char, in_quote)
 
       in_quote == char ? nil : char
     end
@@ -448,6 +448,22 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    def quote_char?(char)
+      ["'", '"'].include?(char)
+    end
+
+    def not_escaped?(clause, index)
+      index.zero? || clause[index - 1] != '\\'
+    end
+
+    def compatible_quote?(char, in_quote)
+      in_quote.nil? || in_quote == char
+    end
+
+    def escaped_quote?(clause, index, char, in_quote)
+      in_quote && clause[index + 1] == char
+    end
+
     def strip_backticks(str)
       str.delete_prefix('`').delete_suffix('`')
     end

@@ -44,7 +44,7 @@ module RubyPureMysql
       quote = scanner.getch
       start_pos = scanner.pos - 1
       until scanner.eos?
-        break if handle_string_quote(scanner, quote)
+        break if string_quote?(scanner, quote)
 
         scanner.getch
       end
@@ -52,7 +52,7 @@ module RubyPureMysql
       scanner.string[start_pos...scanner.pos]
     end
 
-    def handle_string_quote(scanner, quote)
+    def string_quote?(scanner, quote)
       return false unless scanner.peek(1) == quote
 
       if quote == "'" && scanner.peek(2)&.start_with?("''")
@@ -197,28 +197,38 @@ module RubyPureMysql
     end
 
     def scan_token_by_type(scanner, tokens)
-      if scanner.scan('(')
-        scanner.pos -= 1
-        scan_balanced_parens(scanner)
-      elsif scanner.scan(/[a-zA-Z_]/)
-        scanner.pos -= 1
-        scan_identifier_or_function(scanner)
-      elsif scanner.scan('||')
-        '||'
-      elsif scanner.scan(%r{[-+*/%]})
-        scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
-      elsif scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
-        scanner.matched
-      elsif scanner.scan(/['"]/)
-        scanner.pos -= 1
-        scan_string(scanner)
-      else
-        :error
-      end
+      return scan_paren_token(scanner) if scanner.scan('(')
+      return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
+      return '||' if scanner.scan('||')
+      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
+      return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
+      return scan_str_token(scanner) if scanner.scan(/['"]/)
+
+      :error
+    end
+
+    def scan_paren_token(scanner)
+      scanner.pos -= 1
+      scan_balanced_parens(scanner)
+    end
+
+    def scan_id_token(scanner)
+      scanner.pos -= 1
+      scan_identifier_or_function(scanner)
+    end
+
+    def scan_op_token(scanner, tokens)
+      scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
+    end
+
+    def scan_str_token(scanner)
+      scanner.pos -= 1
+      scan_string(scanner)
     end
 
     def scan_operator_with_char(scanner, tokens, char)
       return char unless unary_operator?(char, tokens)
+
       scan_unary_operator_body(scanner)
     end
 
@@ -285,18 +295,25 @@ module RubyPureMysql
 
     def to_float_value(val)
       return val.to_f if val.is_a?(Numeric)
-      return :error if val == :error
-      return nil if val.nil?
+      return val if %i[error nil].include?(val)
 
-      return :error if val.is_a?(String) && operator?(val)
-
-      # 括弧で囲まれている場合は再帰的に評価する
-      if val.is_a?(String) && val.start_with?('(') && val.end_with?(')')
-        evaluated = evaluate_expression(val)
-        return evaluated == :error ? :error : to_float_value(evaluated)
-      end
+      return :error if string_operator?(val)
+      return evaluate_parenthesized_float(val) if parenthesized_string?(val)
 
       val.to_s.to_f
+    end
+
+    def string_operator?(val)
+      val.is_a?(String) && operator?(val)
+    end
+
+    def parenthesized_string?(val)
+      val.is_a?(String) && val.start_with?('(') && val.end_with?(')')
+    end
+
+    def evaluate_parenthesized_float(val)
+      evaluated = evaluate_expression(val)
+      evaluated == :error ? :error : to_float_value(evaluated)
     end
 
     def calculate_md(left, right, operator)
@@ -331,10 +348,12 @@ module RubyPureMysql
     end
 
     def process_add_sub_op!(tokens, index)
-      left_raw, right_raw = tokens[index - 1], tokens[index + 1]
+      left_raw = tokens[index - 1]
+      right_raw = tokens[index + 1]
       return :error if left_raw.nil? || right_raw.nil?
 
-      left, right = to_float_value(left_raw), to_float_value(right_raw)
+      left = to_float_value(left_raw)
+      right = to_float_value(right_raw)
       return :error if left == :error || right == :error
 
       tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
@@ -357,7 +376,8 @@ module RubyPureMysql
     end
 
     def process_concat_op!(tokens, index)
-      left_raw, right_raw = tokens[index - 1], tokens[index + 1]
+      left_raw = tokens[index - 1]
+      right_raw = tokens[index + 1]
       return if left_raw.nil? || right_raw.nil?
 
       tokens[index - 1] = "#{format_for_concat(left_raw)}#{format_for_concat(right_raw)}"
@@ -448,25 +468,38 @@ module RubyPureMysql
       state[:args]
     end
 
-    def update_split_state(char, i, args_str, state)
+    def update_split_state(char, index, args_str, state)
       if state[:quote]
-        state[:quote] = nil if char == state[:quote] && (i.zero? || args_str[i - 1] != '\\')
-        state[:current_arg] << char
+        handle_split_quote_state(char, index, args_str, state)
       elsif ["'", '"'].include?(char)
-        state[:quote] = char
-        state[:current_arg] << char
-      elsif char == '('
-        state[:depth] += 1
-        state[:current_arg] << char
-      elsif char == ')'
-        state[:depth] -= 1
-        state[:current_arg] << char
+        handle_split_quote_start(char, state)
+      elsif char == '(' || char == ')'
+        handle_split_bracket_state(char, state)
       elsif char == ',' && state[:depth].zero?
-        state[:args] << state[:current_arg].strip
-        state[:current_arg] = +''
+        handle_split_comma(state)
       else
         state[:current_arg] << char
       end
+    end
+
+    def handle_split_quote_state(char, index, args_str, state)
+      state[:quote] = nil if char == state[:quote] && (index.zero? || args_str[index - 1] != '\\')
+      state[:current_arg] << char
+    end
+
+    def handle_split_quote_start(char, state)
+      state[:quote] = char
+      state[:current_arg] << char
+    end
+
+    def handle_split_bracket_state(char, state)
+      char == '(' ? state[:depth] += 1 : state[:depth] -= 1
+      state[:current_arg] << char
+    end
+
+    def handle_split_comma(state)
+      state[:args] << state[:current_arg].strip
+      state[:current_arg] = +''
     end
 
     def process_math_token(token)

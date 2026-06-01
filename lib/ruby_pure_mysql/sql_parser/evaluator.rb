@@ -21,19 +21,27 @@ module RubyPureMysql
     def fully_parenthesized?(col)
       return false unless col.start_with?('(') && col.end_with?(')')
 
-      depth, quote = 0, nil
-      col.each_char.with_index do |char, i|
-        quote, depth = update_paren_state(char, i, col, quote, depth)
-        return false if depth.zero? && i < col.length - 1 && char == ')'
+      depth = 0
+      quote = nil
+      col.each_char.with_index do |char, index|
+        quote, depth = update_paren_state(char, index, col, quote, depth)
+        return false if depth.zero? && index < col.length - 1 && char == ')'
       end
       depth.zero?
     end
 
-    def update_paren_state(char, i, col, quote, depth)
-      if quote
-        return [quote == char && (i.zero? || col[i - 1] != '\\') ? nil : quote, depth]
-      end
+    def update_paren_state(char, index, col, quote, depth)
+      return handle_quote_paren_state(char, index, col, quote, depth) if quote
 
+      handle_bracket_paren_state(char, depth)
+    end
+
+    def handle_quote_paren_state(char, index, col, quote, depth)
+      new_quote = (quote == char && (index.zero? || col[index - 1] != '\\')) ? nil : quote
+      [new_quote, depth]
+    end
+
+    def handle_bracket_paren_state(char, depth)
       if ["'", '"'].include?(char)
         [char, depth]
       elsif char == '('
