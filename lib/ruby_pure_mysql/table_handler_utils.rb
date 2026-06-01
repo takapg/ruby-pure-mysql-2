@@ -60,13 +60,15 @@ module RubyPureMysql
       end
     end
 
-    private
-
     def normalize_where_groups(where_clauses)
+      return [] if where_clauses.nil? || where_clauses.empty?
+
       where_clauses.first.is_a?(Hash) ? [where_clauses] : where_clauses
     end
 
     def compile_groups(client, table_columns, groups, table_map)
+      return nil if groups.nil?
+
       compiled = groups.map { |group| compile_where_clauses(client, table_columns, group, table_map) }
       compiled.any?(&:nil?) ? nil : compiled
     end
@@ -84,14 +86,18 @@ module RubyPureMysql
     end
 
     def cast_to_numeric(val, method)
+      return nil if val.nil?
+
       val.is_a?(Numeric) ? val.send(method) : val.to_s.send(method)
     end
 
     def determine_base_types(rows)
-      return [] if rows.empty?
+      return [] if rows.nil? || rows.empty?
 
-      (0...rows.first.size).map do |col_idx|
-        rows.find { |row| !row[col_idx].nil? }&.[](col_idx)&.class
+      num_cols = rows.first.size
+      (0...num_cols).map do |col_idx|
+        first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
+        first_val&.class
       end
     end
   end
