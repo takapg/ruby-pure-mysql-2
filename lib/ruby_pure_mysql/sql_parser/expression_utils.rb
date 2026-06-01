@@ -413,34 +413,36 @@ module RubyPureMysql
     end
 
     def split_args(args_str)
-      scanner = StringScanner.new(args_str)
-      args = []
-      until scanner.eos?
-        scanner.skip(/\s+/)
-        break if scanner.eos?
+      return [] if args_str.nil? || args_str.strip.empty?
 
-        if scanner.peek(1) == '('
-          res = scan_balanced_parens(scanner)
-          return :error if res == :error
-          args << res
-        elsif scanner.peek(1) == "'" || scanner.peek(1) == '"'
-          args << scan_string(scanner)
-        else
-          start_pos = scanner.pos
-          depth = 0
-          until scanner.eos?
-            char = scanner.getch
-            if char == '(' then depth += 1
-            elsif char == ')' then depth -= 1
-            elsif char == ',' && depth == 0
-              scanner.pos = start_pos + (scanner.pos - start_pos - 1)
-              break
-            end
+      args = []
+      current_arg = +''
+      depth = 0
+      quote = nil
+
+      args_str.each_char.with_index do |char, i|
+        if quote
+          if char == quote && (i == 0 || args_str[i - 1] != '\\')
+            quote = nil
           end
-          args << scanner.string[start_pos...scanner.pos].strip
+          current_arg << char
+        elsif ["'", '"'].include?(char)
+          quote = char
+          current_arg << char
+        elsif char == '('
+          depth += 1
+          current_arg << char
+        elsif char == ')'
+          depth -= 1
+          current_arg << char
+        elsif char == ',' && depth == 0
+          args << current_arg.strip
+          current_arg = +''
+        else
+          current_arg << char
         end
-        scanner.scan(/,/)
       end
+      args << current_arg.strip
       args
     end
 
