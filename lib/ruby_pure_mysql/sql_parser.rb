@@ -325,26 +325,29 @@ module RubyPureMysql
       buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
 
       while buffer[:index] < clause.length
-        char = clause[buffer[:index]]
-
-        next if handle_quote_escape(clause, buffer, char)
-        next if handle_quote_toggle(clause, buffer, char)
-
-        unless buffer[:in_quote]
-          next if handle_operator(clause, buffer, operator, parts)
-
-          update_between_state(clause, buffer, operator)
-        end
-
-        buffer[:current] << char
-        buffer[:index] += 1
+        process_split_char(clause, buffer, operator, parts)
       end
 
       parts << buffer[:current].strip
       parts
     end
 
-    def handle_quote_escape(clause, buffer, char)
+    def process_split_char(clause, buffer, operator, parts)
+      char = clause[buffer[:index]]
+      return if quote_escaped?(clause, buffer, char)
+      return if quote_toggled?(clause, buffer, char)
+
+      unless buffer[:in_quote]
+        return if operator_handled?(clause, buffer, operator, parts)
+
+        update_between_state(clause, buffer, operator)
+      end
+
+      buffer[:current] << char
+      buffer[:index] += 1
+    end
+
+    def quote_escaped?(clause, buffer, char)
       if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
         buffer[:current] << (char * 2)
         buffer[:index] += 2
@@ -353,7 +356,7 @@ module RubyPureMysql
       false
     end
 
-    def handle_quote_toggle(clause, buffer, char)
+    def quote_toggled?(clause, buffer, char)
       return false unless quote_char?(char) && not_escaped?(clause, buffer[:index])
       return false unless buffer[:in_quote].nil? || buffer[:in_quote] == char
 
@@ -363,21 +366,29 @@ module RubyPureMysql
       true
     end
 
-    def handle_operator(clause, buffer, operator, parts)
+    def operator_handled?(clause, buffer, operator, parts)
       op_match = clause[buffer[:index]..].match(/\A\s+#{operator}\s+/i)
       return false unless op_match
 
       if operator == 'AND' && buffer[:in_between]
-        buffer[:current] << op_match[0]
-        buffer[:index] += op_match[0].length
-        buffer[:in_between] = false
+        handle_and_between(buffer, op_match[0])
         return true
       end
 
+      consume_operator(buffer, op_match[0], parts)
+      true
+    end
+
+    def handle_and_between(buffer, match_str)
+      buffer[:current] << match_str
+      buffer[:index] += match_str.length
+      buffer[:in_between] = false
+    end
+
+    def consume_operator(buffer, match_str, parts)
       parts << buffer[:current].strip
       buffer[:current] = +''
-      buffer[:index] += op_match[0].length
-      true
+      buffer[:index] += match_str.length
     end
 
     def update_between_state(clause, buffer, operator)
