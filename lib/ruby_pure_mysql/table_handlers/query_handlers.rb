@@ -109,7 +109,7 @@ module RubyPureMysql
       rows, final_columns = project_rows(client, rows, columns, result[:columns], table_map)
       return if rows.nil?
 
-      rows.uniq! if result[:distinct]
+      rows = apply_distinct(rows) if result[:distinct]
 
       rows = apply_offset_and_limit(rows, result)
       send_result_set(client, rows, final_columns)

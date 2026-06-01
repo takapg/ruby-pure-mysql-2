@@ -82,5 +82,10 @@ module RubyPureMysql
         idx
       end
     end
+
+    def apply_distinct(rows)
+      return rows unless rows
+      rows.uniq
+    end
   end
 end
