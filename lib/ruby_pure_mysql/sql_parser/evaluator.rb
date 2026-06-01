@@ -29,11 +29,15 @@ module RubyPureMysql
       args = evaluate_function_args(match[2])
       return :error if args == :error
 
-      case match[1].downcase
+      call_builtin_function(match[1].downcase, args)
+    end
+
+    def call_builtin_function(name, args)
+      case name
       when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
-      when 'concat' then args.map(&:to_s).join
+      when 'concat' then args.join
       else :error
       end
     end
@@ -66,9 +70,9 @@ module RubyPureMysql
       col[first_paren_idx..].each_char do |char|
         depth += 1 if char == '('
         depth -= 1 if char == ')'
-        return false if depth < 0
+        return false if depth.negative?
       end
-      depth == 0
+      depth.zero?
     end
 
     def evaluate_function_args(args_str)
@@ -77,6 +81,7 @@ module RubyPureMysql
       split_args(args_str).map do |arg|
         val = evaluate_expression(arg)
         return :error if val == :error
+
         val
       end
     end

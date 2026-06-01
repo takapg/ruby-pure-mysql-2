@@ -8,11 +8,11 @@ module RubyPureMysql
     def scan_balanced_parens(scanner)
       start_pos = scanner.pos
       depth = 0
-      while !scanner.eos?
+      until scanner.eos?
         char = scanner.getch
         depth += 1 if char == '('
         depth -= 1 if char == ')'
-        break if depth == 0
+        break if depth.zero?
       end
       return :error if depth != 0
 
@@ -20,30 +20,38 @@ module RubyPureMysql
     end
 
     def scan_identifier_or_function(scanner)
-      if (token = scanner.scan(/[a-zA-Z0-9_]+/))
-        return token if token.casecmp?('NULL')
-        if scanner.peek(1) == '('
-          start_pos = scanner.pos - token.length
-          res = scan_balanced_parens(scanner)
-          return :error if res == :error
+      token = scanner.scan(/[a-zA-Z0-9_]+/)
+      return nil unless token
 
-          return scanner.string[start_pos...scanner.pos]
-        end
-        return token
-      end
-      nil
+      return token if token.casecmp?('NULL')
+
+      return scan_function_body(scanner, token) if scanner.peek(1) == '('
+
+      token
+    end
+
+    def scan_function_body(scanner, token)
+      start_pos = scanner.pos - token.length
+      res = scan_balanced_parens(scanner)
+      return :error if res == :error
+
+      scanner.string[start_pos...scanner.pos]
     end
 
     def scan_operator(scanner, tokens)
-      if (char = scanner.getch)
-        return char unless unary_operator?(char, tokens)
-        start_pos = scanner.pos - 1
-        if scan_unary_operand(scanner)
-          return scanner.string[start_pos...scanner.pos]
-        end
-        return :error
-      end
-      nil
+      char = scanner.getch
+      return nil unless char
+
+      return char unless unary_operator?(char, tokens)
+
+      scan_unary_operator_body(scanner, char)
+    end
+
+    def scan_unary_operator_body(scanner, char)
+      start_pos = scanner.pos - 1
+      return scanner.string[start_pos...scanner.pos] if scan_unary_operand(scanner)
+
+      :error
     end
 
     def unary_operator?(char, tokens)
@@ -54,35 +62,40 @@ module RubyPureMysql
       scanner.skip(/\s+/)
       return false if scanner.eos?
 
-      char = scanner.peek(1)
-      if char == '('
+      case scanner.peek(1)
+      when '('
         scan_balanced_parens(scanner)
         true
-      elsif char.match?(/[a-zA-Z_]/)
+      when /[a-zA-Z_]/
         scan_identifier_or_function(scanner)
         true
-      elsif char.match?(/[\d.]/)
+      when /[\d.]/
         scanner.scan(/[\d.]+/)
         true
-      elsif char.match?(/['"]/)
+      when /['"]/
         scan_string(scanner)
         true
-      elsif char.match?(/[-+]/)
-        scanner.getch
-        scan_unary_operand(scanner)
+      when /[-+]/
+        scan_recursive_unary(scanner)
       else
         false
       end
     end
 
+    def scan_recursive_unary(scanner)
+      scanner.getch
+      scan_unary_operand(scanner)
+    end
+
     def scan_string(scanner)
       quote = scanner.getch
       start_pos = scanner.pos - 1
-      while !scanner.eos?
+      until scanner.eos?
         break if scanner.peek(1) == quote && count_backslashes(scanner).even?
+
         scanner.getch
       end
-      scanner.getch if !scanner.eos?
+      scanner.getch unless scanner.eos?
       scanner.string[start_pos...scanner.pos]
     end
 
@@ -107,27 +120,22 @@ module RubyPureMysql
       until scanner.eos?
         token = tokenize_char(scanner, tokens)
         return :error if token == :error
+
         tokens << token if token
       end
       process_tokens(tokens)
     end
 
     def tokenize_char(scanner, tokens)
-      if scanner.scan(/\s+/)
-        nil
-      elsif scanner.peek(1) == '('
-        res = scan_balanced_parens(scanner)
-        res == :error ? :error : res
-      elsif scanner.peek(1).match?(/[a-zA-Z_]/)
-        scan_identifier_or_function(scanner)
-      elsif scanner.peek(1).match?(/[-+*\/%]/)
-        scan_operator(scanner, tokens)
-      elsif scanner.peek(1).match?(/[\d.]/)
-        scanner.scan(/[\d.]+/)
-      elsif scanner.peek(1).match?(/['"]/)
-        scan_string(scanner)
-      else
-        :error
+      return nil if scanner.scan(/\s+/)
+
+      case scanner.peek(1)
+      when '(' then scan_balanced_parens(scanner)
+      when /[a-zA-Z_]/ then scan_identifier_or_function(scanner)
+      when %r{[-+*/%]} then scan_operator(scanner, tokens)
+      when /[\d.]/ then scanner.scan(/[\d.]+/)
+      when /['"]/ then scan_string(scanner)
+      else :error
       end
     end
 
@@ -302,14 +310,17 @@ module RubyPureMysql
       left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
-      left = to_float_value(left_raw)
-      right = to_float_value(right_raw)
+      left, right = resolve_md_operands(left_raw, right_raw)
       return :error if left == :error || right == :error
-      return :div_by_zero if (operator == '/' || operator == '%') && right.zero?
+      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
 
       tokens[index - 1] = calculate_md(left, right, operator)
       tokens.slice!(index, 2)
       :ok
+    end
+
+    def resolve_md_operands(left, right)
+      [to_float_value(left), to_float_value(right)]
     end
 
     def calculate_md(left, right, operator)
