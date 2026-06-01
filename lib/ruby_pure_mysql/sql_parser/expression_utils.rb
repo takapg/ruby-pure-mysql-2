@@ -145,7 +145,6 @@ module RubyPureMysql
 
       scan_unary_operator_body(scanner)
     end
-
   end
 
   # 式のトークナイズ処理を提供するモジュール
