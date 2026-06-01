@@ -83,7 +83,7 @@ module RubyPureMysql
     end
 
     def perform_update(client, result, where_clauses, update_map)
-      criteria = { where: where_clauses, limit: result[:limit], order: result[:order], client: client }
+      criteria = { where: where_clauses, limit: result[:limit], offset: result[:offset], order: result[:order], client: client }
       if @storage_engine.update_rows_with_where(result[:table_name], criteria, update_map)
         send_ok_packet(client, 1)
       else
@@ -98,7 +98,7 @@ module RubyPureMysql
       where_clauses = prepare_where_clauses(client, columns, result[:where])
       return if where_clauses == false
 
-      criteria = { where: where_clauses, limit: result[:limit], order: result[:order], client: client }
+      criteria = { where: where_clauses, limit: result[:limit], offset: result[:offset], order: result[:order], client: client }
       if @storage_engine.delete_rows_with_where(result[:table_name], criteria)
         send_ok_packet(client, 1)
       else
