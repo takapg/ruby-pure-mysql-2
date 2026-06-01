@@ -86,14 +86,7 @@ module RubyPureMysql
     def apply_distinct(rows)
       return rows unless rows
 
-      rows.uniq do |row|
-        key = +''
-        row.each do |v|
-          key << (v.nil? ? "\x00" : v.to_s)
-          key << "\x01"
-        end
-        key
-      end
+      rows.uniq
     end
   end
 end
