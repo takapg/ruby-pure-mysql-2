@@ -560,16 +560,16 @@ module RubyPureMysql
       rows = parts.map do |part|
         res = process_single_part(part, state, evaluator)
         return res if res.key?(:error)
-
         distinct_found ||= res[:distinct]
         res[:result]
       end
-      type = nil
-      if parts.size > 1
-        type = union_all ? :union_all : :union
-      end
-
+      type = determine_union_type(parts.size, union_all)
       { result: rows, columns: state[:columns], type: type, distinct: distinct_found }
+    end
+
+    def self.determine_union_type(size, union_all)
+      return nil if size <= 1
+      union_all ? :union_all : :union
     end
 
     def self.process_single_part(part, state, evaluator)
@@ -610,6 +610,7 @@ module RubyPureMysql
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part, :extract_update_parts, :build_update_result
+                         :parse_part, :extract_update_parts, :build_update_result,
+                         :determine_union_type
   end
 end
