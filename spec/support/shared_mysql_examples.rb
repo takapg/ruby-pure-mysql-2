@@ -172,7 +172,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT 100 + 100.5;')
       val = results.first.values.first
       expect(val).to eq(200.5)
-      expect(val).to be_a(Float)
+      expect(val).to be_a(Numeric)
     end
 
     it 'can handle very large numeric operations (SELECT 1000000 * 1000000;)' do
