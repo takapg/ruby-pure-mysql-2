@@ -1615,6 +1615,5 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT id FROM limit_test;')
       expect(results.count).to eq(0)
     end
-
   end
 end
