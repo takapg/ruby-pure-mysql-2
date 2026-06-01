@@ -419,7 +419,6 @@ module RubyPureMysql
     def function_call?(token)
       token.match?(/\A\w+\(.*\)\z/)
     end
-
   end
 
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
