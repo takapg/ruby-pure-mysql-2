@@ -75,8 +75,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns a float for division even if the result is a whole number (SELECT 4/2;)' do
       results = client.query('SELECT 4/2;')
-      expect(results.first.values.first).to eq(2.0)
-      expect(results.first.values.first).to be_a(Float)
+      val = results.first.values.first
+      expect(val).to eq(2.0)
+      expect(val).to be_a(Numeric)
+      expect(val).not_to be_a(Integer)
     end
 
     it 'respects operator precedence (SELECT 1 + 2 * 3;)' do
