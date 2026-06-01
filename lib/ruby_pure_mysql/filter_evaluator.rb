@@ -63,12 +63,14 @@ module RubyPureMysql
     def handle_in_operator(val, target_value)
       return target_value.include?(val) unless val.is_a?(Numeric)
 
-      target_value.any? { |t| cast_to_numeric(t).is_a?(Numeric) && cast_to_numeric(t) == val }
+      target_value.any? do |t|
+        cast_to_numeric_for_comparison(t).is_a?(Numeric) && cast_to_numeric_for_comparison(t) == val
+      end
     end
 
     def handle_between_operator?(val, operator, target_value)
       if val.is_a?(Numeric)
-        normalized_target = target_value.map { |t| cast_to_numeric(t) }
+        normalized_target = target_value.map { |t| cast_to_numeric_for_comparison(t) }
         return false if normalized_target.any? { |t| !t.is_a?(Numeric) }
 
         begin
@@ -88,20 +90,16 @@ module RubyPureMysql
       return [val1, val2] if val1.nil? || val2.nil?
       return [val1, val2] unless val1.is_a?(Numeric) || val2.is_a?(Numeric)
 
-      n1 = cast_to_numeric(val1)
-      n2 = cast_to_numeric(val2)
+      n1 = cast_to_numeric_for_comparison(val1)
+      n2 = cast_to_numeric_for_comparison(val2)
       n1.is_a?(Numeric) && n2.is_a?(Numeric) ? [n1, n2] : [val1, val2]
     end
 
-    def cast_to_numeric(val)
+    def cast_to_numeric_for_comparison(val)
       return val if val.is_a?(Numeric)
       return nil if val.nil?
 
-      begin
-        Float(val)
-      rescue StandardError
-        val
-      end
+      val.to_s.to_f
     end
   end
 end

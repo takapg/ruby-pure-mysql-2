@@ -13,8 +13,15 @@ module RubyPureMysql
     include DmlHandlers
     include QueryHandlers
 
-    def prepare_where_clauses(_client, _columns, where, _table_map = {})
-      where || []
+    def prepare_where_clauses(client, columns, where, table_map = {})
+      return nil if where.nil? || where.empty?
+
+      groups = normalize_where_groups(where)
+      if compile_groups(client, columns, groups, table_map).nil?
+        send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
+        return false
+      end
+      where
     end
   end
 end
