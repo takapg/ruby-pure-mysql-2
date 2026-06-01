@@ -16,5 +16,14 @@ module RubyPureMysql
     def handle_group_by_error(client)
       send_err_packet(client, 1, 'Error executing GROUP BY query', 1105)
     end
+
+    def get_group_column_indices(client, columns, group_by_cols, table_map)
+      group_by_cols.split(',').map do |col_name|
+        idx = get_column_index(client, columns, col_name.strip, table_map)
+        return nil if idx.nil?
+
+        idx
+      end
+    end
   end
 end
