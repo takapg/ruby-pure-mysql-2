@@ -59,6 +59,5 @@ module RubyPureMysql
       else :error
       end
     end
-
   end
 end

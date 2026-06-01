@@ -155,7 +155,6 @@ module RubyPureMysql
     end
   end
 
-
   # 式の評価ロジックを提供するモジュール
   module ExpressionEvaluator
     include ExpressionCommon
@@ -201,7 +200,6 @@ module RubyPureMysql
       content = content.gsub("''", "'") if quote == "'"
       unescape_string_content(content)
     end
-
 
     def process_math_token(token)
       return token if operator?(token)
