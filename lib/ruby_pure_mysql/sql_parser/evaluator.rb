@@ -37,7 +37,7 @@ module RubyPureMysql
     end
 
     def handle_quote_paren_state(char, index, col, quote, depth)
-      new_quote = (quote == char && (index.zero? || col[index - 1] != '\\')) ? nil : quote
+      new_quote = quote == char && (index.zero? || col[index - 1] != '\\') ? nil : quote
       [new_quote, depth]
     end
 
@@ -53,13 +53,6 @@ module RubyPureMysql
       end
     end
 
-    def evaluate_system_variable(col)
-      {
-        '@@version_comment' => 'ruby-pure-mysql-2',
-        '@@max_allowed_packet' => 67_108_864
-      }.fetch(col.downcase, :error)
-    end
-
     def evaluate_function(col)
       match = col.match(/\A(\w+)\s*\((.*)\)\z/)
       return :error unless match
@@ -68,16 +61,6 @@ module RubyPureMysql
       return :error if args == :error
 
       call_builtin_function(match[1].downcase, args)
-    end
-
-    def call_builtin_function(name, args)
-      case name
-      when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
-      when 'user' then 'root@localhost'
-      when 'version' then 'Hi-MySQL-8.0'
-      when 'concat' then args.join
-      else :error
-      end
     end
 
     def evaluate_math(col)

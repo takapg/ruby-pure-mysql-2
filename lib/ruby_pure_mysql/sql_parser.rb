@@ -399,26 +399,6 @@ module RubyPureMysql
       parse_standard_where_condition(condition, column_pattern)
     end
 
-    def parse_is_null_condition(condition, column_pattern)
-      m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
-      if m
-        operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
-        return { column: m[1], operator: operator, value: nil }
-      end
-
-      nil
-    end
-
-    def parse_standard_where_condition(condition, column_pattern)
-      res = parse_between_condition(condition, column_pattern)
-      return res if res
-
-      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
-      return { error: 'Invalid WHERE clause' } unless where_match
-
-      build_standard_condition(where_match)
-    end
-
     def parse_between_condition(condition, column_pattern)
       match = condition.match(/\A(#{column_pattern})\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+)\z/i)
       return nil unless match
@@ -448,6 +428,24 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    def parse_is_null_condition(condition, column_pattern)
+      m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
+      return nil unless m
+
+      operator = m[2] ? 'IS NOT NULL' : 'IS NULL'
+      { column: m[1], operator: operator, value: nil }
+    end
+
+    def parse_standard_where_condition(condition, column_pattern)
+      res = parse_between_condition(condition, column_pattern)
+      return res if res
+
+      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      return { error: 'Invalid WHERE clause' } unless where_match
+
+      build_standard_condition(where_match)
+    end
+
     def quote_char?(char)
       ["'", '"'].include?(char)
     end

@@ -5,6 +5,38 @@ require 'strscan'
 module RubyPureMysql
   # 式解析の共通ユーティリティ
   module ExpressionCommon
+    def format_for_concat(val)
+      return '' if val.nil?
+
+      val.is_a?(Numeric) ? (val == val.to_i ? val.to_i.to_s : val.to_s) : val.to_s
+    end
+
+    def calculate_sum_diff(left, operator, right)
+      return nil if left.nil? || right.nil?
+
+      operator == '+' ? left + right : left - right
+    end
+
+    def unescape_string_content(content)
+      content.gsub(/\\([nrt'"\\])/) do
+        case Regexp.last_match(1)
+        when 'n' then "\n"
+        when 'r' then "\r"
+        when 't' then "\t"
+        else Regexp.last_match(1)
+        end
+      end
+    end
+
+    def string_literal?(token)
+      return false unless token.match?(/\A(['"])(.*)\1\z/m)
+
+      quote = token[0]
+      content = token[1...-1]
+      cleaned = content.gsub(/\\./, '').then { |c| quote == "'" ? c.gsub("''", '') : c }
+      !cleaned.include?(quote)
+    end
+
     def count_backslashes(string, pos)
       count = 0
       while pos >= 0 && string[pos] == '\\'
@@ -38,6 +70,23 @@ module RubyPureMysql
 
     def operator?(token)
       (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||'
+    end
+
+    def evaluate_system_variable(col)
+      {
+        '@@version_comment' => 'ruby-pure-mysql-2',
+        '@@max_allowed_packet' => 67_108_864
+      }.fetch(col.downcase, :error)
+    end
+
+    def call_builtin_function(name, args)
+      case name
+      when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      when 'user' then 'root@localhost'
+      when 'version' then 'Hi-MySQL-8.0'
+      when 'concat' then args.join
+      else :error
+      end
     end
 
     def scan_string(scanner)
@@ -336,13 +385,10 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         op = tokens[index]
-        if ['+', '-'].include?(op)
-          res = process_add_sub_op!(tokens, index)
-          return res if res == :error
+        res = ['+', '-'].include?(op) ? process_add_sub_op!(tokens, index) : :skipped
+        return res if res == :error
 
-          next
-        end
-        index += 1
+        index += 1 if res == :skipped
       end
       tokens
     end
@@ -384,22 +430,7 @@ module RubyPureMysql
       tokens.slice!(index, 2)
     end
 
-    def format_for_concat(val)
-      return '' if val.nil?
 
-      if val.is_a?(Numeric)
-        # 整数値の場合は小数点を除去して文字列化
-        val == val.to_i ? val.to_i.to_s : val.to_s
-      else
-        val.to_s
-      end
-    end
-
-    def calculate_sum_diff(left, operator, right)
-      return nil if left.nil? || right.nil?
-
-      operator == '+' ? left + right : left - right
-    end
   end
 
   # 式の評価ロジックを提供するモジュール
@@ -446,16 +477,6 @@ module RubyPureMysql
       unescape_string_content(content)
     end
 
-    def unescape_string_content(content)
-      content.gsub(/\\([nrt'"\\])/) do
-        case Regexp.last_match(1)
-        when 'n' then "\n"
-        when 'r' then "\r"
-        when 't' then "\t"
-        else Regexp.last_match(1)
-        end
-      end
-    end
 
     def split_args(args_str)
       return [] if args_str.nil? || args_str.strip.empty?
@@ -469,17 +490,12 @@ module RubyPureMysql
     end
 
     def update_split_state(char, index, args_str, state)
-      if state[:quote]
-        handle_split_quote_state(char, index, args_str, state)
-      elsif ["'", '"'].include?(char)
-        handle_split_quote_start(char, state)
-      elsif char == '(' || char == ')'
-        handle_split_bracket_state(char, state)
-      elsif char == ',' && state[:depth].zero?
-        handle_split_comma(state)
-      else
-        state[:current_arg] << char
-      end
+      return handle_split_quote_state(char, index, args_str, state) if state[:quote]
+      return handle_split_quote_start(char, state) if ["'", '"'].include?(char)
+      return handle_split_bracket_state(char, state) if ['(', ')'].include?(char)
+      return handle_split_comma(state) if char == ',' && state[:depth].zero?
+
+      state[:current_arg] << char
     end
 
     def handle_split_quote_state(char, index, args_str, state)
@@ -536,14 +552,6 @@ module RubyPureMysql
       :error
     end
 
-    def string_literal?(token)
-      return false unless token.match?(/\A(['"])(.*)\1\z/m)
-
-      quote = token[0]
-      content = token[1...-1]
-      cleaned = content.gsub(/\\./, '').then { |c| quote == "'" ? c.gsub("''", '') : c }
-      !cleaned.include?(quote)
-    end
 
     def evaluate_string_literal_token(token)
       evaluate_string_literal(token)
