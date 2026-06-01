@@ -1508,6 +1508,35 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(5)
     end
 
+    it 'updates rows with LIMIT and OFFSET' do
+      client.query('DROP TABLE IF EXISTS offset_test;')
+      client.query('CREATE TABLE offset_test (id INT, val INT);')
+      client.query('INSERT INTO offset_test VALUES (1, 10);')
+      client.query('INSERT INTO offset_test VALUES (2, 20);')
+      client.query('INSERT INTO offset_test VALUES (3, 30);')
+
+      # 2番目の行から1件更新
+      client.query('UPDATE offset_test SET val = 99 ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      results = client.query('SELECT id, val FROM offset_test ORDER BY id ASC;')
+      expect(results[1]['val']).to eq(99)
+      expect(results[0]['val']).to eq(10)
+      expect(results[2]['val']).to eq(30)
+    end
+
+    it 'deletes rows with LIMIT and OFFSET' do
+      client.query('DROP TABLE IF EXISTS offset_test_del;')
+      client.query('CREATE TABLE offset_test_del (id INT, val INT);')
+      client.query('INSERT INTO offset_test_del VALUES (1, 10);')
+      client.query('INSERT INTO offset_test_del VALUES (2, 20);')
+      client.query('INSERT INTO offset_test_del VALUES (3, 30);')
+
+      # 2番目の行から1件削除
+      client.query('DELETE FROM offset_test_del ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      results = client.query('SELECT id FROM offset_test_del ORDER BY id ASC;')
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to eq([1, 3])
+    end
+
     it 'updates multiple rows using OR in WHERE clause' do
       client.query('DROP TABLE IF EXISTS update_or_test;')
       client.query('CREATE TABLE update_or_test (id INT, val VARCHAR(255));')
