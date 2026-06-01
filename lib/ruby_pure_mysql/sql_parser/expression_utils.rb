@@ -345,25 +345,23 @@ module RubyPureMysql
     def apply_string_concatenation(tokens)
       return nil if tokens.empty?
 
-      result = tokens[0]
-      i = 1
-      while i < tokens.size
-        op = tokens[i]
+      index = 1
+      while index < tokens.size
+        op = tokens[index]
         if op == '||'
-          val = tokens[i + 1]
-          return nil if val.nil?
+          left_raw = tokens[index - 1]
+          right_raw = tokens[index + 1]
+          return nil if left_raw.nil? || right_raw.nil?
 
-          left_val = result.nil? ? '' : format_for_concat(result)
-          right_val = format_for_concat(val)
-          result = "#{left_val}#{right_val}"
-          i += 2
+          left_val = format_for_concat(left_raw)
+          right_val = format_for_concat(right_raw)
+          tokens[index - 1] = "#{left_val}#{right_val}"
+          tokens.slice!(index, 2)
         else
-          # 結合演算子以外のトークン（数値など）が残っている場合は、
-          # それを結果に含めるのではなく、単にスキップして次の演算子を探す
-          i += 1
+          index += 1
         end
       end
-      result
+      tokens[0]
     end
 
     def format_for_concat(val)
