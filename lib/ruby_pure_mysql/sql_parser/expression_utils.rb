@@ -188,6 +188,8 @@ module RubyPureMysql
     def split_args(args_str)
       state = { args: [], buf: +'', depth: 0, in_quote: nil }
       args_str.each_char { |char| update_state(state, char) }
+      return :error if state[:in_quote]
+
       state[:args] << state[:buf].strip unless state[:buf].strip.empty?
       state[:args]
     end

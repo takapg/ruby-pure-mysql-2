@@ -558,6 +558,8 @@ module RubyPureMysql
       return { error: 'Invalid SQL' } unless match
 
       col_strs = evaluator.split_args(match[1])
+      return { error: 'Invalid SQL' } if col_strs == :error
+
       columns = col_strs.map { |col| parse_column_alias(col) }
       values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
       return { error: 'Unsupported expression' } if values.include?(:error)

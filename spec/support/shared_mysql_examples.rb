@@ -131,7 +131,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
 
     it 'handles escaped backslashes in strings (SELECT "C:\\";)' do
-      results = client.query('SELECT "C:\\";')
+      results = client.query('SELECT "C:\\\\";')
       expect(results.first.values.first).to eq('C:\\')
     end
 
