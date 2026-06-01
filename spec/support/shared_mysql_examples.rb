@@ -1508,7 +1508,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first['id']).to eq(5)
     end
 
-
     it 'updates rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test;')
       client.query('CREATE TABLE offset_test (id INT, val INT);')
