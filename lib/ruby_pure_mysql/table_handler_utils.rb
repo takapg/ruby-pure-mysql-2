@@ -35,9 +35,29 @@ module RubyPureMysql
 
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
-      return nil if compiled_groups.nil?
+      return [] if compiled_groups.nil?
 
       rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
+    end
+
+    def get_group_column_indices(client, columns, group_by_str, table_map = {})
+      group_by_str.split(',').map do |col_name|
+        name = col_name.strip
+        idx = get_column_index(client, columns, name, table_map)
+        return nil unless idx
+
+        idx
+      end
+    end
+
+    def apply_distinct(rows)
+      return rows if rows.nil? || rows.empty?
+
+      base_types = determine_base_types(rows)
+
+      rows.uniq do |row|
+        row.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
+      end
     end
 
     private
@@ -68,30 +88,10 @@ module RubyPureMysql
     end
 
     def determine_base_types(rows)
+      return [] if rows.empty?
+
       (0...rows.first.size).map do |col_idx|
         rows.find { |row| !row[col_idx].nil? }&.[](col_idx)&.class
-      end
-    end
-
-    public
-
-    def get_group_column_indices(client, columns, group_by_str, table_map = {})
-      group_by_str.split(',').map do |col_name|
-        name = col_name.strip
-        idx = get_column_index(client, columns, name, table_map)
-        return nil unless idx
-
-        idx
-      end
-    end
-
-    def apply_distinct(rows)
-      return rows if rows.nil? || rows.empty?
-
-      base_types = determine_base_types(rows)
-
-      rows.uniq do |row|
-        row.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
       end
     end
   end
