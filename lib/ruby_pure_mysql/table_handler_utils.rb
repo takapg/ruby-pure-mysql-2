@@ -31,8 +31,7 @@ module RubyPureMysql
     end
 
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
-      return (0...rows.size).to_a if where_clauses.nil?
-      return [] if where_clauses.empty?
+      return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)

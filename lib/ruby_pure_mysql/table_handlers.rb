@@ -14,7 +14,7 @@ module RubyPureMysql
     include QueryHandlers
 
     def prepare_where_clauses(client, columns, where, table_map = {})
-      return nil if where.nil?
+      return nil if where.nil? || where.empty?
 
       groups = normalize_where_groups(where)
       if compile_groups(client, columns, groups, table_map).nil?
