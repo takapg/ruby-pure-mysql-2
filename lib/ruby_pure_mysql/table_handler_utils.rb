@@ -87,7 +87,7 @@ module RubyPureMysql
       return rows unless rows
 
       rows.uniq do |row|
-        row.map { |v| v.nil? ? nil : v.to_s }
+        row.map { |v| v&.to_s }
       end
     end
   end
