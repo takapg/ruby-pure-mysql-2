@@ -13,10 +13,8 @@ module RubyPureMysql
     include DmlHandlers
     include QueryHandlers
 
-    def prepare_where_clauses(client, columns, where, table_map = {})
-      return [] if where.nil?
-
-      compile_where_clauses(client, columns, where, table_map)
+    def prepare_where_clauses(_client, _columns, where, _table_map = {})
+      where || []
     end
   end
 end

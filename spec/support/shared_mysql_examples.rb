@@ -560,6 +560,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([1, 'alice'])
     end
+
+    it 'filters rows by OR operator' do
+      results = client.query('SELECT * FROM users WHERE id = 1 OR id = 3;')
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by mixed AND and OR operators (precedence check)' do
+      # id=1 AND name='alice' (match) OR id=3 (match) -> 2 rows
+      results = client.query("SELECT * FROM users WHERE id = 1 AND name = 'alice' OR id = 3;")
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by mixed AND and OR operators (precedence check 2)' do
+      # id=2 AND name='alice' (no match) OR id=1 (match) -> 1 row
+      results = client.query("SELECT * FROM users WHERE id = 2 AND name = 'alice' OR id = 1;")
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(1)
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do
@@ -1409,6 +1431,34 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query("SELECT id FROM logs WHERE level = 'ERROR';")
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(5)
+    end
+
+    it 'updates multiple rows using OR in WHERE clause' do
+      client.query('DROP TABLE IF EXISTS update_or_test;')
+      client.query('CREATE TABLE update_or_test (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO update_or_test VALUES (1, 'a');")
+      client.query("INSERT INTO update_or_test VALUES (2, 'b');")
+      client.query("INSERT INTO update_or_test VALUES (3, 'c');")
+
+      client.query("UPDATE update_or_test SET val = 'updated' WHERE id = 1 OR id = 3;")
+      results = client.query('SELECT id, val FROM update_or_test ORDER BY id ASC;')
+      rows = results.to_a
+      expect(rows[0]['val']).to eq('updated')
+      expect(rows[1]['val']).to eq('b')
+      expect(rows[2]['val']).to eq('updated')
+    end
+
+    it 'deletes multiple rows using OR in WHERE clause' do
+      client.query('DROP TABLE IF EXISTS delete_or_test;')
+      client.query('CREATE TABLE delete_or_test (id INT, val VARCHAR(255));')
+      client.query("INSERT INTO delete_or_test VALUES (1, 'a');")
+      client.query("INSERT INTO delete_or_test VALUES (2, 'b');")
+      client.query("INSERT INTO delete_or_test VALUES (3, 'c');")
+
+      client.query('DELETE FROM delete_or_test WHERE id = 1 OR id = 2;')
+      results = client.query('SELECT id FROM delete_or_test;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(3)
     end
   end
 
