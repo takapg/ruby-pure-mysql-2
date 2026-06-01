@@ -201,7 +201,12 @@ module RubyPureMysql
     end
 
     def handle_pipe_operator(scanner)
-      scanner.getch == '|' ? '||' : :error
+      if scanner.getch == '|' && scanner.peek(1) == '|'
+        scanner.getch
+        '||'
+      else
+        :error
+      end
     end
 
     def process_tokens(tokens)
