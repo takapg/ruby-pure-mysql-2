@@ -1524,6 +1524,22 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[2]['val']).to eq(30)
     end
 
+    it 'updates rows with LIMIT and OFFSET' do
+      client.query('DROP TABLE IF EXISTS offset_test_off;')
+      client.query('CREATE TABLE offset_test_off (id INT, val INT);')
+      client.query('INSERT INTO offset_test_off VALUES (1, 10);')
+      client.query('INSERT INTO offset_test_off VALUES (2, 20);')
+      client.query('INSERT INTO offset_test_off VALUES (3, 30);')
+
+      # 2番目の行を更新 (OFFSET 1)
+      client.query('UPDATE offset_test_off SET val = 99 ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      results = client.query('SELECT id, val FROM offset_test_off ORDER BY id ASC;')
+      rows = results.to_a
+      expect(rows[0]['val']).to eq(10)
+      expect(rows[1]['val']).to eq(99)
+      expect(rows[2]['val']).to eq(30)
+    end
+
     it 'deletes rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test_del;')
       client.query('CREATE TABLE offset_test_del (id INT, val INT);')
@@ -1536,6 +1552,20 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT id FROM offset_test_del ORDER BY id ASC;')
       expect(results.count).to eq(2)
       expect(results.map { |r| r['id'] }).to eq([2, 3])
+    end
+
+    it 'deletes rows with LIMIT and OFFSET' do
+      client.query('DROP TABLE IF EXISTS offset_test_del_off;')
+      client.query('CREATE TABLE offset_test_del_off (id INT, val INT);')
+      client.query('INSERT INTO offset_test_del_off VALUES (1, 10);')
+      client.query('INSERT INTO offset_test_del_off VALUES (2, 20);')
+      client.query('INSERT INTO offset_test_del_off VALUES (3, 30);')
+
+      # 2番目の行を削除 (OFFSET 1)
+      client.query('DELETE FROM offset_test_del_off ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      results = client.query('SELECT id FROM offset_test_del_off ORDER BY id ASC;')
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['id'] }).to eq([1, 3])
     end
 
     it 'updates multiple rows using OR in WHERE clause' do

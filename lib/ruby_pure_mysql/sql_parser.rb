@@ -39,7 +39,7 @@ module RubyPureMysql
       \AUPDATE\s+(`[^`]+`|\w+)\s+SET\s+(.+?)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+))?)?
+      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+)|(?:\s+OFFSET\s+(\d+)))?)?
       \s*;?\s*\z
     /ix
 
@@ -47,7 +47,7 @@ module RubyPureMysql
       \ADELETE\s+FROM\s+(`[^`]+`|\w+)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+))?)?
+      (?:\s+LIMIT\s+(\d+)(?:\s*,\s*(\d+)|(?:\s+OFFSET\s+(\d+)))?)?
       \s*;?\s*\z
     /ix
 
@@ -87,10 +87,13 @@ module RubyPureMysql
       build_update_result(parts, updates)
     end
 
-    def apply_dml_limit_offset(result, limit, offset)
-      if offset
+    def apply_dml_limit_offset(result, limit, offset_comma, offset_keyword)
+      if offset_comma
         result[:offset] = limit.to_i
-        result[:limit] = offset.to_i
+        result[:limit] = offset_comma.to_i
+      elsif offset_keyword
+        result[:offset] = offset_keyword.to_i
+        result[:limit] = limit.to_i
       else
         result[:offset] = 0
         result[:limit] = limit&.to_i
@@ -104,7 +107,7 @@ module RubyPureMysql
         updates: updates
       }
 
-      apply_dml_limit_offset(res, parts[:limit], parts[:offset])
+      apply_dml_limit_offset(res, parts[:limit], parts[:offset_comma], parts[:offset_keyword])
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_where_to_result(res, parts[:where_clause])
     end
@@ -113,7 +116,7 @@ module RubyPureMysql
       if (match = query.match(UPDATE_REGEX))
         {
           table_name: match[1], set_clause: match[2], where_clause: match[3],
-          order_clause: match[4], limit: match[5], offset: match[6]
+          order_clause: match[4], limit: match[5], offset_comma: match[6], offset_keyword: match[7]
         }
       end
     end
@@ -124,7 +127,8 @@ module RubyPureMysql
       where = parse_where_clause(where_clause)
       return where if where.is_a?(Hash) && where[:error]
 
-      res.merge(where: where)
+      res[:where] = where
+      res
     end
 
     def parse_update_set_clause(set_clause)
@@ -144,7 +148,7 @@ module RubyPureMysql
       return { error: 'Invalid DELETE syntax' } unless match
 
       result = { type: :delete, table_name: strip_backticks(match[1]) }
-      apply_dml_limit_offset(result, match[4], match[5])
+      apply_dml_limit_offset(result, match[4], match[5], match[6])
       SqlParser.parse_order_by_clause(result, match[3]) if match[3]
 
       apply_where_to_result(result, match[2])
