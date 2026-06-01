@@ -49,18 +49,6 @@ module RubyPureMysql
 
       val.to_s.to_f
     end
-  end
-
-  # 単項演算子のスキャン処理を提供するモジュール
-  module ExpressionUnaryScanner
-    include ExpressionCommon
-
-  end
-
-  # 式のトークナイズ処理を提供するモジュール
-  module ExpressionTokenizer
-    include ExpressionCommon
-    include ExpressionUnaryScanner
 
     def scan_string(scanner)
       quote = scanner.getch
@@ -73,6 +61,49 @@ module RubyPureMysql
       scanner.getch unless scanner.eos?
       scanner.string[start_pos...scanner.pos]
     end
+
+    def scan_balanced_parens(scanner)
+      start_pos = scanner.pos
+      depth = 0
+      quote = nil
+      until scanner.eos?
+        char = scanner.getch
+        quote, depth = update_balanced_state(char, quote, depth, scanner)
+        break if depth.zero? && char == ')'
+      end
+      return :error if depth != 0
+
+      scanner.string[start_pos...scanner.pos]
+    end
+
+    def update_balanced_state(char, quote, depth, scanner)
+      escaped = count_backslashes(scanner.string, scanner.pos - 2).odd?
+      calculate_next_state(char, quote, depth, escaped)
+    end
+
+    def scan_identifier_or_function(scanner)
+      token = scanner.scan(/[a-zA-Z0-9_]+/)
+      return nil unless token
+
+      return token if token.casecmp?('NULL')
+
+      return scan_function_body(scanner, token) if scanner.peek(1) == '('
+
+      token
+    end
+
+    def scan_function_body(scanner, token)
+      start_pos = scanner.pos - token.length
+      res = scan_balanced_parens(scanner)
+      return :error if res == :error
+
+      scanner.string[start_pos...scanner.pos]
+    end
+  end
+
+  # 単項演算子のスキャン処理を提供するモジュール
+  module ExpressionUnaryScanner
+    include ExpressionCommon
 
     def scan_unary_operator_body(scanner)
       start_pos = scanner.pos - 1
@@ -127,44 +158,12 @@ module RubyPureMysql
       scanner.getch
       scan_unary_operand(scanner)
     end
+  end
 
-    def scan_balanced_parens(scanner)
-      start_pos = scanner.pos
-      depth = 0
-      quote = nil
-      until scanner.eos?
-        char = scanner.getch
-        quote, depth = update_balanced_state(char, quote, depth, scanner)
-        break if depth.zero? && char == ')'
-      end
-      return :error if depth != 0
-
-      scanner.string[start_pos...scanner.pos]
-    end
-
-    def update_balanced_state(char, quote, depth, scanner)
-      escaped = count_backslashes(scanner.string, scanner.pos - 2).odd?
-      calculate_next_state(char, quote, depth, escaped)
-    end
-
-    def scan_identifier_or_function(scanner)
-      token = scanner.scan(/[a-zA-Z0-9_]+/)
-      return nil unless token
-
-      return token if token.casecmp?('NULL')
-
-      return scan_function_body(scanner, token) if scanner.peek(1) == '('
-
-      token
-    end
-
-    def scan_function_body(scanner, token)
-      start_pos = scanner.pos - token.length
-      res = scan_balanced_parens(scanner)
-      return :error if res == :error
-
-      scanner.string[start_pos...scanner.pos]
-    end
+  # 式のトークナイズ処理を提供するモジュール
+  module ExpressionTokenizer
+    include ExpressionCommon
+    include ExpressionUnaryScanner
 
     def scan_operator(scanner, tokens)
       char = scanner.getch
