@@ -560,6 +560,29 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([1, 'alice'])
     end
+
+    it 'filters rows by OR operator' do
+      results = client.query('SELECT * FROM users WHERE id = 1 OR id = 3;')
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by mixed AND and OR operators (precedence check)' do
+      # id=1 AND name='alice' (match) OR id=3 (match) -> 2 rows
+      results = client.query("SELECT * FROM users WHERE id = 1 AND name = 'alice' OR id = 3;")
+      expect(results.count).to eq(2)
+      ids = results.map { |r| r['id'] }
+      expect(ids).to contain_exactly(1, 3)
+    end
+
+    it 'filters rows by mixed AND and OR operators (precedence check 2)' do
+      # id=2 AND name='alice' (no match) OR id=1 (match) -> 1 row
+      results = client.query("SELECT * FROM users WHERE id = 2 AND name = 'alice' OR id = 1;")
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(1)
+    end
+  end
   end
 
   describe 'IS NULL / IS NOT NULL support' do

@@ -31,13 +31,17 @@ module RubyPureMysql
     def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
       return (0...rows.size).to_a unless where_clauses
 
-      compiled_clauses = compile_where_clauses(client, table_columns, where_clauses, table_map)
-      return nil unless compiled_clauses
+      compiled_groups = where_clauses.map do |group|
+        compile_where_clauses(client, table_columns, group, table_map)
+      end
+      return nil if compiled_groups.any? { |g| g.nil? }
 
       rows.each_with_index.select do |row, _idx|
-        compiled_clauses.all? do |c|
-          target = c[:regex] || c[:value]
-          apply_filter(row[c[:col_idx]], c[:operator], target)
+        compiled_groups.any? do |group|
+          group.all? do |c|
+            target = c[:regex] || c[:value]
+            apply_filter(row[c[:col_idx]], c[:operator], target)
+          end
         end
       end.map(&:last)
     end

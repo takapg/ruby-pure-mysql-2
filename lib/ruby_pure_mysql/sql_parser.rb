@@ -307,87 +307,66 @@ module RubyPureMysql
   # WHERE句のパースを支援するモジュール
   module SqlParserWhereUtils
     def parse_where_clause(clause, allow_aggregates: false)
-      parts = split_where_clause(clause)
-      results = parts.map { |p| parse_single_where_condition(p, allow_aggregates: allow_aggregates) }
-      error = results.find { |r| r.is_a?(Hash) && r[:error] }
-      error || results
+      or_parts = split_by_operator(clause, 'OR')
+
+      and_groups = or_parts.map do |or_part|
+        and_parts = split_by_operator(or_part, 'AND')
+        and_parts.map do |cond_str|
+          res = parse_single_where_condition(cond_str, allow_aggregates: allow_aggregates)
+          return res if res.is_a?(Hash) && res[:error]
+
+          res
+        end
+      end
+
+      and_groups
     end
 
-    def split_where_clause(clause)
+    def split_by_operator(clause, operator)
       parts = []
       buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
 
-      handle_where_char(clause, buffer, parts) while buffer[:index] < clause.length
-      parts << buffer[:current].strip
-    end
+      while buffer[:index] < clause.length
+        char = clause[buffer[:index]]
 
-    def handle_where_char(clause, buffer, parts)
-      char = clause[buffer[:index]]
-      return if quote_escaped?(clause, buffer, char)
+        if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+          buffer[:current] << char * 2
+          buffer[:index] += 2
+          next
+        end
 
-      buffer[:in_quote] = update_quote_state(char, buffer[:index], clause, buffer[:in_quote])
-      return process_normal_char(clause, buffer) if buffer[:in_quote]
+        if quote_char?(char) && not_escaped?(clause, buffer[:index]) && (buffer[:in_quote].nil? || buffer[:in_quote] == char)
+          buffer[:in_quote] = buffer[:in_quote] == char ? nil : char
+          buffer[:current] << char
+          buffer[:index] += 1
+          next
+        end
 
-      process_where_logic(clause, buffer, parts)
-    end
+        if !buffer[:in_quote]
+          op_match = clause[buffer[:index]..].match(/\A\s+#{operator}\s+/i)
+          if op_match
+            if operator == 'AND' && buffer[:in_between]
+              buffer[:current] << op_match[0]
+              buffer[:index] += op_match[0].length
+              buffer[:in_between] = false
+              next
+            end
 
-    def quote_escaped?(clause, buffer, char)
-      return false unless buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+            parts << buffer[:current].strip
+            buffer[:current] = +''
+            buffer[:index] += op_match[0].length
+            next
+          end
 
-      buffer[:current] << char
-      buffer[:index] += 1
-      buffer[:current] << clause[buffer[:index]]
-      buffer[:index] += 1
-      true
-    end
+          buffer[:in_between] = true if operator == 'AND' && clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
+        end
 
-    def process_where_logic(clause, buffer, parts)
-      update_between_state(clause, buffer)
-      return if handle_and_operator?(clause, buffer, parts)
-
-      process_normal_char(clause, buffer)
-    end
-
-    def update_between_state(clause, buffer)
-      buffer[:in_between] = true if clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
-    end
-
-    def handle_and_operator?(clause, buffer, parts)
-      match = clause[buffer[:index]..].match(/\A\s+AND\s+/i)
-      return false unless match
-
-      if buffer[:in_between]
-        consume_between_and_token(match, buffer)
-        return false
+        buffer[:current] << char
+        buffer[:index] += 1
       end
 
-      process_and_operator(match, buffer, parts)
-      true
-    end
-
-    def consume_between_and_token(match, buffer)
-      buffer[:current] << match[0]
-      buffer[:index] += match[0].length
-      buffer[:in_between] = false
-    end
-
-    def process_and_operator(match, buffer, parts)
       parts << buffer[:current].strip
-      buffer[:current] = +''
-      buffer[:index] += match[0].length
-    end
-
-    def process_normal_char(clause, buffer)
-      buffer[:current] << clause[buffer[:index]]
-      buffer[:index] += 1
-    end
-
-    def update_quote_state(char, index, clause, in_quote)
-      return in_quote unless quote_char?(char) && not_escaped?(clause, index) && compatible_quote?(char, in_quote)
-
-      return in_quote if escaped_quote?(clause, index, char, in_quote)
-
-      in_quote == char ? nil : char
+      parts
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
