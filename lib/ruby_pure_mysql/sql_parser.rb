@@ -269,7 +269,7 @@ module RubyPureMysql
       if (m = col.match(IMPLICIT_ALIAS_REGEX))
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
-        return { original: col, alias: nil } if original.match?(%r{[+\-*/%]\z})
+        return { original: col, alias: nil } if original.match?(%r{[+\-*/%|]\z})
 
         return { original: original, alias: strip_backticks(m[2]) }
       end
@@ -598,6 +598,14 @@ module RubyPureMysql
       { result: result[:result], columns: result[:columns], size: result[:result].size, distinct: result[:distinct] }
     end
 
+    def self.evaluate_columns(columns, evaluator)
+      columns.map do |col_info|
+        val = evaluator.evaluate_expression(col_info[:original])
+        return { error: 'Unsupported expression' } if val == :error
+        val
+      end
+    end
+
     def self.parse_part(part, evaluator)
       match = part.match(/\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<cols>.+?)\s*;?\s*\z/i)
       return { error: 'Invalid SQL' } unless match
@@ -606,8 +614,8 @@ module RubyPureMysql
       return { error: 'Invalid SQL' } if col_strs == :error
 
       columns = col_strs.map { |col| parse_column_alias(col) }
-      values = columns.map { |col_info| evaluator.evaluate_expression(col_info[:original]) }
-      return { error: 'Unsupported expression' } if values.include?(:error)
+      values = evaluate_columns(columns, evaluator)
+      return values if values.is_a?(Hash) && values[:error]
 
       { result: values, columns: columns, distinct: !match[:distinct].nil? }
     end
@@ -616,7 +624,7 @@ module RubyPureMysql
                          :parse_drop_table, :parse_update, :parse_delete,
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
-                         :parse_part, :extract_update_parts, :build_update_result,
+                         :parse_part, :evaluate_columns, :extract_update_parts, :build_update_result,
                          :determine_union_type
   end
 end
