@@ -1199,10 +1199,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'sorts NULL values correctly (NULLs first for ASC, last for DESC)' do
       client.query('DROP TABLE IF EXISTS null_sort_test;')
       client.query('CREATE TABLE null_sort_test (id INT, val_int INT, val_str VARCHAR(255));')
-      client.query("INSERT INTO null_sort_test VALUES (1, NULL, NULL);")
+      client.query('INSERT INTO null_sort_test VALUES (1, NULL, NULL);')
       client.query("INSERT INTO null_sort_test VALUES (2, 10, 'B');")
       client.query("INSERT INTO null_sort_test VALUES (3, NULL, 'A');")
-      client.query("INSERT INTO null_sort_test VALUES (4, 20, NULL);")
+      client.query('INSERT INTO null_sort_test VALUES (4, 20, NULL);')
 
       # ASC: NULLs first (integers)
       results_int_asc = client.query('SELECT id FROM null_sort_test ORDER BY val_int ASC;')

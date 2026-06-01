@@ -41,16 +41,21 @@ module RubyPureMysql
       val_a = row_a[cond[:index]]
       val_b = row_b[cond[:index]]
 
-      if val_a.nil? || val_b.nil?
-        return 0 if val_a.nil? && val_b.nil?
-        return val_a.nil? ? -1 : 1
-      end
+      return compare_nulls(val_a, val_b) if val_a.nil? || val_b.nil?
 
       begin
         (val_a <=> val_b) || 0
       rescue StandardError
         0
       end
+    end
+
+    private
+
+    def compare_nulls(val_a, val_b)
+      return 0 if val_a.nil? && val_b.nil?
+
+      val_a.nil? ? -1 : 1
     end
 
     def compare_rows(row_a, row_b, sort_conditions)
