@@ -439,7 +439,8 @@ module RubyPureMysql
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
-      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*?)\1\z/)
+      # 強欲マッチに変更し、エスケープされたクォートを含む文字列全体を正しく判定する
+      return evaluate_string_literal(token) if token.match?(/\A(['"])(.*)\1\z/m)
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error

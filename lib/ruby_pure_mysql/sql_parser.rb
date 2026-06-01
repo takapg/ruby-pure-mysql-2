@@ -465,7 +465,8 @@ module RubyPureMysql
     end
 
     def convert_value(val)
-      m = val.match(/\A(['"])(.*?)\1\z/)
+      # 強欲マッチに変更し、エスケープされたクォートを正しく扱う
+      m = val.match(/\A(['"])(.*)\1\z/m)
       return m[2] if m
 
       if val.casecmp?('NULL')
