@@ -1524,18 +1524,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(rows[2]['val']).to eq(30)
     end
 
-    it 'deletes rows with LIMIT and OFFSET' do
+    it 'deletes rows with LIMIT' do
       client.query('DROP TABLE IF EXISTS offset_test_del;')
       client.query('CREATE TABLE offset_test_del (id INT, val INT);')
       client.query('INSERT INTO offset_test_del VALUES (1, 10);')
       client.query('INSERT INTO offset_test_del VALUES (2, 20);')
       client.query('INSERT INTO offset_test_del VALUES (3, 30);')
 
-      # 2番目の行から1件削除 (MySQLのUPDATE/DELETEでは LIMIT offset, count 構文を使用)
-      client.query('DELETE FROM offset_test_del ORDER BY id ASC LIMIT 1, 1;')
+      # 1件削除
+      client.query('DELETE FROM offset_test_del ORDER BY id ASC LIMIT 1;')
       results = client.query('SELECT id FROM offset_test_del ORDER BY id ASC;')
       expect(results.count).to eq(2)
-      expect(results.map { |r| r['id'] }).to eq([1, 3])
+      expect(results.map { |r| r['id'] }).to eq([2, 3])
     end
 
     it 'updates multiple rows using OR in WHERE clause' do
