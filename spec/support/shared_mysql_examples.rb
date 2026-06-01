@@ -278,8 +278,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq('hello world')
     end
 
-    it 'can evaluate mixed arithmetic and concatenation (SELECT 1 + 1 || " is two";)' do
-      results = client.query('SELECT 1 + 1 || " is two";')
+    it 'can evaluate mixed arithmetic and concatenation (SELECT (1 + 1) || " is two";)' do
+      results = client.query('SELECT (1 + 1) || " is two";')
       expect(results.first.values.first).to eq('2 is two')
     end
 
