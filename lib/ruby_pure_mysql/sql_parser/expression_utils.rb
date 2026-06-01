@@ -54,8 +54,16 @@ module RubyPureMysql
       quote = scanner.getch
       start_pos = scanner.pos - 1
       until scanner.eos?
-        break if scanner.peek(1) == quote && count_backslashes(scanner.string, scanner.pos - 1).even?
-
+        if scanner.peek(1) == quote
+          # MySQLのダブルクォートエスケープ ('') を処理
+          if scanner.peek(2) == quote
+            scanner.getch # 1つ目のクォートを消費
+            scanner.getch # 2つ目のクォートを消費
+            next
+          end
+          # バックスラッシュエスケープを確認
+          break if count_backslashes(scanner.string, scanner.pos - 1).even?
+        end
         scanner.getch
       end
       scanner.getch unless scanner.eos?
@@ -373,7 +381,8 @@ module RubyPureMysql
     end
 
     def evaluate_string_literal(col)
-      match = col.match(/\A(['"])(.*?)\1\z/)
+      # 強欲マッチに変更し、末尾のクォートまで正しくマッチさせる
+      match = col.match(/\A(['"])(.*)\1\z/m)
       return nil unless match
 
       quote = match[1]
