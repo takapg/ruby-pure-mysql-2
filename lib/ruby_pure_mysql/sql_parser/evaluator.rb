@@ -50,7 +50,11 @@ module RubyPureMysql
 
       # MySQL 8.0: 除算結果は常に浮動小数点数となる。
       # 結果が整数で、かつ浮動小数点リテラルが含まれず、除算も行われていない場合のみ Integer を返す。
-      result == result.to_i && !has_float && !has_div ? result.to_i : result
+      if result.is_a?(Numeric) && result == result.to_i && !has_float && !has_div
+        result.to_i
+      else
+        result
+      end
     end
 
     def process_math_tokens(col)
@@ -61,7 +65,10 @@ module RubyPureMysql
       return :error if tokens == :error
       return nil if tokens.nil?
 
-      apply_addition_subtraction(tokens)
+      tokens = apply_addition_subtraction(tokens)
+      return :error if tokens == :error
+
+      apply_string_concatenation(tokens)
     end
 
     private

@@ -193,10 +193,15 @@ module RubyPureMysql
       when '(' then scan_balanced_parens(scanner)
       when /[a-zA-Z_]/ then scan_identifier_or_function(scanner)
       when %r{[-+*/%]} then scan_operator(scanner, tokens)
+      when '|' then handle_pipe_operator(scanner)
       when /[\d.]/ then scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       when /['"]/ then scan_string(scanner)
       else :error
       end
+    end
+
+    def handle_pipe_operator(scanner)
+      scanner.getch == '|' ? '||' : :error
     end
 
     def process_tokens(tokens)
@@ -271,15 +276,38 @@ module RubyPureMysql
     end
 
     def apply_addition_subtraction(tokens)
-      result = tokens[0]
-      idx = 1
-      while idx < tokens.size
-        op = tokens[idx]
-        val = tokens[idx + 1]
-        result = calculate_sum_diff(result, op, val)
-        return :error if result == :error
+      res_tokens = []
+      current_val = tokens[0]
+      i = 1
+      while i < tokens.size
+        op = tokens[i]
+        if op == '||'
+          res_tokens << current_val
+          res_tokens << '||'
+          current_val = tokens[i + 1]
+          i += 2
+        elsif op == '+' || op == '-'
+          val = tokens[i + 1]
+          current_val = calculate_sum_diff(current_val, op, val)
+          return :error if current_val == :error
 
-        idx += 2
+          i += 2
+        else
+          i += 1
+        end
+      end
+      res_tokens << current_val
+      res_tokens
+    end
+
+    def apply_string_concatenation(tokens)
+      result = tokens[0]
+      i = 1
+      while i < tokens.size
+        op = tokens[i]
+        val = tokens[i + 1]
+        result = "#{result}#{val}"
+        i += 2
       end
       result
     end
