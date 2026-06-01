@@ -200,8 +200,7 @@ module RubyPureMysql
     end
 
     def handle_pipe_operator(scanner)
-      if scanner.getch == '|' && scanner.peek(1) == '|'
-        scanner.getch
+      if scanner.scan(/\|\|/)
         '||'
       else
         :error
