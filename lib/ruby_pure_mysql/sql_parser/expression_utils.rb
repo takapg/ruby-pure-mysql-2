@@ -40,32 +40,30 @@ module RubyPureMysql
       (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||'
     end
 
-
     def scan_string(scanner)
       quote = scanner.getch
       start_pos = scanner.pos - 1
       until scanner.eos?
-        char = scanner.peek(1)
-        if char == quote
-          # MySQLのシングルクォートエスケープ ('') を処理
-          if quote == "'" && scanner.peek(2)&.start_with?("''")
-            scanner.getch # 1つ目のクォートを消費
-            scanner.getch # 2つ目のクォートを消費
-            next
-          end
+        break if handle_string_quote(scanner, quote)
 
-          # バックスラッシュエスケープを確認
-          if count_backslashes(scanner.string, scanner.pos - 1).odd?
-            scanner.getch
-            next
-          end
-
-          break # 閉じクォートに到達
-        end
         scanner.getch
       end
       scanner.getch unless scanner.eos?
       scanner.string[start_pos...scanner.pos]
+    end
+
+    def handle_string_quote(scanner, quote)
+      return false unless scanner.peek(1) == quote
+
+      if quote == "'" && scanner.peek(2)&.start_with?("''")
+        scanner.getch
+        scanner.getch
+        return false
+      end
+
+      return false if count_backslashes(scanner.string, scanner.pos - 1).odd?
+
+      true
     end
 
     def scan_balanced_parens(scanner)
@@ -195,12 +193,11 @@ module RubyPureMysql
     def tokenize_char(scanner, tokens)
       return nil if scanner.scan(/\s+/)
 
+      scan_token_by_type(scanner, tokens)
+    end
+
+    def scan_token_by_type(scanner, tokens)
       if scanner.scan('(')
-        # scanで消費してしまったので、scan_balanced_parensの内部で
-        # 最初の '(' を考慮した処理が必要だが、現状のscan_balanced_parensは
-        # 内部で getch しているため、ここでは peek を使うか、
-        # scan_balanced_parens を修正する必要がある。
-        # 安全のため、ここだけ peek に戻し、条件一致時のみ scan する。
         scanner.pos -= 1
         scan_balanced_parens(scanner)
       elsif scanner.scan(/[a-zA-Z_]/)
@@ -209,8 +206,7 @@ module RubyPureMysql
       elsif scanner.scan('||')
         '||'
       elsif scanner.scan(%r{[-+*/%]})
-        char = scanner.string[scanner.pos - 1]
-        scan_operator_with_char(scanner, tokens, char)
+        scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
       elsif scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
         scanner.matched
       elsif scanner.scan(/['"]/)
@@ -324,22 +320,26 @@ module RubyPureMysql
       while index < tokens.size
         op = tokens[index]
         if ['+', '-'].include?(op)
-          left_raw = tokens[index - 1]
-          right_raw = tokens[index + 1]
-          return :error if left_raw.nil? || right_raw.nil?
+          res = process_add_sub_op!(tokens, index)
+          return res if res == :error
 
-          left = to_float_value(left_raw)
-          right = to_float_value(right_raw)
-          return :error if left == :error || right == :error
-
-          tokens[index - 1] = calculate_sum_diff(left, op, right)
-          tokens.slice!(index, 2)
-          # 配列が短くなったため index はそのまま
-        else
-          index += 1
+          next
         end
+        index += 1
       end
       tokens
+    end
+
+    def process_add_sub_op!(tokens, index)
+      left_raw, right_raw = tokens[index - 1], tokens[index + 1]
+      return :error if left_raw.nil? || right_raw.nil?
+
+      left, right = to_float_value(left_raw), to_float_value(right_raw)
+      return :error if left == :error || right == :error
+
+      tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
+      tokens.slice!(index, 2)
+      :ok
     end
 
     def apply_string_concatenation(tokens)
@@ -347,21 +347,21 @@ module RubyPureMysql
 
       index = 1
       while index < tokens.size
-        op = tokens[index]
-        if op == '||'
-          left_raw = tokens[index - 1]
-          right_raw = tokens[index + 1]
-          return nil if left_raw.nil? || right_raw.nil?
-
-          left_val = format_for_concat(left_raw)
-          right_val = format_for_concat(right_raw)
-          tokens[index - 1] = "#{left_val}#{right_val}"
-          tokens.slice!(index, 2)
-        else
-          index += 1
+        if tokens[index] == '||'
+          process_concat_op!(tokens, index)
+          next
         end
+        index += 1
       end
       tokens[0]
+    end
+
+    def process_concat_op!(tokens, index)
+      left_raw, right_raw = tokens[index - 1], tokens[index + 1]
+      return if left_raw.nil? || right_raw.nil?
+
+      tokens[index - 1] = "#{format_for_concat(left_raw)}#{format_for_concat(right_raw)}"
+      tokens.slice!(index, 2)
     end
 
     def format_for_concat(val)
@@ -440,33 +440,33 @@ module RubyPureMysql
     def split_args(args_str)
       return [] if args_str.nil? || args_str.strip.empty?
 
-      args = []
-      current_arg = +''
-      depth = 0
-      quote = nil
-
+      state = { args: [], current_arg: +'', depth: 0, quote: nil }
       args_str.each_char.with_index do |char, i|
-        if quote
-          quote = nil if char == quote && (i.zero? || args_str[i - 1] != '\\')
-          current_arg << char
-        elsif ["'", '"'].include?(char)
-          quote = char
-          current_arg << char
-        elsif char == '('
-          depth += 1
-          current_arg << char
-        elsif char == ')'
-          depth -= 1
-          current_arg << char
-        elsif char == ',' && depth.zero?
-          args << current_arg.strip
-          current_arg = +''
-        else
-          current_arg << char
-        end
+        update_split_state(char, i, args_str, state)
       end
-      args << current_arg.strip
-      args
+      state[:args] << state[:current_arg].strip
+      state[:args]
+    end
+
+    def update_split_state(char, i, args_str, state)
+      if state[:quote]
+        state[:quote] = nil if char == state[:quote] && (i.zero? || args_str[i - 1] != '\\')
+        state[:current_arg] << char
+      elsif ["'", '"'].include?(char)
+        state[:quote] = char
+        state[:current_arg] << char
+      elsif char == '('
+        state[:depth] += 1
+        state[:current_arg] << char
+      elsif char == ')'
+        state[:depth] -= 1
+        state[:current_arg] << char
+      elsif char == ',' && state[:depth].zero?
+        state[:args] << state[:current_arg].strip
+        state[:current_arg] = +''
+      else
+        state[:current_arg] << char
+      end
     end
 
     def process_math_token(token)
@@ -497,24 +497,23 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
-      # 文字列リテラルの判定を極めて厳格化
-      # 1. クォートで囲まれていること
-      # 2. 内部にエスケープされていないクォートが含まれていないこと
-      if token.match?(/\A(['"])(.*)\1\z/m)
-        quote = token[0]
-        content = token[1...-1]
-        # エスケープを除去した状態で、同じクォートが含まれていれば、それは単一のリテラルではない
-        # MySQLのシングルクォートエスケープ ('') も考慮する
-        cleaned_content = content.gsub(/\\./, '')
-        cleaned_content = cleaned_content.gsub("''", '') if quote == "'"
-        return :error if cleaned_content.include?(quote)
-
-        return evaluate_string_literal(token)
-      end
-
+      return evaluate_string_literal_token(token) if string_literal?(token)
       return token.to_f if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
 
       :error
+    end
+
+    def string_literal?(token)
+      return false unless token.match?(/\A(['"])(.*)\1\z/m)
+
+      quote = token[0]
+      content = token[1...-1]
+      cleaned = content.gsub(/\\./, '').then { |c| quote == "'" ? c.gsub("''", '') : c }
+      !cleaned.include?(quote)
+    end
+
+    def evaluate_string_literal_token(token)
+      evaluate_string_literal(token)
     end
 
     def evaluate_complex_token(token)

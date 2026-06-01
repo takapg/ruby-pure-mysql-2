@@ -10,9 +10,7 @@ module RubyPureMysql
       return nil if col.casecmp?('NULL')
 
       # 外側の括弧が式全体を囲んでいる場合は剥離して再帰的に評価する
-      while fully_parenthesized?(col)
-        col = col[1...-1].strip
-      end
+      col = col[1...-1].strip while fully_parenthesized?(col)
 
       return evaluate_system_variable(col) if col.start_with?('@@')
       return evaluate_function(col) if single_function_call?(col)
@@ -23,23 +21,28 @@ module RubyPureMysql
     def fully_parenthesized?(col)
       return false unless col.start_with?('(') && col.end_with?(')')
 
-      depth = 0
-      quote = nil
+      depth, quote = 0, nil
       col.each_char.with_index do |char, i|
-        if quote
-          if char == quote && (i == 0 || col[i - 1] != '\\')
-            quote = nil
-          end
-        elsif ["'", '"'].include?(char)
-          quote = char
-        elsif char == '('
-          depth += 1
-        elsif char == ')'
-          depth -= 1
-          return false if depth == 0 && i < col.length - 1
-        end
+        quote, depth = update_paren_state(char, i, col, quote, depth)
+        return false if depth.zero? && i < col.length - 1 && char == ')'
       end
-      depth == 0
+      depth.zero?
+    end
+
+    def update_paren_state(char, i, col, quote, depth)
+      if quote
+        return [quote == char && (i.zero? || col[i - 1] != '\\') ? nil : quote, depth]
+      end
+
+      if ["'", '"'].include?(char)
+        [char, depth]
+      elsif char == '('
+        [nil, depth + 1]
+      elsif char == ')'
+        [nil, depth.positive? ? depth - 1 : 0]
+      else
+        [nil, depth]
+      end
     end
 
     def evaluate_system_variable(col)

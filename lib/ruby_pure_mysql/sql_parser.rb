@@ -323,19 +323,25 @@ module RubyPureMysql
 
     def handle_where_char(clause, buffer, parts)
       char = clause[buffer[:index]]
-      # MySQLのダブルクォートエスケープ ('') を処理
-      if buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
-        buffer[:current] << char
-        buffer[:index] += 1
-        # 次の文字（2つ目のクォート）も処理してインデックスを進める
-        buffer[:current] << clause[buffer[:index]]
-        buffer[:index] += 1
-        return
-      end
+      return if handle_quote_escape(clause, buffer, char)
 
       buffer[:in_quote] = update_quote_state(char, buffer[:index], clause, buffer[:in_quote])
       return process_normal_char(clause, buffer) if buffer[:in_quote]
 
+      process_where_logic(clause, buffer, parts)
+    end
+
+    def handle_quote_escape(clause, buffer, char)
+      return false unless buffer[:in_quote] && char == buffer[:in_quote] && clause[buffer[:index] + 1] == char
+
+      buffer[:current] << char
+      buffer[:index] += 1
+      buffer[:current] << clause[buffer[:index]]
+      buffer[:index] += 1
+      true
+    end
+
+    def process_where_logic(clause, buffer, parts)
       update_between_state(clause, buffer)
       return if handle_and_operator?(clause, buffer, parts)
 
@@ -377,15 +383,11 @@ module RubyPureMysql
     end
 
     def update_quote_state(char, index, clause, in_quote)
-      if ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
-        # MySQLのダブルクォートエスケープ ('') を処理: 次の文字も同じクォートならエスケープとみなす
-        if in_quote && clause[index + 1] == char
-          return in_quote
-        end
-        return in_quote == char ? nil : char
-      end
+      return in_quote unless ["'", '"'].include?(char) && (index.zero? || clause[index - 1] != '\\') && (in_quote.nil? || in_quote == char)
 
-      in_quote
+      return in_quote if in_quote && clause[index + 1] == char
+
+      in_quote == char ? nil : char
     end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
@@ -481,21 +483,15 @@ module RubyPureMysql
     end
 
     def convert_value(val)
-      # 強欲マッチに変更し、エスケープされたクォートを正しく扱う
-      m = val.match(/\A(['"])(.*)\1\z/m)
-      if m
+      if (m = val.match(/\A(['"])(.*)\1\z/m))
         content = m[2]
-        # シングルクォート内の '' を ' に置換
         return m[1] == "'" ? content.gsub("''", "'") : content
       end
 
-      if val.casecmp?('NULL')
-        nil
-      elsif val.match?(/\A-?\d+\z/)
-        val.to_i
-      else
-        { error: "Invalid INSERT value: #{val}" }
-      end
+      return nil if val.casecmp?('NULL')
+      return val.to_i if val.match?(/\A-?\d+\z/)
+
+      { error: "Invalid INSERT value: #{val}" }
     end
   end
 
