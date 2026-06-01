@@ -313,10 +313,20 @@ module RubyPureMysql
         val = tokens[i + 1]
         return nil if result.nil? || val.nil?
 
-        result = "#{result}#{val}"
+        result = "#{format_for_concat(result)}#{format_for_concat(val)}"
         i += 2
       end
       result
+    end
+
+    def format_for_concat(val)
+      return val if val.nil?
+
+      if val.is_a?(Numeric) && val == val.to_i
+        val.to_i.to_s
+      else
+        val.to_s
+      end
     end
 
     def calculate_sum_diff(result, operator, value)

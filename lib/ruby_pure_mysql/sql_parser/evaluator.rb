@@ -9,7 +9,6 @@ module RubyPureMysql
       col = col.strip
       return nil if col.casecmp?('NULL')
       return evaluate_system_variable(col) if col.start_with?('@@')
-      return evaluate_string_literal(col) if col.match?(/\A(['"])(.*?)\1\z/)
       return evaluate_function(col) if single_function_call?(col)
 
       evaluate_math(col)
