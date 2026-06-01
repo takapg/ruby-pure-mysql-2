@@ -55,14 +55,21 @@ module RubyPureMysql
       return nil if val.nil?
       return val if type.nil?
 
-      if type == Integer
-        val.is_a?(Numeric) ? val.to_i : val.to_s.to_i
-      elsif type == Float
-        val.is_a?(Numeric) ? val.to_f : val.to_s.to_f
-      elsif type == String
-        val.to_s
-      else
-        val
+      case type
+      when Integer then cast_to_numeric(val, :to_i)
+      when Float   then cast_to_numeric(val, :to_f)
+      when String  then val.to_s
+      else val
+      end
+    end
+
+    def cast_to_numeric(val, method)
+      val.is_a?(Numeric) ? val.send(method) : val.to_s.send(method)
+    end
+
+    def determine_base_types(rows)
+      (0...rows.first.size).map do |col_idx|
+        rows.find { |row| !row[col_idx].nil? }&.[](col_idx)&.class
       end
     end
 
@@ -81,16 +88,10 @@ module RubyPureMysql
     def apply_distinct(rows)
       return rows if rows.nil? || rows.empty?
 
-      # 各カラムの基準型を、最初に見つかった非NULL値から決定する
-      base_types = (0...rows.first.size).map do |col_idx|
-        first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
-        first_val&.class
-      end
+      base_types = determine_base_types(rows)
 
       rows.uniq do |row|
-        row.each_with_index.map do |val, i|
-          normalize_value_by_type(val, base_types[i])
-        end
+        row.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
       end
     end
   end
