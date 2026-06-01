@@ -1538,7 +1538,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.map { |r| r['id'] }).to eq([2, 3])
     end
 
-
     it 'updates multiple rows using OR in WHERE clause' do
       client.query('DROP TABLE IF EXISTS update_or_test;')
       client.query('CREATE TABLE update_or_test (id INT, val VARCHAR(255));')
