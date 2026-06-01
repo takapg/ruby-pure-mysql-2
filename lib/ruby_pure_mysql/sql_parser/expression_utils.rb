@@ -3,8 +3,17 @@
 require 'strscan'
 
 module RubyPureMysql
-  # 引用符と括弧のバランス状態を管理する共通ロジック
-  module BalancedStateUtils
+  # 式解析の共通ユーティリティ
+  module ExpressionCommon
+    def count_backslashes(string, pos)
+      count = 0
+      while pos >= 0 && string[pos] == '\\'
+        count += 1
+        pos -= 1
+      end
+      count
+    end
+
     def calculate_next_state(char, quote, depth, escaped)
       return handle_quote_state(char, quote, depth, escaped) if quote
 
@@ -28,13 +37,15 @@ module RubyPureMysql
     end
   end
 
-  # 文字列スキャンに関する補助ロジックを提供するモジュール
-  module ExpressionStringUtils
+  # 式のトークナイズ処理を提供するモジュール
+  module ExpressionTokenizer
+    include ExpressionCommon
+
     def scan_string(scanner)
       quote = scanner.getch
       start_pos = scanner.pos - 1
       until scanner.eos?
-        break if scanner.peek(1) == quote && count_backslashes(scanner).even?
+        break if scanner.peek(1) == quote && count_backslashes(scanner.string, scanner.pos - 1).even?
 
         scanner.getch
       end
@@ -42,19 +53,6 @@ module RubyPureMysql
       scanner.string[start_pos...scanner.pos]
     end
 
-    def count_backslashes(scanner, start_pos = scanner.pos - 1)
-      count = 0
-      pos = start_pos
-      while pos >= 0 && scanner.string[pos] == '\\'
-        count += 1
-        pos -= 1
-      end
-      count
-    end
-  end
-
-  # 単項演算子の処理を支援するモジュール
-  module ExpressionUnaryHandler
     def scan_unary_operator_body(scanner)
       start_pos = scanner.pos - 1
       return scanner.string[start_pos...scanner.pos] if scan_unary_operand(scanner)
@@ -108,13 +106,6 @@ module RubyPureMysql
       scanner.getch
       scan_unary_operand(scanner)
     end
-  end
-
-  # トークンの消費ロジックを提供するモジュール
-  module ExpressionTokenConsumer
-    include ExpressionStringUtils
-    include ExpressionUnaryHandler
-    include BalancedStateUtils
 
     def scan_balanced_parens(scanner)
       start_pos = scanner.pos
@@ -131,7 +122,7 @@ module RubyPureMysql
     end
 
     def update_balanced_state(char, quote, depth, scanner)
-      escaped = count_backslashes(scanner, scanner.pos - 2).odd?
+      escaped = count_backslashes(scanner.string, scanner.pos - 2).odd?
       calculate_next_state(char, quote, depth, escaped)
     end
 
@@ -162,11 +153,6 @@ module RubyPureMysql
 
       scan_unary_operator_body(scanner)
     end
-  end
-
-  # 式のトークナイズ処理を提供するモジュール
-  module ExpressionTokenizer
-    include ExpressionTokenConsumer
 
     def tokenize_math(col)
       scanner = StringScanner.new(col)
@@ -205,9 +191,9 @@ module RubyPureMysql
     end
   end
 
-  # 式の状態管理を支援するモジュール
-  module ExpressionStateHelper
-    include BalancedStateUtils
+  # 式の評価ロジックを提供するモジュール
+  module ExpressionEvaluator
+    include ExpressionCommon
 
     def update_state(state, char)
       update_quote_and_depth(state, char)
@@ -220,13 +206,7 @@ module RubyPureMysql
     end
 
     def quote_escaped?(state)
-      bs_count = 0
-      pos = state[:buf].length - 1
-      while pos >= 0 && state[:buf][pos] == '\\'
-        bs_count += 1
-        pos -= 1
-      end
-      bs_count.odd?
+      count_backslashes(state[:buf], state[:buf].length - 1).odd?
     end
 
     def handle_buffer(state, char)
@@ -241,11 +221,6 @@ module RubyPureMysql
     def comma_at_root?(char, depth)
       char == ',' && depth.zero?
     end
-  end
-
-  # 式の評価ロジックを提供するモジュール
-  module ExpressionEvaluator
-    include ExpressionStateHelper
 
     def evaluate_string_literal(col)
       match = col.match(/\A(['"])(.*?)\1\z/)
@@ -353,10 +328,8 @@ module RubyPureMysql
 
       val.to_s.to_f
     end
-  end
 
-  # 算術演算の計算ロジックを提供するモジュール
-  module ExpressionCalculator
+    # --- Calculation Logic ---
     MD_OPERATORS = %w[* / %].freeze
 
     def apply_multiplication_division(tokens)
@@ -439,8 +412,8 @@ module RubyPureMysql
 
   # 式のトークナイズや引数の分割などの補助ロジックを提供するモジュール
   module ExpressionUtils
+    include ExpressionCommon
     include ExpressionTokenizer
     include ExpressionEvaluator
-    include ExpressionCalculator
   end
 end
