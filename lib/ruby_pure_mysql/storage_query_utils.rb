@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # ストレージエンジンにおける行の更新・削除のためのインデックス計算などの補助ロジックを提供するモジュール
   module StorageQueryUtils
     def perform_update_rows?(rows, columns, update_map, criteria)
       return true if criteria[:limit]&.zero?

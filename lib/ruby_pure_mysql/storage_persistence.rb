@@ -4,6 +4,7 @@ require 'json'
 require 'fileutils'
 
 module RubyPureMysql
+  # JSONファイルを用いたデータの永続化ロジックを提供するモジュール
   module StoragePersistence
     def setup_persistence
       FileUtils.mkdir_p(File.join(@db_dir, 'data'))

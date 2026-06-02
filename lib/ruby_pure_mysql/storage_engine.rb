@@ -96,6 +96,5 @@ module RubyPureMysql
       end
     end
 
-    private
   end
 end
