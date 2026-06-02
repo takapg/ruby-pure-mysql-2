@@ -2,6 +2,7 @@
 
 module RubyPureMysql
   # インデックス管理ロジックを提供するモジュール
+  # rubocop:disable Naming/PredicateMethod
   module StorageIndexManager
     def refresh_index_entries(table_name, target_indices, update_map, merged_criteria)
       old_values_map = target_indices.to_h { |idx| [idx, @data[table_name][idx].dup] }
@@ -70,4 +71,5 @@ module RubyPureMysql
       idx_table.delete(val0) if idx_table[val0].empty?
     end
   end
+  # rubocop:enable Naming/PredicateMethod
 end
