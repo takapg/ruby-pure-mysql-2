@@ -120,6 +120,12 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(index_defs).to eq({})
     end
 
+    it '文字列配列でカラムを定義し、別途 PRIMARY インデックスを指定した場合に正しく作成されること' do
+      engine.create_table('string_cols_table', %w[id name], { 'PRIMARY' => [0] })
+      index_defs = engine.instance_variable_get(:@index_definitions)['string_cols_table']
+      expect(index_defs).to eq({ 'PRIMARY' => [0] })
+    end
+
     it 'カラム定義に主キーが含まれている場合に自動的に PRIMARY インデックスが作成されること' do
       auto_pk_cols = [
         { name: 'id', primary_key: true },
