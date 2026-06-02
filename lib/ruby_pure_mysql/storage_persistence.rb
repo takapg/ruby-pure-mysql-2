@@ -83,13 +83,19 @@ module RubyPureMysql
       data
     end
 
+    def safe_json_parse(val)
+      JSON.parse(val)
+    rescue StandardError
+      val
+    end
+
     def restore_indexes(name, indexes)
       @index_data[name] = indexes.transform_values do |idx_val|
         next {} unless idx_val.is_a?(Hash)
 
         idx_val.each_with_object({}) do |(k, sub_hash), memo|
-          parsed_k = JSON.parse(k) rescue k
-          memo[parsed_k] = sub_hash.transform_keys { |sk| JSON.parse(sk) rescue sk }
+          parsed_k = safe_json_parse(k)
+          memo[parsed_k] = sub_hash.transform_keys { |sk| safe_json_parse(sk) }
         end
       end
     end
