@@ -9,12 +9,12 @@ module RubyPureMysql
       groups = normalize_where_groups(where_clauses)
       return nil if groups.size > 1
 
-      find_best_index_match(table_name, table_columns, groups.first, lookup_opts)
+      find_best_index_match(table_name, groups.first, lookup_opts)
     end
 
     private
 
-    def find_best_index_match(table_name, table_columns, group, lookup_opts)
+    def find_best_index_match(table_name, group, lookup_opts)
       @index_definitions[table_name].each do |idx_name, cols|
         res = attempt_index_match(table_name, idx_name, cols, group, lookup_opts)
         return res if res
@@ -31,8 +31,11 @@ module RubyPureMysql
 
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
-        clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
+        clause = group.find do |c|
+          get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
+        end
         return nil unless clause && clause[:operator] == '='
+
         clause[:value]
       end
     end
@@ -51,8 +54,10 @@ module RubyPureMysql
     end
 
     def find_prefix_value(col_idx, group, lookup_opts)
-      clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
-      (clause && clause[:operator] == '=') ? clause[:value] : nil
+      clause = group.find do |c|
+        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
+      end
+      clause && clause[:operator] == '=' ? clause[:value] : nil
     end
 
     def collect_prefix_indices(table_name, idx_name, val0)

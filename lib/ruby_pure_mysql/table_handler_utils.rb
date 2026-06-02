@@ -35,7 +35,6 @@ module RubyPureMysql
 
     def find_matching_indices(client, rows, table_columns, where_clauses, lookup_opts = {})
       table_map = lookup_opts[:table_map] || {}
-      table_name = lookup_opts[:table_name]
 
       return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
