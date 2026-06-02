@@ -30,7 +30,7 @@ module RubyPureMysql
 
         @tables[name] = columns
         @data[name] = []
-        @index_definitions[name] = indexes
+        @index_definitions[name] = indexes.empty? ? determine_default_indexes(columns) : indexes
         @index_data[name] = {}
         persist_table_creation(name)
         true
@@ -104,6 +104,11 @@ module RubyPureMysql
     end
 
     private
+
+    def determine_default_indexes(columns)
+      # 最初のカラムをデフォルトの PRIMARY KEY と見なす
+      { 'PRIMARY' => [0] }
+    end
 
     def resolve_target_indices(table_name, criteria)
       normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria

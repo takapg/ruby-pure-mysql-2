@@ -109,4 +109,26 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(indices_bob).to include(0) # Bobが唯一の行となりインデックス0に移動
     end
   end
+
+  describe '自動インデックス作成の検証' do
+    let(:auto_table) { 'auto_table' }
+    let(:auto_cols) { %w[id name] }
+
+    it 'インデックスを指定せずに作成した場合に PRIMARY インデックスが自動作成されること' do
+      engine.create_table(auto_table, auto_cols)
+      index_defs = engine.instance_variable_get(:@index_definitions)[auto_table]
+      expect(index_defs).to eq({ 'PRIMARY' => [0] })
+    end
+
+    it '自動作成された PRIMARY インデックスを用いてルックアップができること' do
+      engine.create_table(auto_table, auto_cols)
+      engine.insert(auto_table, [100, 'AutoAlice'])
+
+      where_id = [{ column: 'id', operator: '=', value: 100 }]
+      indices = engine.find_matching_indices(
+        nil, engine.select(auto_table), engine.get_columns(auto_table), where_id
+      )
+      expect(indices).to contain_exactly(0)
+    end
+  end
 end
