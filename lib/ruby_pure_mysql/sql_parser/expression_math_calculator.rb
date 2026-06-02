@@ -51,8 +51,15 @@ module RubyPureMysql
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
-      str = val.to_s
-      str.match?(/\A-?\d+\z/) ? str.to_i : str.to_f
+      str = val.to_s.strip
+      return 0 if str.empty?
+
+      if str.match?(/\A-?\d+\z/)
+        str.to_i
+      else
+        f_val = str.to_f
+        f_val == f_val.to_i ? f_val.to_i : f_val
+      end
     end
 
     def string_operator?(val)
@@ -99,7 +106,7 @@ module RubyPureMysql
     def process_add_sub_op!(tokens, index)
       left_raw = tokens[index - 1]
       right_raw = tokens[index + 1]
-      return :error if left_raw.nil? || right_raw.nil?
+      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left = resolve_numeric_value(left_raw)
       right = resolve_numeric_value(right_raw)
