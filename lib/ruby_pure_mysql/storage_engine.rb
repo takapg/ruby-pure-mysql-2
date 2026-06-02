@@ -19,6 +19,7 @@ module RubyPureMysql
       @data = {}
       @index_definitions = {}
       @index_data = {}
+      @primary_keys = {}
       @tables_mutex = Mutex.new
       @db_dir = 'db'
       setup_persistence
@@ -32,6 +33,7 @@ module RubyPureMysql
         @data[name] = []
         @index_definitions[name] = indexes.empty? ? determine_default_indexes(columns) : indexes
         @index_data[name] = {}
+        @primary_keys[name] = indexes['PRIMARY'] if indexes.key?('PRIMARY')
         persist_table_creation(name)
         true
       end
@@ -45,6 +47,7 @@ module RubyPureMysql
         @data.delete(name)
         @index_definitions.delete(name)
         @index_data.delete(name)
+        @primary_keys.delete(name)
         persist_table_deletion(name)
         true
       end
@@ -53,8 +56,9 @@ module RubyPureMysql
     def insert(table_name, values)
       @tables_mutex.synchronize do
         columns = @tables[table_name]
-        return false unless columns
-        return false unless values.size == columns.size
+        return false unless columns && values.size == columns.size
+
+        return false if duplicate_primary_key?(table_name, values)
 
         @data[table_name] << values.dup
         update_indexes(table_name, values)
@@ -104,6 +108,13 @@ module RubyPureMysql
     end
 
     private
+
+    def duplicate_primary_key?(table_name, values)
+      pk_indices = @primary_keys[table_name]
+      return false unless pk_indices
+
+      @data[table_name].any? { |row| pk_indices.all? { |i| row[i] == values[i] } }
+    end
 
     def determine_default_indexes(_columns)
       {}

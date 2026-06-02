@@ -25,7 +25,7 @@ module RubyPureMysql
       if @storage_engine.insert(result[:table_name], values)
         send_ok_packet(client, 1)
       else
-        send_err_packet(client, 1, "Failed to insert into '#{result[:table_name]}'", 1000)
+        send_err_packet(client, 1, "Duplicate entry for key 'PRIMARY'", 1062)
       end
     rescue InsertError => e
       send_err_packet(client, 1, e.message, e.code)
