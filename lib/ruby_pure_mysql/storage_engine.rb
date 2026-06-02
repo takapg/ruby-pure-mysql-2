@@ -105,7 +105,7 @@ module RubyPureMysql
 
     private
 
-    def determine_default_indexes(columns)
+    def determine_default_indexes(_columns)
       # 最初のカラムをデフォルトの PRIMARY KEY と見なす
       { 'PRIMARY' => [0] }
     end
