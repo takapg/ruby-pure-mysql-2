@@ -31,9 +31,7 @@ module RubyPureMysql
 
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
-        clause = group.find do |c|
-          get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
-        end
+        clause = find_clause_for_col(col_idx, group, lookup_opts)
         return nil unless clause && clause[:operator] == '='
 
         clause[:value]
@@ -48,28 +46,43 @@ module RubyPureMysql
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
-      first_clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == cols[0] }
+      first_clause = find_clause_for_col(cols[0], group, lookup_opts)
       return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
 
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      candidates = data.keys
+      candidates = filter_index_candidates(cols, group, lookup_opts, data.keys)
+      candidates.flat_map { |k| data[k].keys }
+    end
+    def find_clause_for_col(col_idx, group, lookup_opts)
+      group.find do |c|
+        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
+      end
+    end
+
+    def filter_index_candidates(cols, group, lookup_opts, candidates)
       cols.each_with_index do |col_idx, i|
-        clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
+        clause = find_clause_for_col(col_idx, group, lookup_opts)
         break if clause.nil?
 
-        op, val = clause[:operator], clause[:value]
-        if op == '='
-          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i] == val }
-        elsif %w[> < >= <=].include?(op)
-          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(op.to_sym, val) }
-          break
-        else
-          break
-        end
+        res = apply_clause_filter(candidates, clause, i)
+        candidates = res[:candidates]
+        break if res[:stop]
       end
-      candidates.flat_map { |k| data[k].keys }
+      candidates
+    end
+
+    def apply_clause_filter(candidates, clause, col_pos)
+      op = clause[:operator]
+      val = clause[:value]
+      if op == '='
+        { candidates: candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos] == val }, stop: false }
+      elsif %w[> < >= <=].include?(op)
+        { candidates: candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos].send(op.to_sym, val) }, stop: true }
+      else
+        { candidates: candidates, stop: true }
+      end
     end
   end
 end
