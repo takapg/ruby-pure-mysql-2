@@ -66,9 +66,7 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         merged_criteria = criteria.merge(table_name: table_name)
-        unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
-          return false
-        end
+        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
 
         save_data(table_name)
         true

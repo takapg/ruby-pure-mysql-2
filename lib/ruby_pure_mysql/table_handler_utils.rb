@@ -43,9 +43,14 @@ module RubyPureMysql
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
       return handle_unknown_column(client) if compiled_groups.nil?
 
-      indices = perform_lookup(client, rows, table_columns, where_clauses, table_map, table_name)
+      full_opts = lookup_opts.merge(client: client, columns: table_columns, table_map: table_map)
+      indices = perform_lookup(rows, table_columns, where_clauses, full_opts)
       return nil if indices.nil?
 
+      filter_by_compiled_groups(rows, indices, compiled_groups)
+    end
+
+    def filter_by_compiled_groups(rows, indices, compiled_groups)
       indices.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
@@ -107,9 +112,10 @@ module RubyPureMysql
       nil
     end
 
-    def perform_lookup(client, rows, table_columns, where_clauses, table_map, table_name)
+    def perform_lookup(rows, table_columns, where_clauses, lookup_opts)
+      table_name = lookup_opts[:table_name]
       if table_name
-        candidate_indices = try_index_lookup(client, table_name, table_columns, where_clauses, table_map)
+        candidate_indices = try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
         return candidate_indices if candidate_indices
       end
 
