@@ -17,7 +17,7 @@ module RubyPureMysql
     def find_best_index_match(table_name, group, lookup_opts)
       @index_definitions[table_name].each do |idx_name, cols|
         res = attempt_index_match(table_name, idx_name, cols, group, lookup_opts)
-        return res if res
+        return res unless res.nil?
       end
       nil
     end
@@ -31,9 +31,7 @@ module RubyPureMysql
 
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
-        clause = group.find do |c|
-          get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
-        end
+        clause = find_clause_for_col(col_idx, group, lookup_opts)
         return nil unless clause && clause[:operator] == '='
 
         clause[:value]
@@ -48,30 +46,38 @@ module RubyPureMysql
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
-      clause = find_prefix_clause(cols[0], group, lookup_opts)
-      return nil if clause.nil?
+      first_clause = find_clause_for_col(cols[0], group, lookup_opts)
+      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
 
-      collect_prefix_indices(table_name, idx_name, clause)
-    end
-
-    def find_prefix_clause(col_idx, group, lookup_opts)
-      clause = group.find do |c|
-        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
-      end
-      return nil unless clause && %w[= > < >= <=].include?(clause[:operator])
-
-      clause
-    end
-
-    def collect_prefix_indices(table_name, idx_name, clause)
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      op = clause[:operator]
-      val = clause[:value]
-      data.select do |key, _|
-        !key[0].nil? && !val.nil? && key[0].send(op == '=' ? :== : op.to_sym, val)
-      end.values.flat_map(&:keys)
+      candidates = filter_index_candidates(cols, group, lookup_opts, data.keys)
+      candidates.flat_map { |k| data[k].keys }
+    end
+
+    def find_clause_for_col(col_idx, group, lookup_opts)
+      group.find do |c|
+        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
+      end
+    end
+
+    def filter_index_candidates(cols, group, lookup_opts, candidates)
+      cols.each_with_index do |col_idx, i|
+        clause = find_clause_for_col(col_idx, group, lookup_opts)
+        break if clause.nil?
+
+        candidates = filter_candidates(candidates, clause[:operator], clause[:value], i)
+        break unless clause[:operator] == '='
+      end
+      candidates
+    end
+
+    def filter_candidates(candidates, operator, value, col_pos)
+      return candidates unless %w[= > < >= <=].include?(operator)
+
+      method = operator == '=' ? :== : operator.to_sym
+      candidates.select { |k| !k[col_pos].nil? && !value.nil? && k[col_pos].send(method, value) }
     end
   end
 end
