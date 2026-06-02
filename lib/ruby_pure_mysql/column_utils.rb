@@ -30,7 +30,7 @@ module RubyPureMysql
     end
 
     def find_column_index(client, table, col, table_map)
-      idx = table_map[table].find_index { |c| c.casecmp?(col) }
+      idx = table_map[table].find_index { |c| (c.is_a?(Hash) ? (c[:name] || c[:original]) : c)&.casecmp?(col) }
       return idx if idx
 
       send_err_packet(client, 1, "Unknown column '#{col}' in table '#{table}'", 1054) if client
@@ -39,7 +39,7 @@ module RubyPureMysql
 
     def resolve_unqualified_column(client, columns, column_name, table_map)
       table_map.each do |t, cols|
-        idx = cols.find_index { |c| c.casecmp?(column_name) }
+        idx = cols.find_index { |c| (c.is_a?(Hash) ? (c[:name] || c[:original]) : c)&.casecmp?(column_name) }
         next unless idx
 
         return calculate_table_offset(t, table_map) + idx
@@ -49,8 +49,8 @@ module RubyPureMysql
 
     def resolve_from_all_columns(client, columns, column_name)
       idx = columns.find_index do |c|
-        name = c.is_a?(Hash) ? c[:original] : c
-        name.casecmp?(column_name)
+        name = c.is_a?(Hash) ? (c[:name] || c[:original]) : c
+        name&.casecmp?(column_name)
       end
       unless idx
         send_err_packet(client, 1, "Unknown column '#{column_name}'", 1054) if client
