@@ -65,7 +65,10 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, criteria.merge(table_name: table_name))
+        merged_criteria = criteria.merge(table_name: table_name)
+        unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
+          return false
+        end
 
         save_data(table_name)
         true
@@ -76,7 +79,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], criteria.merge(table_name: table_name))
+        merged_criteria = criteria.merge(table_name: table_name)
+        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if indices.nil?
 
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }

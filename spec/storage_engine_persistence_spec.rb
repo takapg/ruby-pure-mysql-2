@@ -133,7 +133,11 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine.insert('users', [3, 'charlie'])
 
     # 1. 完全一致ルックアップの検証 (id=2, name='bob')
-    criteria_exact = { client: nil, where: [[{ column: 'id', operator: '=', value: 2 }, { column: 'name', operator: '=', value: 'bob' }]], table_map: {} }
+    criteria_exact = {
+      client: nil,
+      where: [[{ column: 'id', operator: '=', value: 2 }, { column: 'name', operator: '=', value: 'bob' }]],
+      table_map: {}
+    }
     # update_rows_with_where を利用して間接的に get_target_indices を呼び出す
     engine.update_rows_with_where('users', criteria_exact, { 1 => 'bob_updated' })
     expect(engine.select('users')[1]).to eq([2, 'bob_updated'])

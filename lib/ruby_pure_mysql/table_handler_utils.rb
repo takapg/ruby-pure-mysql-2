@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative 'index_lookup_utils'
 require_relative 'aggregate_utils'
 require_relative 'filter_utils'
 require_relative 'column_utils'
@@ -21,6 +22,7 @@ module RubyPureMysql
     include HavingUtils
     include SortUtils
     include FilterEvaluator
+    include IndexLookupUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -31,24 +33,20 @@ module RubyPureMysql
       columns
     end
 
-    def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {}, table_name = nil)
+    def find_matching_indices(client, rows, table_columns, where_clauses, lookup_opts = {})
+      table_map = lookup_opts[:table_map] || {}
+      table_name = lookup_opts[:table_name]
+
       return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
-      if compiled_groups.nil?
-        send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
-        return nil
-      end
+      return handle_unknown_column(client) if compiled_groups.nil?
 
-      if table_name
-        candidate_indices = try_index_lookup(client, table_name, table_columns, where_clauses, table_map)
-        if candidate_indices
-          return candidate_indices.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
-        end
-      end
+      indices = perform_lookup(client, rows, table_columns, where_clauses, table_map, table_name)
+      return nil if indices.nil?
 
-      rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
+      indices.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
     def apply_distinct(rows)
@@ -104,46 +102,18 @@ module RubyPureMysql
 
     private
 
-    def try_index_lookup(client, table_name, table_columns, where_clauses, table_map)
-      return nil unless @index_definitions && @index_definitions[table_name]
-
-      groups = normalize_where_groups(where_clauses)
-      return nil if groups.size > 1
-
-      group = groups.first
-      @index_definitions[table_name].each do |idx_name, cols|
-        index_values = []
-        all_match = true
-        cols.each do |col_idx|
-          clause = group.find { |c| get_column_index(client, table_columns, c[:column], table_map) == col_idx }
-          if clause && clause[:operator] == '='
-            index_values << clause[:value]
-          else
-            all_match = false
-            break
-          end
-        end
-
-        if all_match
-          key = index_values.to_json
-          return @index_data[table_name][idx_name][key] if @index_data[table_name] && @index_data[table_name][idx_name] && @index_data[table_name][idx_name].key?(key)
-        end
-
-        first_col_idx = cols[0]
-        first_clause = group.find { |c| get_column_index(client, table_columns, c[:column], table_map) == first_col_idx }
-        if first_clause && first_clause[:operator] == '='
-          val0 = first_clause[:value]
-          candidates = []
-          if @index_data[table_name] && @index_data[table_name][idx_name]
-            @index_data[table_name][idx_name].each do |key, row_indices|
-              parsed_key = JSON.parse(key)
-              candidates.concat(row_indices) if parsed_key[0] == val0
-            end
-          end
-          return candidates unless candidates.empty?
-        end
-      end
+    def handle_unknown_column(client)
+      send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
       nil
+    end
+
+    def perform_lookup(client, rows, table_columns, where_clauses, table_map, table_name)
+      if table_name
+        candidate_indices = try_index_lookup(client, table_name, table_columns, where_clauses, table_map)
+        return candidate_indices if candidate_indices
+      end
+
+      (0...rows.size).to_a
     end
 
     def map_value_to_type(val)

@@ -24,7 +24,8 @@ module RubyPureMysql
     end
 
     def get_target_indices(rows, columns, criteria)
-      indices = find_matching_indices(criteria[:client], rows, columns, criteria[:where], criteria[:table_map] || {}, criteria[:table_name])
+      lookup_opts = { table_map: criteria[:table_map] || {}, table_name: criteria[:table_name] }
+      indices = find_matching_indices(criteria[:client], rows, columns, criteria[:where], lookup_opts)
       return nil if indices.nil?
 
       indices = sort_indices(rows, indices, columns, criteria)
