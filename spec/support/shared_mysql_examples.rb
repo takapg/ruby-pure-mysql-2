@@ -1212,6 +1212,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'LIMIT offset, count syntax' do
+    before do
+      client.query('DROP TABLE IF EXISTS limit_comma_test;')
+      client.query('CREATE TABLE limit_comma_test (id INT);')
+      10.times { |i| client.query("INSERT INTO limit_comma_test VALUES (#{i + 1});") }
+    end
+
+    it 'returns first 5 rows with LIMIT 0, 5' do
+      results = client.query('SELECT * FROM limit_comma_test LIMIT 0, 5;')
+      expect(results.count).to eq(5)
+      expect(results.map { |r| r['id'] }).to eq([1, 2, 3, 4, 5])
+    end
+
+    it 'returns 0 rows with LIMIT 5, 0' do
+      results = client.query('SELECT * FROM limit_comma_test LIMIT 5, 0;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns empty result set when offset exceeds row count (LIMIT 100, 5)' do
+      results = client.query('SELECT * FROM limit_comma_test LIMIT 100, 5;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns rows from offset 5 with limit 10 (LIMIT 5, 10)' do
+      results = client.query('SELECT * FROM limit_comma_test LIMIT 5, 10;')
+      expect(results.count).to eq(5)
+      expect(results.map { |r| r['id'] }).to eq([6, 7, 8, 9, 10])
+    end
+  end
+
   describe 'Multi-column ORDER BY support' do
     before do
       client.query('DROP TABLE IF EXISTS products;')
