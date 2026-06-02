@@ -74,8 +74,8 @@ module RubyPureMysql
 
     private
 
-    def column_name_for(c)
-      c.is_a?(Hash) ? (c[:name] || c[:original]) : c
+    def column_name_for(column)
+      column.is_a?(Hash) ? (column[:name] || column[:original]) : column
     end
   end
 end
