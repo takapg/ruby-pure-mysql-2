@@ -120,7 +120,7 @@ module RubyPureMysql
       key = values.values_at(*cols)
       val0 = key[0]
       (@index_data[table_name][idx_name] ||= {})[val0] ||= {}
-      (@index_data[table_name][idx_name][val0][key] ||= []) << row_idx
+      (@index_data[table_name][idx_name][val0][key] ||= {})[row_idx] = true
     end
 
     private(*StoragePersistence.instance_methods(false))
