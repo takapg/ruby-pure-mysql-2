@@ -17,7 +17,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
   it 'persists table and data across instances' do
     # 1. 最初のインスタンスでテーブル作成とデータ挿入
     engine1 = described_class.new
-    engine1.create_table('users', ['id', 'name'])
+    engine1.create_table('users', %w[id name])
     engine1.insert('users', [1, 'alice'])
     engine1.insert('users', [2, 'bob'])
 
@@ -26,13 +26,13 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
     # 3. データが保持されているか確認
     expect(engine2.list_tables).to include('users')
-    expect(engine2.get_columns('users')).to eq(['id', 'name'])
+    expect(engine2.get_columns('users')).to eq(%w[id name])
     expect(engine2.select('users')).to eq([[1, 'alice'], [2, 'bob']])
   end
 
   it 'persists updates across instances' do
     engine1 = described_class.new
-    engine1.create_table('users', ['id', 'name'])
+    engine1.create_table('users', %w[id name])
     engine1.insert('users', [1, 'alice'])
 
     engine2 = described_class.new
@@ -45,7 +45,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
   it 'persists deletions across instances' do
     engine1 = described_class.new
-    engine1.create_table('users', ['id', 'name'])
+    engine1.create_table('users', %w[id name])
     engine1.insert('users', [1, 'alice'])
     engine1.insert('users', [2, 'bob'])
 
@@ -59,7 +59,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
   it 'removes data file when table is dropped' do
     engine = described_class.new
-    engine.create_table('users', ['id', 'name'])
+    engine.create_table('users', %w[id name])
     engine.insert('users', [1, 'alice'])
 
     data_file = File.join(db_dir, 'data', 'users.json')
