@@ -60,5 +60,53 @@ RSpec.describe RubyPureMysql::StorageEngine do
       )
       expect(indices).to be_empty
     end
+
+    it 'インデックスに含まれないカラムのみを更新した場合にインデックスが維持されること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      # 'age' (index 2) を更新。'name_idx' ([1]) には影響しないはず
+      engine.update_rows_with_where(table_name, {}, { 2 => 31 })
+
+      where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
+      indices = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_alice
+      )
+      expect(indices).to include(0)
+    end
+
+    it '複数行を同時に更新した際に全てのインデックスが正しく更新されること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      engine.insert(table_name, [2, 'Bob', 20])
+      engine.insert(table_name, [3, 'Charlie', 40])
+
+      # age < 35 (Alice, Bob) の名前を 'Updated' に変更
+      engine.update_rows_with_where(table_name, [{ column: 'age', operator: '<', value: 35 }], { 1 => 'Updated' })
+
+      where_updated = [{ column: 'name', operator: '=', value: 'Updated' }]
+      indices = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_updated
+      )
+      expect(indices).to contain_exactly(0, 1)
+    end
+
+    it '複数行を同時に削除した際に全てのインデックスエントリが削除されること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      engine.insert(table_name, [2, 'Bob', 20])
+      engine.insert(table_name, [3, 'Charlie', 40])
+
+      # age > 25 (Alice, Charlie) を削除
+      engine.delete_rows_with_where(table_name, [{ column: 'age', operator: '>', value: 25 }])
+
+      where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
+      indices_alice = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_alice
+      )
+      expect(indices_alice).to be_empty
+
+      where_bob = [{ column: 'name', operator: '=', value: 'Bob' }]
+      indices_bob = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_bob
+      )
+      expect(indices_bob).to include(0) # Bobが唯一の行となりインデックス0に移動
+    end
   end
 end

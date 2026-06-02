@@ -9,7 +9,8 @@ module RubyPureMysql
 
       return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
 
-      target_indices.each { |idx| update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx]) }
+      updated_cols = update_map.keys
+      target_indices.each { |idx| update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx], updated_cols) }
       save_data(table_name)
       true
     end
@@ -34,10 +35,12 @@ module RubyPureMysql
 
     private
 
-    def update_row_indexes(table_name, row_idx, old_values, new_values)
-      remove_from_index(table_name, row_idx, old_values)
+    def update_row_indexes(table_name, row_idx, old_values, new_values, updated_cols)
       @index_definitions[table_name].each do |idx_name, cols|
-        add_to_index(table_name, idx_name, cols, new_values, row_idx)
+        if (cols & updated_cols).any?
+          remove_entry_from_index_table(table_name, idx_name, cols, row_idx, old_values)
+          add_to_index(table_name, idx_name, cols, new_values, row_idx)
+        end
       end
     end
 
