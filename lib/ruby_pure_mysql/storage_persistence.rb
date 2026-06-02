@@ -78,6 +78,17 @@ module RubyPureMysql
 
     private
 
+    def convert_to_index_hash(val)
+      case val
+      when Hash
+        val.each_with_object({}) { |(k, v), h| h[safe_json_parse(k)] = convert_to_index_hash(v) }
+      when Array
+        val.each_with_object({}) { |row, h| h[row] = true }
+      else
+        val
+      end
+    end
+
     def handle_simple_data(name, data)
       @index_data[name] = {}
       data
@@ -91,12 +102,7 @@ module RubyPureMysql
 
     def restore_indexes(name, indexes)
       @index_data[name] = indexes.transform_values do |idx_val|
-        next {} unless idx_val.is_a?(Hash)
-
-        idx_val.each_with_object({}) do |(k, sub_hash), memo|
-          parsed_k = safe_json_parse(k)
-          memo[parsed_k] = sub_hash.is_a?(Hash) ? sub_hash.transform_keys { |sk| safe_json_parse(sk) } : sub_hash
-        end
+        idx_val.is_a?(Hash) ? convert_to_index_hash(idx_val) : {}
       end
     end
   end
