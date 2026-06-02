@@ -121,7 +121,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine.insert('users', [2, 'alice']) # 重複値
 
     index_data = engine.instance_variable_get(:@index_data)['users']['name_idx']
-    expect(index_data[['alice'].to_json]).to eq([0, 1])
+    expect(index_data[['alice']]).to eq([0, 1])
   end
 
   it 'optimizes search using indexes' do
