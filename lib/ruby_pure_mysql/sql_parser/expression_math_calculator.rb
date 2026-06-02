@@ -45,21 +45,19 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return val if val.is_a?(Numeric)
-      return val if %i[error nil].include?(val)
-
+      return val if val.is_a?(Numeric) || %i[error nil].include?(val)
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
-      str = val.to_s.strip
-      return 0 if str.empty?
+      parse_string_to_numeric(val.to_s.strip)
+    end
 
-      if str.match?(/\A-?\d+\z/)
-        str.to_i
-      else
-        f_val = str.to_f
-        f_val == f_val.to_i ? f_val.to_i : f_val
-      end
+    def parse_string_to_numeric(str)
+      return 0 if str.empty?
+      return str.to_i if str.match?(/\A-?\d+\z/)
+
+      f_val = str.to_f
+      f_val == f_val.to_i ? f_val.to_i : f_val
     end
 
     def string_operator?(val)
