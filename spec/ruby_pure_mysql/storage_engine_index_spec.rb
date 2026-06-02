@@ -23,7 +23,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       engine.insert(table_name, [1, 'Alice', 30])
 
       index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
-      expect(index_data['Alice'][['Alice']]).to have_key(0)
+      expect(index_data[['Alice']]).to have_key(0)
     end
 
     it 'UPDATEによってインデックス対象カラムが変更された際にインデックスが更新されること' do

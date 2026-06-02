@@ -44,9 +44,7 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      val0 = values[0]
-      sub_hash = data[val0]
-      sub_hash ? (sub_hash[values] || []) : []
+      data[values]&.keys || []
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
@@ -67,8 +65,7 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      sub_hash = data[val0]
-      sub_hash ? sub_hash.values.flatten : []
+      data.select { |key, _| key[0] == val0 }.values.flat_map(&:keys)
     end
   end
 end
