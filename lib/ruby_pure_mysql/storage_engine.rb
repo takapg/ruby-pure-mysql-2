@@ -115,7 +115,7 @@ module RubyPureMysql
     end
 
     def add_to_index(table_name, idx_name, cols, values, row_idx)
-      key = cols.map { |c| values[c] }.to_json
+      key = values.values_at(*cols).to_json
       (@index_data[table_name][idx_name] ||= {})[key] ||= []
       @index_data[table_name][idx_name][key] << row_idx
     end

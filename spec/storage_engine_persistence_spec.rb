@@ -78,4 +78,26 @@ RSpec.describe RubyPureMysql::StorageEngine do
     expected_path = File.join(db_dir, 'data', 'traversal_test.json')
     expect(File.exist?(expected_path)).to be true
   end
+
+  it 'persists index definitions and data across instances' do
+    engine1 = described_class.new
+    engine1.create_table('users', %w[id name], { 'id_idx' => [0] })
+    engine1.insert('users', [1, 'alice'])
+
+    engine2 = described_class.new
+    expect(engine2.instance_variable_get(:@index_definitions)['users']).to eq({ 'id_idx' => [0] })
+    index_data = engine2.instance_variable_get(:@index_data)['users']['id_idx']
+    expect(index_data[[1].to_json]).to eq([0])
+  end
+
+  it 'updates index map on insert' do
+    engine = described_class.new
+    engine.create_table('users', %w[id name], { 'id_idx' => [0] })
+    engine.insert('users', [1, 'alice'])
+    engine.insert('users', [2, 'bob'])
+
+    index_data = engine.instance_variable_get(:@index_data)['users']['id_idx']
+    expect(index_data[[1].to_json]).to eq([0])
+    expect(index_data[[2].to_json]).to eq([1])
+  end
 end
