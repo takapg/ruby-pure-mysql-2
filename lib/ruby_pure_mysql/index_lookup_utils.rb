@@ -67,7 +67,8 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      op, val = clause[:operator], clause[:value]
+      op = clause[:operator]
+      val = clause[:value]
       data.select { |key, _| key[0].send(op == '=' ? :== : op.to_sym, val) }.values.flat_map(&:keys)
     end
   end
