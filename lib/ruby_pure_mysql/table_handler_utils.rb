@@ -114,8 +114,13 @@ module RubyPureMysql
       table_name = lookup_opts[:table_name]
       if table_name
         candidate_indices = try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
-        return candidate_indices.keys if candidate_indices.is_a?(Hash)
-        return candidate_indices if candidate_indices
+        if candidate_indices.is_a?(Hash)
+          return candidate_indices.keys
+        elsif candidate_indices.is_a?(Array)
+          return candidate_indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
+        elsif candidate_indices
+          return candidate_indices
+        end
       end
 
       (0...rows.size).to_a
