@@ -95,6 +95,5 @@ module RubyPureMysql
         @tables.keys
       end
     end
-
   end
 end
