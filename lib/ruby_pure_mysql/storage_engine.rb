@@ -66,7 +66,17 @@ module RubyPureMysql
         return false unless @data.key?(table_name)
 
         merged_criteria = criteria.merge(table_name: table_name)
+        target_indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
+        return false if target_indices.nil?
+
+        old_values_map = {}
+        target_indices.each { |idx| old_values_map[idx] = @data[table_name][idx].dup }
+
         return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
+
+        target_indices.each do |idx|
+          update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx])
+        end
 
         save_data(table_name)
         true
@@ -81,7 +91,10 @@ module RubyPureMysql
         indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if indices.nil?
 
-        indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
+        indices.reverse_each do |idx|
+          remove_from_index(table_name, idx, @data[table_name][idx])
+          @data[table_name].delete_at(idx)
+        end
         save_data(table_name)
         true
       end
@@ -106,6 +119,28 @@ module RubyPureMysql
     end
 
     private
+
+    def remove_from_index(table_name, row_idx, values)
+      return unless @index_definitions[table_name]
+
+      @index_definitions[table_name].each do |idx_name, cols|
+        key = values.values_at(*cols)
+        val0 = key[0]
+        idx_table = @index_data[table_name][idx_name]
+        next unless idx_table && idx_table[val0] && idx_table[val0][key]
+
+        idx_table[val0][key].delete(row_idx)
+        idx_table[val0].delete(key) if idx_table[val0][key].empty?
+        idx_table.delete(val0) if idx_table[val0].empty?
+      end
+    end
+
+    def update_row_indexes(table_name, row_idx, old_values, new_values)
+      remove_from_index(table_name, row_idx, old_values)
+      @index_definitions[table_name].each do |idx_name, cols|
+        add_to_index(table_name, idx_name, cols, new_values, row_idx)
+      end
+    end
 
     def update_indexes(table_name, values)
       return unless @index_definitions[table_name]
