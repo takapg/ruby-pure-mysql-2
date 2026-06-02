@@ -55,6 +55,7 @@ module RubyPureMysql
       candidates = filter_index_candidates(cols, group, lookup_opts, data.keys)
       candidates.flat_map { |k| data[k].keys }
     end
+
     def find_clause_for_col(col_idx, group, lookup_opts)
       group.find do |c|
         get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
@@ -76,13 +77,26 @@ module RubyPureMysql
     def apply_clause_filter(candidates, clause, col_pos)
       op = clause[:operator]
       val = clause[:value]
+
       if op == '='
-        { candidates: candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos] == val }, stop: false }
+        filter_exact(candidates, val, col_pos)
       elsif %w[> < >= <=].include?(op)
-        { candidates: candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos].send(op.to_sym, val) }, stop: true }
+        filter_range(candidates, op, val, col_pos)
       else
         { candidates: candidates, stop: true }
       end
+    end
+
+    def filter_exact(candidates, val, col_pos)
+      filtered = candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos] == val }
+      { candidates: filtered, stop: false }
+    end
+
+    def filter_range(candidates, op, val, col_pos)
+      filtered = candidates.select do |k|
+        !k[col_pos].nil? && !val.nil? && k[col_pos].send(op.to_sym, val)
+      end
+      { candidates: filtered, stop: true }
     end
   end
 end
