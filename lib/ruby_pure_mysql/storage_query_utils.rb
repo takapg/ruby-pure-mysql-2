@@ -40,8 +40,7 @@ module RubyPureMysql
     end
 
     def determine_default_indexes(columns)
-      pk_indices = []
-      columns.each_with_index { |col, idx| pk_indices << idx if col.is_a?(Hash) && col[:primary_key] }
+      pk_indices = columns.each_with_index.filter_map { |col, idx| idx if col.is_a?(Hash) && col[:primary_key] }
       pk_indices.empty? ? {} : { 'PRIMARY' => pk_indices }
     end
 
