@@ -175,6 +175,23 @@ RSpec.describe RubyPureMysql::StorageEngine do
       )
       expect(indices).to contain_exactly(0)
     end
+
+    it 'indexes が nil の場合でも正常に動作すること' do
+      engine.create_table('nil_idx_table', %w[id name], nil)
+      index_defs = engine.instance_variable_get(:@index_definitions)['nil_idx_table']
+      expect(index_defs).to eq({})
+    end
+
+    it 'カラム定義が混在（文字列とハッシュ）している場合に正しく主キーを検出すること' do
+      mixed_cols = [
+        { name: 'id', primary_key: true },
+        'name',
+        { name: 'age', primary_key: false }
+      ]
+      engine.create_table('mixed_cols_table', mixed_cols)
+      index_defs = engine.instance_variable_get(:@index_definitions)['mixed_cols_table']
+      expect(index_defs).to eq({ 'PRIMARY' => [0] })
+    end
   end
 
   describe 'インデックスなしテーブルのDML動作検証' do

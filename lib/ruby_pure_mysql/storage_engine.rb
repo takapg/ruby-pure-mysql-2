@@ -109,11 +109,22 @@ module RubyPureMysql
     private
 
     def setup_table_indexes(name, columns, indexes)
-      final_indexes = indexes.dup
+      final_indexes = (indexes || {}).dup
       final_indexes.merge!(determine_default_indexes(columns)) { |_, old, _| old }
       @index_definitions[name] = final_indexes
       @index_data[name] = {}
-      @primary_keys[name] = final_indexes['PRIMARY'] if final_indexes.key?('PRIMARY')
+      @primary_keys[name] = final_indexes['PRIMARY']
+    end
+
+    def determine_default_indexes(columns)
+      return {} unless columns.is_a?(Array)
+
+      pk_indices = []
+      columns.each_with_index do |col, idx|
+        pk_indices << idx if col.is_a?(Hash) && col[:primary_key]
+      end
+
+      pk_indices.empty? ? {} : { 'PRIMARY' => pk_indices }
     end
 
     def duplicate_primary_key?(table_name, values)
