@@ -65,7 +65,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, criteria)
+        merged_criteria = criteria.merge(table_name: table_name)
+        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
 
         save_data(table_name)
         true
@@ -76,7 +77,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], criteria)
+        merged_criteria = criteria.merge(table_name: table_name)
+        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if indices.nil?
 
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
@@ -115,9 +117,10 @@ module RubyPureMysql
     end
 
     def add_to_index(table_name, idx_name, cols, values, row_idx)
-      key = values.values_at(*cols).to_json
-      (@index_data[table_name][idx_name] ||= {})[key] ||= []
-      @index_data[table_name][idx_name][key] << row_idx
+      key = values.values_at(*cols)
+      val0 = key[0]
+      (@index_data[table_name][idx_name] ||= {})[val0] ||= {}
+      (@index_data[table_name][idx_name][val0][key] ||= {})[row_idx] = true
     end
 
     private(*StoragePersistence.instance_methods(false))

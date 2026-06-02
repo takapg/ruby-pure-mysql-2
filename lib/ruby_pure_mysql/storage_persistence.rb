@@ -52,13 +52,10 @@ module RubyPureMysql
 
     def parse_data_json(name, json_str)
       data = JSON.parse(json_str)
-      if data.is_a?(Hash) && data.key?('rows')
-        @index_data[name] = data['indexes'] || {}
-        data['rows'] || []
-      else
-        @index_data[name] = {}
-        data
-      end
+      return handle_simple_data(name, data) unless data.is_a?(Hash) && data.key?('rows')
+
+      restore_indexes(name, data['indexes'] || {})
+      data['rows'] || []
     end
 
     def save_data(name)
@@ -77,6 +74,55 @@ module RubyPureMysql
     def persist_table_deletion(name)
       save_tables
       FileUtils.rm_f(data_file_path(name))
+    end
+
+    private
+
+    def convert_to_index_hash(val)
+      case val
+      when Hash
+        val.each_with_object({}) { |(k, v), h| process_index_entry(h, k, v) }
+      when Array
+        convert_row_indices(val)
+      else
+        val
+      end
+    end
+
+    def process_index_entry(hash, key, value)
+      parsed_k = safe_json_parse(key)
+      if value.is_a?(Array)
+        handle_old_index_format(hash, parsed_k, value)
+      else
+        hash[parsed_k] = convert_to_index_hash(value)
+      end
+    end
+
+    def handle_old_index_format(hash, parsed_k, row_indices)
+      val0 = parsed_k.is_a?(Array) ? parsed_k.first : parsed_k
+      hash[val0] ||= {}
+      hash[val0][parsed_k] = convert_row_indices(row_indices)
+    end
+
+    def convert_row_indices(indices)
+      indices.to_h { |row| [row, true] }
+    end
+
+    def handle_simple_data(name, data)
+      @index_data[name] = {}
+      data
+    end
+
+    def safe_json_parse(val)
+      JSON.parse(val)
+    rescue StandardError
+      val
+    end
+
+    def restore_indexes(name, indexes)
+      @index_data[name] = indexes.transform_values do |idx_val|
+        idx_val.is_a?(Hash) ? convert_to_index_hash(idx_val) : {}
+      end
     end
   end
 end

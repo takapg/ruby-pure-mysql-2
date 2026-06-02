@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+require_relative 'index_lookup_utils'
 require_relative 'aggregate_utils'
 require_relative 'filter_utils'
 require_relative 'column_utils'
@@ -20,6 +22,7 @@ module RubyPureMysql
     include HavingUtils
     include SortUtils
     include FilterEvaluator
+    include IndexLookupUtils
 
     def validate_table(client, table_name)
       columns = @storage_engine.get_columns(table_name)
@@ -30,17 +33,23 @@ module RubyPureMysql
       columns
     end
 
-    def find_matching_indices(client, rows, table_columns, where_clauses, table_map = {})
+    def find_matching_indices(client, rows, table_columns, where_clauses, lookup_opts = {})
+      table_map = lookup_opts[:table_map] || {}
+
       return (0...rows.size).to_a if where_clauses.nil? || where_clauses.empty?
 
       groups = normalize_where_groups(where_clauses)
       compiled_groups = compile_groups(client, table_columns, groups, table_map)
-      if compiled_groups.nil?
-        send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
-        return nil
-      end
+      return handle_unknown_column(client) if compiled_groups.nil?
 
-      rows.each_index.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
+      full_opts = lookup_opts.merge(client: client, columns: table_columns, table_map: table_map)
+      indices = perform_lookup(rows, table_columns, where_clauses, full_opts)
+
+      filter_by_compiled_groups(rows, indices, compiled_groups)
+    end
+
+    def filter_by_compiled_groups(rows, indices, compiled_groups)
+      indices.select { |idx| row_matches_compiled_groups?(rows[idx], compiled_groups) }
     end
 
     def apply_distinct(rows)
@@ -95,6 +104,28 @@ module RubyPureMysql
     end
 
     private
+
+    def handle_unknown_column(client)
+      send_err_packet(client, 1, 'Unknown column in WHERE clause', 1054)
+      nil
+    end
+
+    def perform_lookup(rows, table_columns, where_clauses, lookup_opts)
+      table_name = lookup_opts[:table_name]
+      return (0...rows.size).to_a unless table_name
+
+      indices = try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
+      normalize_lookup_indices(indices) || (0...rows.size).to_a
+    end
+
+    def normalize_lookup_indices(indices)
+      case indices
+      when Hash then indices.keys
+      when Array then indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
+      when nil then nil
+      else indices
+      end
+    end
 
     def map_value_to_type(val)
       case val
