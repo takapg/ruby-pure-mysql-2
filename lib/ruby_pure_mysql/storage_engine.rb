@@ -112,7 +112,6 @@ module RubyPureMysql
       return nil if indices.nil?
 
       indices = sort_indices(rows, indices, columns, criteria)
-      indices = indices.drop(criteria[:offset] || 0)
       criteria[:limit] ? indices.first(criteria[:limit]) : indices
     end
 
