@@ -39,7 +39,7 @@ module RubyPureMysql
       \AUPDATE\s+(`[^`]+`|\w+)\s+SET\s+(.+?)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+))?
+      (?:\s+LIMIT\s+([^;]+))?
       \s*;?\s*\z
     /ix
 
@@ -47,7 +47,7 @@ module RubyPureMysql
       \ADELETE\s+FROM\s+(`[^`]+`|\w+)
       (?:\s+WHERE\s+(.+?))?
       (?:\s+ORDER\s+BY\s+(.+?))?
-      (?:\s+LIMIT\s+(\d+))?
+      (?:\s+LIMIT\s+([^;]+))?
       \s*;?\s*\z
     /ix
 
@@ -87,15 +87,27 @@ module RubyPureMysql
       build_update_result(parts, updates)
     end
 
+    def validate_limit_clause(limit_val, statement_type)
+      return nil unless limit_val
+
+      val = limit_val.strip
+      return { error: "Invalid LIMIT syntax for #{statement_type}" } unless val.match?(/\A\d+\z/)
+
+      val.to_i
+    end
+
     def build_update_result(parts, updates)
+      limit = validate_limit_clause(parts[:limit], 'UPDATE')
+      return limit if limit.is_a?(Hash) && limit[:error]
+
       res = {
         type: :update,
         table_name: strip_backticks(parts[:table_name]),
         updates: updates,
-        limit: parts[:limit]&.to_i
+        limit: limit
       }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
-      apply_update_where(res, parts[:where_clause])
+      apply_where_to_result(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
@@ -104,13 +116,14 @@ module RubyPureMysql
       end
     end
 
-    def apply_update_where(res, where_clause)
+    def apply_where_to_result(res, where_clause)
       return res unless where_clause
 
       where = parse_where_clause(where_clause)
       return where if where.is_a?(Hash) && where[:error]
 
-      res.merge(where: where)
+      res[:where] = where
+      res
     end
 
     def parse_update_set_clause(set_clause)
@@ -126,17 +139,25 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(DELETE_REGEX)
-      return { error: 'Invalid DELETE syntax' } unless match
+      parts = extract_delete_parts(query)
+      return { error: 'Invalid DELETE syntax' } unless parts
 
-      result = { type: :delete, table_name: strip_backticks(match[1]), limit: match[4]&.to_i }
-      SqlParser.parse_order_by_clause(result, match[3]) if match[3]
-      return result unless match[2]
+      build_delete_result(parts)
+    end
 
-      where = parse_where_clause(match[2])
-      return where if where.is_a?(Hash) && where[:error]
+    def extract_delete_parts(query)
+      if (match = query.match(DELETE_REGEX))
+        { table_name: match[1], where_clause: match[2], order_clause: match[3], limit: match[4] }
+      end
+    end
 
-      result.merge!(where: where)
+    def build_delete_result(parts)
+      limit = validate_limit_clause(parts[:limit], 'DELETE')
+      return limit if limit.is_a?(Hash) && limit[:error]
+
+      result = { type: :delete, table_name: strip_backticks(parts[:table_name]), limit: limit }
+      SqlParser.parse_order_by_clause(result, parts[:order_clause]) if parts[:order_clause]
+      apply_where_to_result(result, parts[:where_clause])
     end
   end
 
@@ -626,6 +647,7 @@ module RubyPureMysql
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
                          :parse_part, :evaluate_columns, :extract_update_parts, :build_update_result,
+                         :extract_delete_parts, :build_delete_result, :apply_where_to_result,
                          :determine_union_type
   end
 end

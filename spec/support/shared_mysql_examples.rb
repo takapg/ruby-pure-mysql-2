@@ -1535,6 +1535,30 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(3)
     end
+
+    it 'returns an error for UPDATE with OFFSET in LIMIT' do
+      expect do
+        client.query('UPDATE users SET name = "test" LIMIT 10 OFFSET 5;')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for UPDATE with comma-separated LIMIT' do
+      expect do
+        client.query('UPDATE users SET name = "test" LIMIT 5, 10;')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for DELETE with OFFSET in LIMIT' do
+      expect do
+        client.query('DELETE FROM users LIMIT 5 OFFSET 2;')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for DELETE with comma-separated LIMIT' do
+      expect do
+        client.query('DELETE FROM users LIMIT 2, 5;')
+      end.to raise_error(Mysql2::Error)
+    end
   end
 
   describe 'UPDATE and DELETE with LIMIT' do
