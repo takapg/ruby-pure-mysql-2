@@ -34,12 +34,16 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
       # インデックスルックアップで 'Bob' が見つかることを検証
       where_bob = [{ column: 'name', operator: '=', value: 'Bob' }]
-      indices_bob = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_bob)
+      indices_bob = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_bob
+      )
       expect(indices_bob).to include(0)
 
       # インデックスルックアップで 'Alice' が見つからないことを検証
       where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
-      indices_alice = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_alice)
+      indices_alice = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_alice
+      )
       expect(indices_alice).to be_empty
     end
 
@@ -51,7 +55,9 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
       # インデックスルックアップで何も見つからないことを検証
       where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
-      indices = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_alice)
+      indices = engine.find_matching_indices(
+        nil, engine.select(table_name), engine.get_columns(table_name), where_alice
+      )
       expect(indices).to be_empty
     end
   end
