@@ -17,7 +17,7 @@ module RubyPureMysql
     def find_best_index_match(table_name, group, lookup_opts)
       @index_definitions[table_name].each do |idx_name, cols|
         res = attempt_index_match(table_name, idx_name, cols, group, lookup_opts)
-        return res if res && !res.empty?
+        return res unless res.nil?
       end
       nil
     end
@@ -47,7 +47,7 @@ module RubyPureMysql
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
       first_clause = find_clause_for_col(cols[0], group, lookup_opts)
-      return [] unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
+      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
 
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
