@@ -172,7 +172,7 @@ module RubyPureMysql
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
         '(?:\s+ORDER\s+BY\s+(?<order_clause>.+?))?',
-        '(?:\s+LIMIT\s+(?<limit>\d+)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
+        '(?:\s+LIMIT\s+(?<limit>\d+(?:\s*,\s*\d+)?)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
         '\s*;?\s*\z'
       ].join,
       Regexp::IGNORECASE
@@ -230,7 +230,15 @@ module RubyPureMysql
     end
 
     def parse_limit_offset_clause(result, limit, offset)
-      result[:limit] = limit.to_i if limit
+      if limit
+        if limit.include?(',')
+          off, lim = limit.split(',').map(&:to_i)
+          result[:offset] = off
+          result[:limit] = lim
+        else
+          result[:limit] = limit.to_i
+        end
+      end
       result[:offset] = offset.to_i if offset
     end
 
