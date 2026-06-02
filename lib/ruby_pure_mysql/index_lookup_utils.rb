@@ -67,19 +67,17 @@ module RubyPureMysql
         clause = find_clause_for_col(col_idx, group, lookup_opts)
         break if clause.nil?
 
-        op = clause[:operator]
-        val = clause[:value]
-
-        if op == '='
-          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i] == val }
-        elsif %w[> < >= <=].include?(op)
-          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(op.to_sym, val) }
-          break
-        else
-          break
-        end
+        candidates = filter_candidates(candidates, clause[:operator], clause[:value], i)
+        break unless clause[:operator] == '='
       end
       candidates
+    end
+
+    def filter_candidates(candidates, op, val, i)
+      return candidates unless %w[= > < >= <=].include?(op)
+
+      method = op == '=' ? :== : op.to_sym
+      candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(method, val) }
     end
   end
 end
