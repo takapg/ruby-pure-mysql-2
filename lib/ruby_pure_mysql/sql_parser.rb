@@ -12,8 +12,24 @@ module RubyPureMysql
       return { error: 'Invalid CREATE TABLE syntax' } unless match
 
       columns, pk_names = parse_table_definitions(match[3])
-      pk_indices = resolve_pk_indices(columns, pk_names)
+      build_create_table_result(match, columns, resolve_pk_indices(columns, pk_names))
+    end
 
+    def parse_table_definitions(def_str)
+      columns = []
+      pk_names = []
+
+      split_columns(def_str).each do |d|
+        process_definition(d, columns, pk_names)
+      end
+      [columns, pk_names]
+    end
+
+    def resolve_pk_indices(columns, pk_names)
+      pk_names.filter_map { |name| columns.index(name) }.uniq
+    end
+
+    def build_create_table_result(match, columns, pk_indices)
       res = {
         type: :create_table,
         if_not_exists: !match[1].nil?,
@@ -24,26 +40,26 @@ module RubyPureMysql
       res
     end
 
-    def parse_table_definitions(def_str)
-      col_defs = split_columns(def_str)
-      columns = []
-      pk_names = []
-
-      col_defs.each do |d|
-        if d.match?(/\APRIMARY\s+KEY\s*\(/i)
-          pk_match = d.match(/PRIMARY\s+KEY\s*\((.+)\)/i)
-          pk_names += pk_match[1].split(',').map { |c| strip_backticks(c.strip) } if pk_match
-        else
-          name = strip_backticks(d.split(/\s+/, 2).first)
-          columns << name
-          pk_names << name if d.match?(/PRIMARY\s+KEY/i)
-        end
+    def process_definition(d, columns, pk_names)
+      if d.match?(/\APRIMARY\s+KEY\s*\(/i)
+        pk_names += extract_pk_names(d)
+      else
+        name, is_pk = parse_column_definition(d)
+        columns << name
+        pk_names << name if is_pk
       end
-      [columns, pk_names]
     end
 
-    def resolve_pk_indices(columns, pk_names)
-      pk_names.filter_map { |name| columns.index(name) }.uniq
+    def extract_pk_names(def_str)
+      pk_match = def_str.match(/PRIMARY\s+KEY\s*\((.+)\)/i)
+      return [] unless pk_match
+
+      pk_match[1].split(',').map { |c| strip_backticks(c.strip) }
+    end
+
+    def parse_column_definition(def_str)
+      name = strip_backticks(def_str.split(/\s+/, 2).first)
+      [name, def_str.match?(/PRIMARY\s+KEY/i)]
     end
 
     def parse_drop_table(query)
@@ -681,6 +697,8 @@ module RubyPureMysql
                          :process_parts, :process_single_part, :validate_part,
                          :parse_part, :evaluate_columns, :extract_update_parts, :build_update_result,
                          :extract_delete_parts, :build_delete_result, :apply_where_to_result,
-                         :determine_union_type, :parse_table_definitions, :resolve_pk_indices
+                         :determine_union_type, :parse_table_definitions, :resolve_pk_indices,
+                         :build_create_table_result, :process_definition, :extract_pk_names,
+                         :parse_column_definition
   end
 end
