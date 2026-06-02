@@ -31,9 +31,7 @@ module RubyPureMysql
 
         @tables[name] = columns
         @data[name] = []
-        @index_definitions[name] = indexes.empty? ? determine_default_indexes(columns) : indexes
-        @index_data[name] = {}
-        @primary_keys[name] = indexes['PRIMARY'] if indexes.key?('PRIMARY')
+        setup_table_indexes(name, columns, indexes)
         persist_table_creation(name)
         true
       end
@@ -97,7 +95,8 @@ module RubyPureMysql
 
     def get_columns(table_name)
       @tables_mutex.synchronize do
-        @tables[table_name]
+        cols = @tables[table_name] || []
+        cols.map { |c| c.is_a?(Hash) ? c[:name] : c }
       end
     end
 
@@ -109,23 +108,19 @@ module RubyPureMysql
 
     private
 
+    def setup_table_indexes(name, columns, indexes)
+      final_indexes = indexes.empty? ? determine_default_indexes(columns) : indexes
+      @index_definitions[name] = final_indexes
+      @index_data[name] = {}
+      @primary_keys[name] = final_indexes['PRIMARY'] if final_indexes.key?('PRIMARY')
+    end
+
     def duplicate_primary_key?(table_name, values)
       pk_indices = @primary_keys[table_name]
       return false unless pk_indices
 
       pk_values = values.values_at(*pk_indices)
       !!@index_data[table_name]['PRIMARY']&.key?(pk_values)
-    end
-
-    def determine_default_indexes(_columns)
-      {}
-    end
-
-    def resolve_target_indices(table_name, criteria)
-      normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria
-      merged_criteria = normalized_criteria.merge(table_name: table_name)
-      indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
-      [indices, merged_criteria]
     end
 
     private(*StoragePersistence.instance_methods(false))
