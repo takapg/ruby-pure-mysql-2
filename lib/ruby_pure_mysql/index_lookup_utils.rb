@@ -48,24 +48,30 @@ module RubyPureMysql
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
-      val0 = find_prefix_value(cols[0], group, lookup_opts)
-      return nil if val0.nil?
+      clause = find_prefix_clause(cols[0], group, lookup_opts)
+      return nil if clause.nil?
 
-      collect_prefix_indices(table_name, idx_name, val0)
+      collect_prefix_indices(table_name, idx_name, clause)
     end
 
-    def find_prefix_value(col_idx, group, lookup_opts)
+    def find_prefix_clause(col_idx, group, lookup_opts)
       clause = group.find do |c|
         get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
       end
-      clause && clause[:operator] == '=' ? clause[:value] : nil
+      return nil unless clause && %w[= > < >= <=].include?(clause[:operator])
+
+      clause
     end
 
-    def collect_prefix_indices(table_name, idx_name, val0)
+    def collect_prefix_indices(table_name, idx_name, clause)
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      data.select { |key, _| key[0] == val0 }.values.flat_map(&:keys)
+      op = clause[:operator]
+      val = clause[:value]
+      data.select do |key, _|
+        !key[0].nil? && !val.nil? && key[0].send(op == '=' ? :== : op.to_sym, val)
+      end.values.flat_map(&:keys)
     end
   end
 end
