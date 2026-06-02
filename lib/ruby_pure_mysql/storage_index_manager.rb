@@ -38,6 +38,8 @@ module RubyPureMysql
     private
 
     def update_row_indexes(table_name, row_idx, old_values, new_values, updated_cols)
+      return unless @index_definitions[table_name]
+
       @index_definitions[table_name].each do |idx_name, cols|
         if cols.intersect?(updated_cols)
           remove_entry_from_index_table(table_name, idx_name, cols, row_idx, old_values)
