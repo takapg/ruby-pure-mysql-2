@@ -11,7 +11,9 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
   before do
     # 永続化ファイルを汚さないよう、メモリ上のデータを初期化
+    engine.instance_variable_set(:@tables, {})
     engine.instance_variable_set(:@data, {})
+    engine.instance_variable_set(:@index_definitions, {})
     engine.instance_variable_set(:@index_data, {})
     engine.create_table(table_name, columns, indexes)
   end
