@@ -210,6 +210,15 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('INVALID SQL')
       end.to raise_error(Mysql2::Error)
     end
+
+    it 'returns an error when inserting a duplicate primary key' do
+      client.query('DROP TABLE IF EXISTS pk_test;')
+      client.query('CREATE TABLE pk_test (id INT PRIMARY KEY, name VARCHAR(255));')
+      client.query("INSERT INTO pk_test VALUES (1, 'alice');")
+      expect do
+        client.query("INSERT INTO pk_test VALUES (1, 'bob');")
+      end.to raise_error(Mysql2::Error)
+    end
   end
 
   describe 'Multi-column support' do

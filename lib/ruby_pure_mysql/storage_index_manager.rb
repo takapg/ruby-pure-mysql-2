@@ -58,24 +58,21 @@ module RubyPureMysql
 
     def add_to_index(table_name, idx_name, cols, values, row_idx)
       key = values.values_at(*cols)
-      val0 = key[0]
-      (@index_data[table_name][idx_name] ||= {})[val0] ||= {}
-      (@index_data[table_name][idx_name][val0][key] ||= {})[row_idx] = true
+      (@index_data[table_name][idx_name] ||= {})[key] ||= {}
+      @index_data[table_name][idx_name][key][row_idx] = true
     end
 
     def remove_entry_from_index_table(table_name, idx_name, cols, row_idx, values)
       key = values.values_at(*cols)
-      val0 = key[0]
       idx_table = @index_data[table_name][idx_name]
-      return unless idx_table&.dig(val0, key)
+      return unless idx_table&.key?(key)
 
-      cleanup_index_entry(idx_table, val0, key, row_idx)
+      cleanup_index_entry(idx_table, key, row_idx)
     end
 
-    def cleanup_index_entry(idx_table, val0, key, row_idx)
-      idx_table[val0][key].delete(row_idx)
-      idx_table[val0].delete(key) if idx_table[val0][key].empty?
-      idx_table.delete(val0) if idx_table[val0].empty?
+    def cleanup_index_entry(idx_table, key, row_idx)
+      idx_table[key].delete(row_idx)
+      idx_table.delete(key) if idx_table[key].empty?
     end
   end
   # rubocop:enable Naming/PredicateMethod

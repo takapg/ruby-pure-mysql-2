@@ -11,14 +11,55 @@ module RubyPureMysql
       match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid CREATE TABLE syntax' } unless match
 
-      {
+      columns, pk_names = parse_table_definitions(match[3])
+      build_create_table_result(match, columns, resolve_pk_indices(columns, pk_names))
+    end
+
+    def parse_table_definitions(def_str)
+      columns = []
+      pk_names = []
+
+      split_columns(def_str).each do |column_def|
+        process_definition(column_def, columns, pk_names)
+      end
+      [columns, pk_names]
+    end
+
+    def resolve_pk_indices(columns, pk_names)
+      pk_names.filter_map { |name| columns.index(name) }.uniq
+    end
+
+    def build_create_table_result(match, columns, pk_indices)
+      res = {
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: split_columns(match[3]).map do |col_def|
-          col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
-        end
+        columns: columns
       }
+      res[:indexes] = { 'PRIMARY' => pk_indices } unless pk_indices.empty?
+      res
+    end
+
+    def process_definition(column_def, columns, pk_names)
+      if column_def.match?(/\APRIMARY\s+KEY\s*\(/i)
+        pk_names.concat(extract_pk_names(column_def))
+      else
+        name, is_pk = parse_column_definition(column_def)
+        columns << name
+        pk_names << name if is_pk
+      end
+    end
+
+    def extract_pk_names(def_str)
+      pk_match = def_str.match(/PRIMARY\s+KEY\s*\((.+)\)/i)
+      return [] unless pk_match
+
+      pk_match[1].split(',').map { |c| strip_backticks(c.strip) }
+    end
+
+    def parse_column_definition(def_str)
+      name = strip_backticks(def_str.split(/\s+/, 2).first)
+      [name, def_str.match?(/PRIMARY\s+KEY/i)]
     end
 
     def parse_drop_table(query)
@@ -656,6 +697,8 @@ module RubyPureMysql
                          :process_parts, :process_single_part, :validate_part,
                          :parse_part, :evaluate_columns, :extract_update_parts, :build_update_result,
                          :extract_delete_parts, :build_delete_result, :apply_where_to_result,
-                         :determine_union_type
+                         :determine_union_type, :parse_table_definitions, :resolve_pk_indices,
+                         :build_create_table_result, :process_definition, :extract_pk_names,
+                         :parse_column_definition
   end
 end

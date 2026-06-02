@@ -23,7 +23,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       engine.insert(table_name, [1, 'Alice', 30])
 
       index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
-      expect(index_data['Alice'][['Alice']]).to have_key(0)
+      expect(index_data[['Alice']]).to have_key(0)
     end
 
     it 'UPDATEによってインデックス対象カラムが変更された際にインデックスが更新されること' do
@@ -157,6 +157,34 @@ RSpec.describe RubyPureMysql::StorageEngine do
       # 全行削除
       expect(engine.delete_rows_with_where(no_idx_table, {})).to be true
       expect(engine.select(no_idx_table)).to be_empty
+    end
+  end
+
+  describe '主キー制約の検証' do
+    it '主キーが重複している場合に insert が :duplicate_pk を返すこと' do
+      pk_table = 'pk_test_table'
+      engine.create_table(pk_table, columns, { 'PRIMARY' => [0] }) # id を主キーに設定
+      engine.insert(pk_table, [1, 'Alice', 30])
+      expect(engine.insert(pk_table, [1, 'Bob', 25])).to eq(:duplicate_pk)
+    end
+
+    it '複合主キーが重複している場合に insert が :duplicate_pk を返すこと' do
+      comp_table = 'comp_pk_table'
+      # id(0) と name(1) を複合主キーに設定
+      engine.create_table(comp_table, columns, { 'PRIMARY' => [0, 1] })
+      engine.insert(comp_table, [1, 'Alice', 30])
+      # 同じ組み合わせは失敗
+      expect(engine.insert(comp_table, [1, 'Alice', 25])).to eq(:duplicate_pk)
+      # 片方だけ同じなら成功
+      expect(engine.insert(comp_table, [1, 'Bob', 25])).to be true
+      expect(engine.insert(comp_table, [2, 'Alice', 25])).to be true
+    end
+
+    it '主キーが指定されていない場合は重複挿入が可能であること' do
+      no_pk_table = 'no_pk_test_table'
+      engine.create_table(no_pk_table, columns)
+      engine.insert(no_pk_table, [1, 'Alice', 30])
+      expect(engine.insert(no_pk_table, [1, 'Bob', 25])).to be true
     end
   end
 end
