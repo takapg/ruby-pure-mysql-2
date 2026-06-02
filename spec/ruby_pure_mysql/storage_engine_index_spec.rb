@@ -168,6 +168,18 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(engine.insert(pk_table, [1, 'Bob', 25])).to eq(:duplicate_pk)
     end
 
+    it '複合主キーが重複している場合に insert が :duplicate_pk を返すこと' do
+      comp_table = 'comp_pk_table'
+      # id(0) と name(1) を複合主キーに設定
+      engine.create_table(comp_table, columns, { 'PRIMARY' => [0, 1] })
+      engine.insert(comp_table, [1, 'Alice', 30])
+      # 同じ組み合わせは失敗
+      expect(engine.insert(comp_table, [1, 'Alice', 25])).to eq(:duplicate_pk)
+      # 片方だけ同じなら成功
+      expect(engine.insert(comp_table, [1, 'Bob', 25])).to be true
+      expect(engine.insert(comp_table, [2, 'Alice', 25])).to be true
+    end
+
     it '主キーが指定されていない場合は重複挿入が可能であること' do
       no_pk_table = 'no_pk_test_table'
       engine.create_table(no_pk_table, columns)
