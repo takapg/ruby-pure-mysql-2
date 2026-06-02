@@ -96,9 +96,7 @@ module RubyPureMysql
       end
     end
 
-    private
-
-    private *StoragePersistence.instance_methods(false)
-    private *StorageQueryUtils.instance_methods(false)
+    private(*StoragePersistence.instance_methods(false))
+    private(*StorageQueryUtils.instance_methods(false))
   end
 end
