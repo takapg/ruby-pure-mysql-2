@@ -29,7 +29,7 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
 
-        @tables[name] = columns.map { |c| c.is_a?(Hash) ? c[:name] : c }
+        @tables[name] = columns
         @data[name] = []
         setup_table_indexes(name, columns, indexes)
         persist_table_creation(name)
@@ -95,7 +95,8 @@ module RubyPureMysql
 
     def get_columns(table_name)
       @tables_mutex.synchronize do
-        @tables[table_name]
+        cols = @tables[table_name] || []
+        cols.map { |c| c.is_a?(Hash) ? c[:name] : c }
       end
     end
 
