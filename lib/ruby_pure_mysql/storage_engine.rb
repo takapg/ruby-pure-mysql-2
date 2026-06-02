@@ -113,7 +113,8 @@ module RubyPureMysql
       pk_indices = @primary_keys[table_name]
       return false unless pk_indices
 
-      @data[table_name].any? { |row| pk_indices.all? { |i| row[i] == values[i] } }
+      pk_values = values.values_at(*pk_indices)
+      !!@index_data[table_name]['PRIMARY']&.dig(pk_values.first, pk_values)
     end
 
     def determine_default_indexes(_columns)
