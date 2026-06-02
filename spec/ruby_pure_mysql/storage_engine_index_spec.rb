@@ -114,10 +114,10 @@ RSpec.describe RubyPureMysql::StorageEngine do
     let(:auto_table) { 'auto_table' }
     let(:auto_cols) { %w[id name] }
 
-    it 'インデックスを指定せずに作成した場合にインデックス定義が空であること' do
+    it 'インデックスを指定せずに作成した場合に、最初のカラムが主キーとして自動作成されること' do
       engine.create_table(auto_table, auto_cols)
       index_defs = engine.instance_variable_get(:@index_definitions)[auto_table]
-      expect(index_defs).to eq({})
+      expect(index_defs).to eq({ 'PRIMARY' => [0] })
     end
 
     it '文字列配列でカラムを定義し、別途 PRIMARY インデックスを指定した場合に正しく作成されること' do
