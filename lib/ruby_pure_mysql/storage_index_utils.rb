@@ -14,12 +14,7 @@ module RubyPureMysql
     def determine_default_indexes(columns)
       return {} unless columns.is_a?(Array)
 
-      # テーブル制約としての主キー定義を優先的に探す
-      constraint = columns.find { |col| col.is_a?(Hash) && col[:primary_key] && col.key?(:columns) }
-      return { 'PRIMARY' => constraint[:columns] } if constraint
-
-      # 各カラムの属性から主キーを抽出
-      pk_indices = columns.each_index.select { |i| columns[i].is_a?(Hash) && columns[i][:primary_key] }
+      pk_indices = find_table_constraint_pk(columns) || find_column_attribute_pks(columns)
       pk_indices.empty? ? {} : { 'PRIMARY' => pk_indices }
     end
 
@@ -29,6 +24,17 @@ module RubyPureMysql
 
       pk_values = values.values_at(*pk_indices)
       !!@index_data[table_name]['PRIMARY']&.key?(pk_values)
+    end
+
+    private
+
+    def find_table_constraint_pk(columns)
+      constraint = columns.find { |col| col.is_a?(Hash) && col[:primary_key] && col.key?(:columns) }
+      constraint ? constraint[:columns] : nil
+    end
+
+    def find_column_attribute_pks(columns)
+      columns.each_index.select { |i| columns[i].is_a?(Hash) && columns[i][:primary_key] }
     end
   end
 end
