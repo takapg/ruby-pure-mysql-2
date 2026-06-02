@@ -92,9 +92,9 @@ module RubyPureMysql
       { candidates: filtered, stop: false }
     end
 
-    def filter_range(candidates, op, val, col_pos)
+    def filter_range(candidates, operator, val, col_pos)
       filtered = candidates.select do |k|
-        !k[col_pos].nil? && !val.nil? && k[col_pos].send(op.to_sym, val)
+        !k[col_pos].nil? && !val.nil? && k[col_pos].send(operator.to_sym, val)
       end
       { candidates: filtered, stop: true }
     end
