@@ -14,11 +14,12 @@ module RubyPureMysql
     def determine_default_indexes(columns)
       return {} unless columns.is_a?(Array)
 
-      pk_indices = []
-      columns.each_with_index do |col, idx|
-        pk_indices << idx if col.is_a?(Hash) && col[:primary_key]
-      end
+      # テーブル制約としての主キー定義を優先的に探す
+      constraint = columns.find { |col| col.is_a?(Hash) && col[:primary_key] && col.key?(:columns) }
+      return { 'PRIMARY' => constraint[:columns] } if constraint
 
+      # 各カラムの属性から主キーを抽出
+      pk_indices = columns.each_index.select { |i| columns[i].is_a?(Hash) && columns[i][:primary_key] }
       pk_indices.empty? ? {} : { 'PRIMARY' => pk_indices }
     end
 

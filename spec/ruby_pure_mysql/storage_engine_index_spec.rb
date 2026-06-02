@@ -192,6 +192,17 @@ RSpec.describe RubyPureMysql::StorageEngine do
       index_defs = engine.instance_variable_get(:@index_definitions)['mixed_cols_table']
       expect(index_defs).to eq({ 'PRIMARY' => [0] })
     end
+
+    it 'カラム定義の中にテーブル制約としての主キー定義が含まれている場合に正しく検出されること' do
+      cols = [
+        { name: 'id' },
+        { name: 'code' },
+        { primary_key: true, columns: [0, 1] }
+      ]
+      engine.create_table('constraint_pk_table', cols)
+      index_defs = engine.instance_variable_get(:@index_definitions)['constraint_pk_table']
+      expect(index_defs).to eq({ 'PRIMARY' => [0, 1] })
+    end
   end
 
   describe 'インデックスなしテーブルのDML動作検証' do
