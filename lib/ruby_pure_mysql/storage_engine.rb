@@ -3,6 +3,7 @@
 require_relative 'table_handler_utils'
 require_relative 'storage_persistence'
 require_relative 'storage_query_utils'
+require_relative 'storage_index_manager'
 
 module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
@@ -11,6 +12,7 @@ module RubyPureMysql
     include SortUtils
     include StoragePersistence
     include StorageQueryUtils
+    include StorageIndexManager
 
     def initialize
       @tables = {}
@@ -65,11 +67,10 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        merged_criteria = criteria.merge(table_name: table_name)
-        return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
+        indices, merged_criteria = resolve_target_indices(table_name, criteria)
+        return false if indices.nil?
 
-        save_data(table_name)
-        true
+        refresh_index_entries(table_name, indices, update_map, merged_criteria)
       end
     end
 
@@ -77,13 +78,10 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        merged_criteria = criteria.merge(table_name: table_name)
-        indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
+        indices, _merged_criteria = resolve_target_indices(table_name, criteria)
         return false if indices.nil?
 
-        indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
-        save_data(table_name)
-        true
+        remove_index_entries(table_name, indices)
       end
     end
 
@@ -107,20 +105,11 @@ module RubyPureMysql
 
     private
 
-    def update_indexes(table_name, values)
-      return unless @index_definitions[table_name]
-
-      row_idx = @data[table_name].size - 1
-      @index_definitions[table_name].each do |idx_name, cols|
-        add_to_index(table_name, idx_name, cols, values, row_idx)
-      end
-    end
-
-    def add_to_index(table_name, idx_name, cols, values, row_idx)
-      key = values.values_at(*cols)
-      val0 = key[0]
-      (@index_data[table_name][idx_name] ||= {})[val0] ||= {}
-      (@index_data[table_name][idx_name][val0][key] ||= {})[row_idx] = true
+    def resolve_target_indices(table_name, criteria)
+      normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria
+      merged_criteria = normalized_criteria.merge(table_name: table_name)
+      indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
+      [indices, merged_criteria]
     end
 
     private(*StoragePersistence.instance_methods(false))
