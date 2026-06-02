@@ -112,18 +112,28 @@ module RubyPureMysql
 
     def perform_lookup(rows, table_columns, where_clauses, lookup_opts)
       table_name = lookup_opts[:table_name]
-      if table_name
-        candidate_indices = try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
-        if candidate_indices.is_a?(Hash)
-          return candidate_indices.keys
-        elsif candidate_indices.is_a?(Array)
-          return candidate_indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
-        elsif candidate_indices
-          return candidate_indices
-        end
-      end
+      return (0...rows.size).to_a unless table_name
 
-      (0...rows.size).to_a
+      indices = try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
+      normalize_lookup_indices(indices) || (0...rows.size).to_a
+    end
+
+    def normalize_lookup_indices(indices)
+      case indices
+      when Hash then indices.keys
+      when Array then indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
+      when nil then nil
+      else indices
+      end
+    end
+
+    def normalize_lookup_indices(indices)
+      case indices
+      when Hash then indices.keys
+      when Array then indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
+      when nil then nil
+      else indices
+      end
     end
 
     def map_value_to_type(val)

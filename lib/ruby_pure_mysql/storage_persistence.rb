@@ -83,7 +83,7 @@ module RubyPureMysql
       when Hash
         val.each_with_object({}) { |(k, v), h| h[safe_json_parse(k)] = convert_to_index_hash(v) }
       when Array
-        val.each_with_object({}) { |row, h| h[row] = true }
+        val.to_h { |row| [row, true] }
       else
         val
       end
