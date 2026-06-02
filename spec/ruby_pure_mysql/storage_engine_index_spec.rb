@@ -114,13 +114,13 @@ RSpec.describe RubyPureMysql::StorageEngine do
     let(:auto_table) { 'auto_table' }
     let(:auto_cols) { %w[id name] }
 
-    it 'インデックスを指定せずに作成した場合に PRIMARY インデックスが自動作成されること' do
+    it 'インデックスを指定せずに作成した場合にインデックス定義が空であること' do
       engine.create_table(auto_table, auto_cols)
       index_defs = engine.instance_variable_get(:@index_definitions)[auto_table]
-      expect(index_defs).to eq({ 'PRIMARY' => [0] })
+      expect(index_defs).to eq({})
     end
 
-    it '自動作成された PRIMARY インデックスを用いてルックアップができること' do
+    it 'インデックスがない場合でもルックアップ（フルスキャン）ができること' do
       engine.create_table(auto_table, auto_cols)
       engine.insert(auto_table, [100, 'AutoAlice'])
 
@@ -129,6 +129,34 @@ RSpec.describe RubyPureMysql::StorageEngine do
         nil, engine.select(auto_table), engine.get_columns(auto_table), where_id
       )
       expect(indices).to contain_exactly(0)
+    end
+  end
+
+  describe 'インデックスなしテーブルのDML動作検証' do
+    let(:no_idx_table) { 'no_idx_table' }
+    let(:no_idx_cols) { %w[id name] }
+
+    before do
+      engine.create_table(no_idx_table, no_idx_cols)
+    end
+
+    it 'インデックスなしでもINSERTが正常に動作すること' do
+      expect(engine.insert(no_idx_table, [1, 'NoIndex'])).to be true
+      expect(engine.select(no_idx_table)).to eq([[1, 'NoIndex']])
+    end
+
+    it 'インデックスなしでもUPDATEが正常に動作すること' do
+      engine.insert(no_idx_table, [1, 'NoIndex'])
+      # 全行更新
+      expect(engine.update_rows_with_where(no_idx_table, {}, { 1 => 'Updated' })).to be true
+      expect(engine.select(no_idx_table)).to eq([[1, 'Updated']])
+    end
+
+    it 'インデックスなしでもDELETEが正常に動作すること' do
+      engine.insert(no_idx_table, [1, 'NoIndex'])
+      # 全行削除
+      expect(engine.delete_rows_with_where(no_idx_table, {})).to be true
+      expect(engine.select(no_idx_table)).to be_empty
     end
   end
 end
