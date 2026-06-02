@@ -318,9 +318,9 @@ RSpec.describe RubyPureMysql::StorageEngine do
     it 'インデックスの先頭カラムに NULL 値が含まれている場合に範囲検索を行ってもクラッシュしないこと' do
       engine.insert(range_table, [nil, 'NullUser', 20])
       where = [{ column: 'id', operator: '>', value: 10 }]
-      expect {
+      expect do
         engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
-      }.not_to raise_error
+      end.not_to raise_error
     end
   end
 end
