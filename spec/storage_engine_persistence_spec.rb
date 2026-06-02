@@ -87,7 +87,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine2 = described_class.new
     expect(engine2.instance_variable_get(:@index_definitions)['users']).to eq({ 'id_idx' => [0] })
     index_data = engine2.instance_variable_get(:@index_data)['users']['id_idx']
-    expect(index_data[[1].to_json]).to eq([0])
+    expect(index_data[[1]]).to eq([0])
   end
 
   it 'updates index map on insert' do
@@ -97,8 +97,8 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine.insert('users', [2, 'bob'])
 
     index_data = engine.instance_variable_get(:@index_data)['users']['id_idx']
-    expect(index_data[[1].to_json]).to eq([0])
-    expect(index_data[[2].to_json]).to eq([1])
+    expect(index_data[[1]]).to eq([0])
+    expect(index_data[[2]]).to eq([1])
   end
 
   it 'handles composite indexes' do
@@ -109,8 +109,8 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine.insert('users', [2, 'bob'])
 
     index_data = engine.instance_variable_get(:@index_data)['users']['composite_idx']
-    expect(index_data[[1, 'alice'].to_json]).to eq([0])
-    expect(index_data[[2, 'bob'].to_json]).to eq([1])
+    expect(index_data[[1, 'alice']]).to eq([0])
+    expect(index_data[[2, 'bob']]).to eq([1])
   end
 
   it 'handles non-unique index values' do

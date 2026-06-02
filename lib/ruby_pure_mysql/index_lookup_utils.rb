@@ -41,9 +41,8 @@ module RubyPureMysql
     end
 
     def lookup_exact(table_name, idx_name, values)
-      key = values.to_json
       data = @index_data.dig(table_name, idx_name)
-      data[key] if data&.key?(key)
+      data[values] if data&.key?(values)
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
@@ -65,7 +64,7 @@ module RubyPureMysql
       return nil unless data
 
       candidates = []
-      data.each { |key, row_indices| candidates.concat(row_indices) if JSON.parse(key)[0] == val0 }
+      data.each { |key, row_indices| candidates.concat(row_indices) if key[0] == val0 }
       candidates.empty? ? nil : candidates
     end
   end

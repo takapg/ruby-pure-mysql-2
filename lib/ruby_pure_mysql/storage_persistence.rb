@@ -53,7 +53,8 @@ module RubyPureMysql
     def parse_data_json(name, json_str)
       data = JSON.parse(json_str)
       if data.is_a?(Hash) && data.key?('rows')
-        @index_data[name] = data['indexes'] || {}
+        indexes = data['indexes'] || {}
+        @index_data[name] = indexes.transform_keys { |k| JSON.parse(k) }
         data['rows'] || []
       else
         @index_data[name] = {}
