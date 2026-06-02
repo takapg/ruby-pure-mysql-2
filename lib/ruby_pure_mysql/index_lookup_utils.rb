@@ -3,7 +3,7 @@
 module RubyPureMysql
   # インデックスを利用したルックアップロジックを提供するモジュール
   module IndexLookupUtils
-    def try_index_lookup(table_name, table_columns, where_clauses, lookup_opts)
+    def try_index_lookup(table_name, _table_columns, where_clauses, lookup_opts)
       return nil unless @index_definitions&.key?(table_name)
 
       groups = normalize_where_groups(where_clauses)
