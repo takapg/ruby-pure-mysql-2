@@ -110,11 +110,14 @@ module RubyPureMysql
 
       row_idx = @data[table_name].size - 1
       @index_definitions[table_name].each do |idx_name, cols|
-        val = cols.map { |c| values[c] }
-        key = val.to_json
-        (@index_data[table_name][idx_name] ||= {})[key] ||= []
-        (@index_data[table_name][idx_name][key]) << row_idx
+        add_to_index(table_name, idx_name, cols, values, row_idx)
       end
+    end
+
+    def add_to_index(table_name, idx_name, cols, values, row_idx)
+      key = cols.map { |c| values[c] }.to_json
+      (@index_data[table_name][idx_name] ||= {})[key] ||= []
+      @index_data[table_name][idx_name][key] << row_idx
     end
 
     private(*StoragePersistence.instance_methods(false))

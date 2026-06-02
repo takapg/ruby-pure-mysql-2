@@ -4,7 +4,8 @@ module RubyPureMysql
   # DDL操作に関連するハンドラメソッド
   module DdlHandlers
     def handle_create_table(client, result)
-      if @storage_engine.create_table(result[:table_name], result[:columns], result[:indexes] || {}) || result[:if_not_exists]
+      created = @storage_engine.create_table(result[:table_name], result[:columns], result[:indexes] || {})
+      if created || result[:if_not_exists]
         send_ok_packet(client, 1)
       else
         send_err_packet(client, 1, "Table '#{result[:table_name]}' already exists", 1050)

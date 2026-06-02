@@ -16,7 +16,14 @@ module RubyPureMysql
       path = File.join(@db_dir, 'tables.json')
       return unless File.exist?(path)
 
-      data = JSON.parse(File.read(path))
+      parse_tables_json(File.read(path))
+    rescue JSON::ParserError
+      @tables = {}
+      @index_definitions = {}
+    end
+
+    def parse_tables_json(json_str)
+      data = JSON.parse(json_str)
       if data.is_a?(Hash) && data.key?('tables')
         @tables = data['tables']
         @index_definitions = data['indexes'] || {}
@@ -24,9 +31,6 @@ module RubyPureMysql
         @tables = data
         @index_definitions = {}
       end
-    rescue JSON::ParserError
-      @tables = {}
-      @index_definitions = {}
     end
 
     def save_tables
@@ -41,7 +45,13 @@ module RubyPureMysql
       path = data_file_path(name)
       return [] unless File.exist?(path)
 
-      data = JSON.parse(File.read(path))
+      parse_data_json(name, File.read(path))
+    rescue JSON::ParserError
+      []
+    end
+
+    def parse_data_json(name, json_str)
+      data = JSON.parse(json_str)
       if data.is_a?(Hash) && data.key?('rows')
         @index_data[name] = data['indexes'] || {}
         data['rows'] || []
@@ -49,8 +59,6 @@ module RubyPureMysql
         @index_data[name] = {}
         data
       end
-    rescue JSON::ParserError
-      []
     end
 
     def save_data(name)
