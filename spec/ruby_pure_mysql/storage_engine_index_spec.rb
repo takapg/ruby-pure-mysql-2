@@ -36,7 +36,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       # perform_update_rows? が実際にデータを更新するようにラップ
       allow(engine).to receive(:perform_update_rows?).and_wrap_original do |m, *args|
         data, _cols, map, _crit = args
-        row = data[table_name][0]
+        row = data[0]
         map.each { |col_idx, val| row[col_idx] = val }
         true
       end
