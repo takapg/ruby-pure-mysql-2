@@ -162,15 +162,17 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
   describe '主キー制約の検証' do
     it '主キーが重複している場合に insert が false を返すこと' do
-      engine.create_table(table_name, columns, { 'PRIMARY' => [0] }) # id を主キーに設定
-      engine.insert(table_name, [1, 'Alice', 30])
-      expect(engine.insert(table_name, [1, 'Bob', 25])).to be false
+      pk_table = 'pk_test_table'
+      engine.create_table(pk_table, columns, { 'PRIMARY' => [0] }) # id を主キーに設定
+      engine.insert(pk_table, [1, 'Alice', 30])
+      expect(engine.insert(pk_table, [1, 'Bob', 25])).to be false
     end
 
     it '主キーが指定されていない場合は重複挿入が可能であること' do
-      engine.create_table(table_name, columns)
-      engine.insert(table_name, [1, 'Alice', 30])
-      expect(engine.insert(table_name, [1, 'Bob', 25])).to be true
+      no_pk_table = 'no_pk_test_table'
+      engine.create_table(no_pk_table, columns)
+      engine.insert(no_pk_table, [1, 'Alice', 30])
+      expect(engine.insert(no_pk_table, [1, 'Bob', 25])).to be true
     end
   end
 end

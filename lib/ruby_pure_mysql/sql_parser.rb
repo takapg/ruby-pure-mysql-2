@@ -11,14 +11,30 @@ module RubyPureMysql
       match = query.match(/\ACREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)\s*;?\s*\z/i)
       return { error: 'Invalid CREATE TABLE syntax' } unless match
 
-      {
+      col_defs = split_columns(match[3])
+      columns = []
+      pk_names = []
+
+      col_defs.each do |def_str|
+        if def_str.match?(/\APRIMARY\s+KEY\s*\(/i)
+          pk_match = def_str.match(/PRIMARY\s+KEY\s*\((.+)\)/i)
+          pk_names += pk_match[1].split(',').map { |c| strip_backticks(c.strip) } if pk_match
+        else
+          name = strip_backticks(def_str.split(/\s+/, 2).first)
+          columns << name
+          pk_names << name if def_str.match?(/PRIMARY\s+KEY/i)
+        end
+      end
+
+      pk_indices = pk_names.map { |name| columns.index(name) }.compact.uniq
+      res = {
         type: :create_table,
         if_not_exists: !match[1].nil?,
         table_name: match[2],
-        columns: split_columns(match[3]).map do |col_def|
-          col_def.split(/\s+/, 2).first.delete_prefix('`').delete_suffix('`')
-        end
+        columns: columns
       }
+      res[:indexes] = { 'PRIMARY' => pk_indices } unless pk_indices.empty?
+      res
     end
 
     def parse_drop_table(query)
