@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+require 'fileutils'
 require_relative 'table_handler_utils'
 
 module RubyPureMysql
@@ -12,6 +14,8 @@ module RubyPureMysql
       @tables = {}
       @data = {}
       @tables_mutex = Mutex.new
+      @db_dir = 'db'
+      setup_persistence
     end
 
     def create_table(name, columns)
@@ -20,6 +24,7 @@ module RubyPureMysql
 
         @tables[name] = columns
         @data[name] = []
+        persist_table_creation(name)
         true
       end
     end
@@ -30,6 +35,7 @@ module RubyPureMysql
 
         @tables.delete(name)
         @data.delete(name)
+        persist_table_deletion(name)
         true
       end
     end
@@ -41,6 +47,7 @@ module RubyPureMysql
         return false unless values.size == columns.size
 
         @data[table_name] << values.dup
+        save_data(table_name)
         true
       end
     end
@@ -51,6 +58,7 @@ module RubyPureMysql
 
         return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, criteria)
 
+        save_data(table_name)
         true
       end
     end
@@ -63,6 +71,7 @@ module RubyPureMysql
         return false if indices.nil?
 
         indices.reverse_each { |idx| @data[table_name].delete_at(idx) }
+        save_data(table_name)
         true
       end
     end
@@ -86,6 +95,48 @@ module RubyPureMysql
     end
 
     private
+
+    def setup_persistence
+      FileUtils.mkdir_p(File.join(@db_dir, 'data'))
+      load_tables
+      load_all_data
+    end
+
+    def load_tables
+      path = File.join(@db_dir, 'tables.json')
+      @tables = JSON.parse(File.read(path)) if File.exist?(path)
+    end
+
+    def save_tables
+      File.write(File.join(@db_dir, 'tables.json'), JSON.dump(@tables))
+    end
+
+    def load_all_data
+      @tables.keys.each { |name| @data[name] = load_data(name) }
+    end
+
+    def load_data(name)
+      path = data_file_path(name)
+      File.exist?(path) ? JSON.parse(File.read(path)) : []
+    end
+
+    def save_data(name)
+      File.write(data_file_path(name), JSON.dump(@data[name]))
+    end
+
+    def data_file_path(name)
+      File.join(@db_dir, 'data', "#{name}.json")
+    end
+
+    def persist_table_creation(name)
+      save_tables
+      save_data(name)
+    end
+
+    def persist_table_deletion(name)
+      save_tables
+      FileUtils.rm_f(data_file_path(name))
+    end
 
     def perform_update_rows?(rows, columns, update_map, criteria)
       return true if criteria[:limit]&.zero?
