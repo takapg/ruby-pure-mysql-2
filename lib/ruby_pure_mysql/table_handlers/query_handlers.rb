@@ -124,7 +124,7 @@ module RubyPureMysql
     end
 
     def filter_rows(client, columns, rows, where, table_map = {})
-      indices = find_matching_indices(client, rows, columns, where, table_map)
+      indices = find_matching_indices(client, rows, columns, where, { table_map: table_map })
       return nil if indices.nil?
 
       indices.map { |idx| rows[idx] }
