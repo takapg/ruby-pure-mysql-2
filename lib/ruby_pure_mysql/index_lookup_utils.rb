@@ -51,7 +51,7 @@ module RubyPureMysql
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
       val0 = find_prefix_value(cols[0], group, lookup_opts)
-      return nil unless val0
+      return nil if val0.nil?
 
       collect_prefix_indices(table_name, idx_name, val0)
     end

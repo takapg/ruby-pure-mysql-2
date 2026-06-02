@@ -126,6 +126,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
   it 'optimizes search using indexes' do
     engine = described_class.new
+    expect(engine).to receive(:try_index_lookup).at_least(:once).and_call_original
     # 複合インデックス [id, name] を作成
     engine.create_table('users', %w[id name], { 'composite_idx' => [0, 1] })
     engine.insert('users', [1, 'alice'])
