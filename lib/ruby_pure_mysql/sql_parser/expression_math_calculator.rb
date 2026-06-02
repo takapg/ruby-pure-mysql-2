@@ -45,14 +45,19 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return val if val.is_a?(Numeric)
-      return val if %i[error nil].include?(val)
-
+      return val if val.is_a?(Numeric) || val.nil? || %i[error nil].include?(val)
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
-      str = val.to_s
-      str.match?(/\A-?\d+\z/) ? str.to_i : str.to_f
+      parse_string_to_numeric(val.to_s.strip)
+    end
+
+    def parse_string_to_numeric(str)
+      return 0 if str.empty?
+      return str.to_i if str.match?(/\A-?\d+\z/)
+
+      f_val = str.to_f
+      f_val == f_val.to_i ? f_val.to_i : f_val
     end
 
     def string_operator?(val)
@@ -99,7 +104,7 @@ module RubyPureMysql
     def process_add_sub_op!(tokens, index)
       left_raw = tokens[index - 1]
       right_raw = tokens[index + 1]
-      return :error if left_raw.nil? || right_raw.nil?
+      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left = resolve_numeric_value(left_raw)
       right = resolve_numeric_value(right_raw)

@@ -102,6 +102,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(5.0)
     end
 
+    it 'can calculate float arithmetic (SELECT 1.5 + 2.5;)' do
+      results = client.query('SELECT 1.5 + 2.5;')
+      expect(results.first.values.first).to eq(4.0)
+    end
+
+    it 'can handle implicit cast from string to numeric (SELECT "abc" + 0;)' do
+      results = client.query('SELECT "abc" + 0;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'returns NULL for arithmetic with NULL (SELECT NULL + 1;)' do
+      results = client.query('SELECT NULL + 1;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'can calculate nested constant expressions (SELECT (1 + 1) * (2 + 2);)' do
+      results = client.query('SELECT (1 + 1) * (2 + 2);')
+      expect(results.first.values.first).to eq(8)
+    end
+
     it 'can evaluate constant expressions in UNION (SELECT 1 + 1 UNION SELECT 2 + 2;)' do
       results = client.query('SELECT 1 + 1 UNION SELECT 2 + 2;')
       expect(results.to_a.map { |r| r.values.first }).to eq([2, 4])
