@@ -68,4 +68,14 @@ RSpec.describe RubyPureMysql::StorageEngine do
     engine.drop_table('users')
     expect(File.exist?(data_file)).to be false
   end
+
+  it 'prevents path traversal in table names' do
+    engine = described_class.new
+    traversal_name = '../../traversal_test'
+    engine.create_table(traversal_name, %w[id])
+    engine.insert(traversal_name, [1])
+
+    expected_path = File.join(db_dir, 'data', 'traversal_test.json')
+    expect(File.exist?(expected_path)).to be true
+  end
 end

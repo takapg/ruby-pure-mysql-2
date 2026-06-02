@@ -43,7 +43,7 @@ module RubyPureMysql
     end
 
     def data_file_path(name)
-      File.join(@db_dir, 'data', "#{name}.json")
+      File.join(@db_dir, 'data', "#{File.basename(name)}.json")
     end
 
     def persist_table_creation(name)
