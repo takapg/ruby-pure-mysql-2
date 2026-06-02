@@ -67,7 +67,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        merged_criteria = criteria.merge(table_name: table_name)
+        normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria
+        merged_criteria = normalized_criteria.merge(table_name: table_name)
         target_indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if target_indices.nil?
 
@@ -79,7 +80,8 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @data.key?(table_name)
 
-        merged_criteria = criteria.merge(table_name: table_name)
+        normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria
+        merged_criteria = normalized_criteria.merge(table_name: table_name)
         indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if indices.nil?
 
