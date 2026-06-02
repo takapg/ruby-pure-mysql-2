@@ -15,17 +15,21 @@ module RubyPureMysql
     def initialize
       @tables = {}
       @data = {}
+      @index_definitions = {}
+      @index_data = {}
       @tables_mutex = Mutex.new
       @db_dir = 'db'
       setup_persistence
     end
 
-    def create_table(name, columns)
+    def create_table(name, columns, indexes = {})
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
 
         @tables[name] = columns
         @data[name] = []
+        @index_definitions[name] = indexes
+        @index_data[name] = {}
         persist_table_creation(name)
         true
       end
@@ -37,6 +41,8 @@ module RubyPureMysql
 
         @tables.delete(name)
         @data.delete(name)
+        @index_definitions.delete(name)
+        @index_data.delete(name)
         persist_table_deletion(name)
         true
       end
@@ -49,6 +55,7 @@ module RubyPureMysql
         return false unless values.size == columns.size
 
         @data[table_name] << values.dup
+        update_indexes(table_name, values)
         save_data(table_name)
         true
       end
@@ -93,6 +100,20 @@ module RubyPureMysql
     def list_tables
       @tables_mutex.synchronize do
         @tables.keys
+      end
+    end
+
+    private
+
+    def update_indexes(table_name, values)
+      return unless @index_definitions[table_name]
+
+      row_idx = @data[table_name].size - 1
+      @index_definitions[table_name].each do |idx_name, cols|
+        val = cols.map { |c| values[c] }
+        key = val.to_json
+        (@index_data[table_name][idx_name] ||= {})[key] ||= []
+        (@index_data[table_name][idx_name][key]) << row_idx
       end
     end
 

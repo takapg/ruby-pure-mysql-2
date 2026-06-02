@@ -16,13 +16,21 @@ module RubyPureMysql
       path = File.join(@db_dir, 'tables.json')
       return unless File.exist?(path)
 
-      @tables = JSON.parse(File.read(path))
+      data = JSON.parse(File.read(path))
+      if data.is_a?(Hash) && data.key?('tables')
+        @tables = data['tables']
+        @index_definitions = data['indexes'] || {}
+      else
+        @tables = data
+        @index_definitions = {}
+      end
     rescue JSON::ParserError
       @tables = {}
+      @index_definitions = {}
     end
 
     def save_tables
-      File.write(File.join(@db_dir, 'tables.json'), JSON.dump(@tables))
+      File.write(File.join(@db_dir, 'tables.json'), JSON.dump({ tables: @tables, indexes: @index_definitions }))
     end
 
     def load_all_data
@@ -33,13 +41,20 @@ module RubyPureMysql
       path = data_file_path(name)
       return [] unless File.exist?(path)
 
-      JSON.parse(File.read(path))
+      data = JSON.parse(File.read(path))
+      if data.is_a?(Hash) && data.key?('rows')
+        @index_data[name] = data['indexes'] || {}
+        data['rows'] || []
+      else
+        @index_data[name] = {}
+        data
+      end
     rescue JSON::ParserError
       []
     end
 
     def save_data(name)
-      File.write(data_file_path(name), JSON.dump(@data[name]))
+      File.write(data_file_path(name), JSON.dump({ rows: @data[name], indexes: @index_data[name] }))
     end
 
     def data_file_path(name)
