@@ -29,35 +29,30 @@ RSpec.describe RubyPureMysql::StorageEngine do
     it 'UPDATEによってインデックス対象カラムが変更された際にインデックスが更新されること' do
       engine.insert(table_name, [1, 'Alice', 30])
 
-      # 内部メソッドをモックして、特定の行を更新させる
-      # collect_indices_to_delete が 0番目の行を返すと仮定
-      allow(engine).to receive(:collect_indices_to_delete).and_return([0])
-
-      # perform_update_rows? が実際にデータを更新するようにラップ
-      allow(engine).to receive(:perform_update_rows?).and_wrap_original do |_m, *args|
-        data, _cols, map, _crit = args
-        row = data[0]
-        map.each { |col_idx, val| row[col_idx] = val }
-        true
-      end
-
-      # 'Alice' (index 1) を 'Bob' に更新
+      # 'Alice' (index 1) を 'Bob' に更新 (criteria: {} は全行マッチと想定)
       engine.update_rows_with_where(table_name, {}, { 1 => 'Bob' })
 
-      index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
-      expect(index_data).not_to have_key('Alice')
-      expect(index_data['Bob'][['Bob']]).to have_key(0)
+      # インデックスルックアップで 'Bob' が見つかることを検証
+      where_bob = [{ column: 'name', operator: '=', value: 'Bob' }]
+      indices_bob = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_bob)
+      expect(indices_bob).to include(0)
+
+      # インデックスルックアップで 'Alice' が見つからないことを検証
+      where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
+      indices_alice = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_alice)
+      expect(indices_alice).to be_empty
     end
 
     it 'DELETEによって行が削除された際にインデックスエントリが完全に削除されること' do
       engine.insert(table_name, [1, 'Alice', 30])
 
-      # 0番目の行を削除対象とする
-      allow(engine).to receive(:collect_indices_to_delete).and_return([0])
+      # 行を削除 (criteria: {} は全行マッチと想定)
       engine.delete_rows_with_where(table_name, {})
 
-      index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
-      expect(index_data).to be_empty
+      # インデックスルックアップで何も見つからないことを検証
+      where_alice = [{ column: 'name', operator: '=', value: 'Alice' }]
+      indices = engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where_alice)
+      expect(indices).to be_empty
     end
   end
 end
