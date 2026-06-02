@@ -19,8 +19,8 @@ module RubyPureMysql
       columns = []
       pk_names = []
 
-      split_columns(def_str).each do |d|
-        process_definition(d, columns, pk_names)
+      split_columns(def_str).each do |column_def|
+        process_definition(column_def, columns, pk_names)
       end
       [columns, pk_names]
     end
@@ -40,11 +40,11 @@ module RubyPureMysql
       res
     end
 
-    def process_definition(d, columns, pk_names)
-      if d.match?(/\APRIMARY\s+KEY\s*\(/i)
-        pk_names += extract_pk_names(d)
+    def process_definition(column_def, columns, pk_names)
+      if column_def.match?(/\APRIMARY\s+KEY\s*\(/i)
+        pk_names.concat(extract_pk_names(column_def))
       else
-        name, is_pk = parse_column_definition(d)
+        name, is_pk = parse_column_definition(column_def)
         columns << name
         pk_names << name if is_pk
       end
