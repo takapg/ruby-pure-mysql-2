@@ -1208,7 +1208,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     it 'supports LIMIT offset, count syntax (LIMIT 0, 2)' do
       results = client.query('SELECT * FROM users LIMIT 0, 2;')
       expect(results.count).to eq(2)
-      expect(results.map { |r| r['name'] }).to eq(['alice', 'bob'])
+      expect(results.map { |r| r['name'] }).to eq(%w[alice bob])
     end
   end
 
