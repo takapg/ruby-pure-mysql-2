@@ -100,4 +100,27 @@ RSpec.describe RubyPureMysql::StorageEngine do
     expect(index_data[[1].to_json]).to eq([0])
     expect(index_data[[2].to_json]).to eq([1])
   end
+
+  it 'handles composite indexes' do
+    engine = described_class.new
+    # [id, name] の複合インデックスを作成
+    engine.create_table('users', %w[id name], { 'composite_idx' => [0, 1] })
+    engine.insert('users', [1, 'alice'])
+    engine.insert('users', [2, 'bob'])
+
+    index_data = engine.instance_variable_get(:@index_data)['users']['composite_idx']
+    expect(index_data[[1, 'alice'].to_json]).to eq([0])
+    expect(index_data[[2, 'bob'].to_json]).to eq([1])
+  end
+
+  it 'handles non-unique index values' do
+    engine = described_class.new
+    # name カラムに非ユニークなインデックスを作成
+    engine.create_table('users', %w[id name], { 'name_idx' => [1] })
+    engine.insert('users', [1, 'alice'])
+    engine.insert('users', [2, 'alice']) # 重複値
+
+    index_data = engine.instance_variable_get(:@index_data)['users']['name_idx']
+    expect(index_data[['alice'].to_json]).to eq([0, 1])
+  end
 end
