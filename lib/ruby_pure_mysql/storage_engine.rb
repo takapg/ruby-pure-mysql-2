@@ -71,7 +71,7 @@ module RubyPureMysql
         target_indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if target_indices.nil?
 
-        update_index_entries(table_name, target_indices, update_map, merged_criteria)
+        refresh_index_entries(table_name, target_indices, update_map, merged_criteria)
       end
     end
 
@@ -83,7 +83,7 @@ module RubyPureMysql
         indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
         return false if indices.nil?
 
-        delete_index_entries(table_name, indices)
+        remove_index_entries(table_name, indices)
       end
     end
 
