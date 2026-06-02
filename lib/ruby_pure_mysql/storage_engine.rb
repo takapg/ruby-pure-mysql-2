@@ -95,5 +95,10 @@ module RubyPureMysql
         @tables.keys
       end
     end
+
+    private
+
+    private *StoragePersistence.instance_methods(false)
+    private *StorageQueryUtils.instance_methods(false)
   end
 end

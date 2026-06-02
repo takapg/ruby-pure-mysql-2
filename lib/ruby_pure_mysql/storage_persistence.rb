@@ -14,7 +14,11 @@ module RubyPureMysql
 
     def load_tables
       path = File.join(@db_dir, 'tables.json')
-      @tables = JSON.parse(File.read(path)) if File.exist?(path)
+      return unless File.exist?(path)
+
+      @tables = JSON.parse(File.read(path))
+    rescue JSON::ParserError
+      @tables = {}
     end
 
     def save_tables
@@ -27,7 +31,11 @@ module RubyPureMysql
 
     def load_data(name)
       path = data_file_path(name)
-      File.exist?(path) ? JSON.parse(File.read(path)) : []
+      return [] unless File.exist?(path)
+
+      JSON.parse(File.read(path))
+    rescue JSON::ParserError
+      []
     end
 
     def save_data(name)
