@@ -98,7 +98,7 @@ module RubyPureMysql
         limit: limit_val&.to_i
       }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
-      apply_update_where(res, parts[:where_clause])
+      apply_where_to_result(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
@@ -107,7 +107,7 @@ module RubyPureMysql
       end
     end
 
-    def apply_update_where(res, where_clause)
+    def apply_where_to_result(res, where_clause)
       return res unless where_clause
 
       where = parse_where_clause(where_clause)
@@ -129,20 +129,25 @@ module RubyPureMysql
     end
 
     def parse_delete(query)
-      match = query.match(DELETE_REGEX)
-      return { error: 'Invalid DELETE syntax' } unless match
+      parts = extract_delete_parts(query)
+      return { error: 'Invalid DELETE syntax' } unless parts
 
-      limit_val = match[4]&.strip
+      build_delete_result(parts)
+    end
+
+    def extract_delete_parts(query)
+      if (match = query.match(DELETE_REGEX))
+        { table_name: match[1], where_clause: match[2], order_clause: match[3], limit: match[4] }
+      end
+    end
+
+    def build_delete_result(parts)
+      limit_val = parts[:limit]&.strip
       return { error: 'Invalid LIMIT syntax for DELETE' } if limit_val && !limit_val.match?(/\A\d+\z/)
 
-      result = { type: :delete, table_name: strip_backticks(match[1]), limit: limit_val&.to_i }
-      SqlParser.parse_order_by_clause(result, match[3]) if match[3]
-      return result unless match[2]
-
-      where = parse_where_clause(match[2])
-      return where if where.is_a?(Hash) && where[:error]
-
-      result.merge!(where: where)
+      result = { type: :delete, table_name: strip_backticks(parts[:table_name]), limit: limit_val&.to_i }
+      SqlParser.parse_order_by_clause(result, parts[:order_clause]) if parts[:order_clause]
+      apply_where_to_result(result, parts[:where_clause])
     end
   end
 
@@ -632,6 +637,7 @@ module RubyPureMysql
                          :parse_show_tables, :parse_describe,
                          :process_parts, :process_single_part, :validate_part,
                          :parse_part, :evaluate_columns, :extract_update_parts, :build_update_result,
+                         :extract_delete_parts, :build_delete_result, :apply_where_to_result,
                          :determine_union_type
   end
 end
