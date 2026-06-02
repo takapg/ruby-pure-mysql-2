@@ -4,6 +4,7 @@ require_relative 'table_handler_utils'
 require_relative 'storage_persistence'
 require_relative 'storage_query_utils'
 require_relative 'storage_index_manager'
+require_relative 'storage_index_utils'
 
 module RubyPureMysql
   # インメモリでテーブル定義を管理するストレージエンジン
@@ -13,6 +14,7 @@ module RubyPureMysql
     include StoragePersistence
     include StorageQueryUtils
     include StorageIndexManager
+    include StorageIndexUtils
 
     def initialize
       @tables = {}
@@ -104,24 +106,6 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         @tables.keys
       end
-    end
-
-    private
-
-    def setup_table_indexes(name, columns, indexes)
-      final_indexes = indexes.dup
-      final_indexes.merge!(determine_default_indexes(columns)) { |_, old, _| old }
-      @index_definitions[name] = final_indexes
-      @index_data[name] = {}
-      @primary_keys[name] = final_indexes['PRIMARY'] if final_indexes.key?('PRIMARY')
-    end
-
-    def duplicate_primary_key?(table_name, values)
-      pk_indices = @primary_keys[table_name]
-      return false unless pk_indices
-
-      pk_values = values.values_at(*pk_indices)
-      !!@index_data[table_name]['PRIMARY']&.key?(pk_values)
     end
 
     private(*StoragePersistence.instance_methods(false))
