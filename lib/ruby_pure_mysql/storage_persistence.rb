@@ -95,7 +95,7 @@ module RubyPureMysql
 
         idx_val.each_with_object({}) do |(k, sub_hash), memo|
           parsed_k = safe_json_parse(k)
-          memo[parsed_k] = sub_hash.transform_keys { |sk| safe_json_parse(sk) }
+          memo[parsed_k] = sub_hash.is_a?(Hash) ? sub_hash.transform_keys { |sk| safe_json_parse(sk) } : sub_hash
         end
       end
     end

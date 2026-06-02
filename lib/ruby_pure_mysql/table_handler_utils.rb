@@ -44,7 +44,6 @@ module RubyPureMysql
 
       full_opts = lookup_opts.merge(client: client, columns: table_columns, table_map: table_map)
       indices = perform_lookup(rows, table_columns, where_clauses, full_opts)
-      return nil if indices.nil?
 
       filter_by_compiled_groups(rows, indices, compiled_groups)
     end
