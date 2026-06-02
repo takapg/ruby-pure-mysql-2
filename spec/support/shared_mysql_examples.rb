@@ -1516,11 +1516,11 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO offset_update_test VALUES (3, 30);')
 
       # 2番目の行から1件更新 (id=2)
-      client.query('UPDATE offset_update_test SET val = 99 ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      client.query('UPDATE offset_update_test SET val = 99 ORDER BY id ASC LIMIT 1, 1;')
       results = client.query('SELECT id, val FROM offset_update_test ORDER BY id ASC;')
-      expect(results[1]['val']).to eq(99)
-      expect(results[0]['val']).to eq(10)
-      expect(results[2]['val']).to eq(30)
+      expect(results.to_a[1]['val']).to eq(99)
+      expect(results.to_a[0]['val']).to eq(10)
+      expect(results.to_a[2]['val']).to eq(30)
     end
 
     it 'deletes rows with LIMIT and OFFSET' do
@@ -1531,7 +1531,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       client.query('INSERT INTO offset_delete_test VALUES (3, 30);')
 
       # 2番目の行から1件削除 (id=2)
-      client.query('DELETE FROM offset_delete_test ORDER BY id ASC LIMIT 1 OFFSET 1;')
+      client.query('DELETE FROM offset_delete_test ORDER BY id ASC LIMIT 1, 1;')
       results = client.query('SELECT id FROM offset_delete_test ORDER BY id ASC;')
       expect(results.count).to eq(2)
       expect(results.map { |r| r['id'] }).to eq([1, 3])
