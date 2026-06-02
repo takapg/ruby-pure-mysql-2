@@ -81,7 +81,18 @@ module RubyPureMysql
     def convert_to_index_hash(val)
       case val
       when Hash
-        val.each_with_object({}) { |(k, v), h| h[safe_json_parse(k)] = convert_to_index_hash(v) }
+        val.each_with_object({}) do |(k, v), h|
+          parsed_k = safe_json_parse(k)
+          if v.is_a?(Array)
+            # 旧形式: full_key -> [row_indices]
+            val0 = parsed_k.is_a?(Array) ? parsed_k.first : parsed_k
+            h[val0] ||= {}
+            h[val0][parsed_k] = v.to_h { |row| [row, true] }
+          else
+            # 新形式: val0 -> { full_key -> { row_indices -> true } }
+            h[parsed_k] = convert_to_index_hash(v)
+          end
+        end
       when Array
         val.to_h { |row| [row, true] }
       else
