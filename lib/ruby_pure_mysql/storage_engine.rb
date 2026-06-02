@@ -109,7 +109,8 @@ module RubyPureMysql
     private
 
     def setup_table_indexes(name, columns, indexes)
-      final_indexes = indexes.empty? ? determine_default_indexes(columns) : indexes
+      final_indexes = indexes.dup
+      final_indexes.merge!(determine_default_indexes(columns)) { |_, old, _| old }
       @index_definitions[name] = final_indexes
       @index_data[name] = {}
       @primary_keys[name] = final_indexes['PRIMARY'] if final_indexes.key?('PRIMARY')
