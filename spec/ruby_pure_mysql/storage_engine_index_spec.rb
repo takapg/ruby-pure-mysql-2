@@ -161,11 +161,11 @@ RSpec.describe RubyPureMysql::StorageEngine do
   end
 
   describe '主キー制約の検証' do
-    it '主キーが重複している場合に insert が false を返すこと' do
+    it '主キーが重複している場合に insert が :duplicate_pk を返すこと' do
       pk_table = 'pk_test_table'
       engine.create_table(pk_table, columns, { 'PRIMARY' => [0] }) # id を主キーに設定
       engine.insert(pk_table, [1, 'Alice', 30])
-      expect(engine.insert(pk_table, [1, 'Bob', 25])).to be false
+      expect(engine.insert(pk_table, [1, 'Bob', 25])).to eq(:duplicate_pk)
     end
 
     it '主キーが指定されていない場合は重複挿入が可能であること' do

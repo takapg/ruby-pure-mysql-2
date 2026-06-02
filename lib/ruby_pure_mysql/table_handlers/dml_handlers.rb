@@ -22,10 +22,14 @@ module RubyPureMysql
 
     def execute_insert(client, result, columns)
       values = resolve_insert_values(client, columns, result)
-      if @storage_engine.insert(result[:table_name], values)
+      res = @storage_engine.insert(result[:table_name], values)
+
+      if res == true
         send_ok_packet(client, 1)
-      else
+      elsif res == :duplicate_pk
         send_err_packet(client, 1, "Duplicate entry for key 'PRIMARY'", 1062)
+      else
+        send_err_packet(client, 1, "Insert failed", 1000)
       end
     rescue InsertError => e
       send_err_packet(client, 1, e.message, e.code)
