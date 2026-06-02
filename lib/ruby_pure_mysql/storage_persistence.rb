@@ -84,8 +84,13 @@ module RubyPureMysql
     end
 
     def restore_indexes(name, indexes)
-      @index_data[name] = indexes.transform_values do |v|
-        v.is_a?(Hash) ? v.transform_keys { |k| JSON.parse(k) } : v
+      @index_data[name] = indexes.transform_values do |idx_val|
+        next {} unless idx_val.is_a?(Hash)
+
+        idx_val.each_with_object({}) do |(k, sub_hash), memo|
+          parsed_k = JSON.parse(k) rescue k
+          memo[parsed_k] = sub_hash.transform_keys { |sk| JSON.parse(sk) rescue sk }
+        end
       end
     end
   end

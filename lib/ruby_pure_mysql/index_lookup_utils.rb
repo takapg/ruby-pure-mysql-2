@@ -42,7 +42,11 @@ module RubyPureMysql
 
     def lookup_exact(table_name, idx_name, values)
       data = @index_data.dig(table_name, idx_name)
-      data[values] if data&.key?(values)
+      return [] unless data
+
+      val0 = values[0]
+      sub_hash = data[val0]
+      sub_hash ? (sub_hash[values] || []) : []
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
@@ -61,11 +65,10 @@ module RubyPureMysql
 
     def collect_prefix_indices(table_name, idx_name, val0)
       data = @index_data.dig(table_name, idx_name)
-      return nil unless data
+      return [] unless data
 
-      candidates = []
-      data.each { |key, row_indices| candidates.concat(row_indices) if key[0] == val0 }
-      candidates.empty? ? nil : candidates
+      sub_hash = data[val0]
+      sub_hash ? sub_hash.values.flatten : []
     end
   end
 end

@@ -118,8 +118,9 @@ module RubyPureMysql
 
     def add_to_index(table_name, idx_name, cols, values, row_idx)
       key = values.values_at(*cols)
-      (@index_data[table_name][idx_name] ||= {})[key] ||= []
-      @index_data[table_name][idx_name][key] << row_idx
+      val0 = key[0]
+      (@index_data[table_name][idx_name] ||= {})[val0] ||= {}
+      (@index_data[table_name][idx_name][val0][key] ||= []) << row_idx
     end
 
     private(*StoragePersistence.instance_methods(false))
