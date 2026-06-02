@@ -323,4 +323,58 @@ RSpec.describe RubyPureMysql::StorageEngine do
       end.not_to raise_error
     end
   end
+
+  describe '複合インデックスの最適化ルックアップの検証' do
+    let(:comp_table) { 'comp_table' }
+    let(:comp_cols) { %w[col1 col2 col3] }
+    let(:comp_indexes) { { 'comp_idx' => [0, 1, 2] } }
+
+    before do
+      engine.create_table(comp_table, comp_cols, comp_indexes)
+      [
+        ['A', 10, 'X'],
+        ['A', 20, 'Y'],
+        ['A', 20, 'Z'],
+        ['B', 10, 'X'],
+        ['B', 20, 'Y']
+      ].each { |row| engine.insert(comp_table, row) }
+    end
+
+    it '複合インデックスの全カラムが = 条件の場合に正しく絞り込まれること' do
+      where = [
+        { column: 'col1', operator: '=', value: 'A' },
+        { column: 'col2', operator: '=', value: 20 },
+        { column: 'col3', operator: '=', value: 'Z' }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(2)
+    end
+
+    it '複合インデックスの一部（先頭から）が = 条件で、その後に範囲検索がある場合に正しく絞り込まれること' do
+      where = [
+        { column: 'col1', operator: '=', value: 'A' },
+        { column: 'col2', operator: '>', value: 15 }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(1, 2)
+    end
+
+    it '範囲検索の後のカラム条件はインデックスルックアップに寄与しないが、結果は正しいこと' do
+      where = [
+        { column: 'col1', operator: '>', value: 'A' },
+        { column: 'col2', operator: '=', value: 10 }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(3)
+    end
+
+    it 'インデックスカラムの途中に条件がない場合、そこまでの条件のみで絞り込まれること' do
+      where = [
+        { column: 'col1', operator: '=', value: 'A' },
+        { column: 'col3', operator: '=', value: 'Y' }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(1)
+    end
+  end
 end

@@ -48,30 +48,28 @@ module RubyPureMysql
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
-      clause = find_prefix_clause(cols[0], group, lookup_opts)
-      return nil if clause.nil?
+      first_clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == cols[0] }
+      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
 
-      collect_prefix_indices(table_name, idx_name, clause)
-    end
-
-    def find_prefix_clause(col_idx, group, lookup_opts)
-      clause = group.find do |c|
-        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
-      end
-      return nil unless clause && %w[= > < >= <=].include?(clause[:operator])
-
-      clause
-    end
-
-    def collect_prefix_indices(table_name, idx_name, clause)
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      op = clause[:operator]
-      val = clause[:value]
-      data.select do |key, _|
-        !key[0].nil? && !val.nil? && key[0].send(op == '=' ? :== : op.to_sym, val)
-      end.values.flat_map(&:keys)
+      candidates = data.keys
+      cols.each_with_index do |col_idx, i|
+        clause = group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
+        break if clause.nil?
+
+        op, val = clause[:operator], clause[:value]
+        if op == '='
+          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i] == val }
+        elsif %w[> < >= <=].include?(op)
+          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(op.to_sym, val) }
+          break
+        else
+          break
+        end
+      end
+      candidates.flat_map { |k| data[k].keys }
     end
   end
 end
