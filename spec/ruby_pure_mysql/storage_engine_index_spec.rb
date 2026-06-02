@@ -120,6 +120,25 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(index_defs).to eq({})
     end
 
+    it 'カラム定義に主キーが含まれている場合に自動的に PRIMARY インデックスが作成されること' do
+      auto_pk_cols = [
+        { name: 'id', primary_key: true },
+        { name: 'name', primary_key: false }
+      ]
+      engine.create_table('auto_pk_table', auto_pk_cols)
+
+      index_defs = engine.instance_variable_get(:@index_definitions)['auto_pk_table']
+      expect(index_defs).to eq({ 'PRIMARY' => [0] })
+
+      # 実際にインデックスが機能するか検証
+      engine.insert('auto_pk_table', [1, 'AutoAlice'])
+      where_id = [{ column: 'id', operator: '=', value: 1 }]
+      indices = engine.find_matching_indices(
+        nil, engine.select('auto_pk_table'), engine.get_columns('auto_pk_table'), where_id
+      )
+      expect(indices).to contain_exactly(0)
+    end
+
     it 'インデックスがない場合でもルックアップ（フルスキャン）ができること' do
       engine.create_table(auto_table, auto_cols)
       engine.insert(auto_table, [100, 'AutoAlice'])

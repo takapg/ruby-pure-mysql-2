@@ -29,11 +29,15 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false if @tables.key?(name)
 
-        @tables[name] = columns
+        column_names = columns.map { |c| c.is_a?(Hash) ? c[:name] : c }
+        @tables[name] = column_names
         @data[name] = []
-        @index_definitions[name] = indexes.empty? ? determine_default_indexes(columns) : indexes
+
+        final_indexes = indexes.empty? ? determine_default_indexes(columns) : indexes
+        @index_definitions[name] = final_indexes
         @index_data[name] = {}
-        @primary_keys[name] = indexes['PRIMARY'] if indexes.key?('PRIMARY')
+        @primary_keys[name] = final_indexes['PRIMARY'] if final_indexes.key?('PRIMARY')
+
         persist_table_creation(name)
         true
       end
@@ -117,8 +121,9 @@ module RubyPureMysql
       !!@index_data[table_name]['PRIMARY']&.key?(pk_values)
     end
 
-    def determine_default_indexes(_columns)
-      {}
+    def determine_default_indexes(columns)
+      pk_idx = columns.find_index { |col| col.is_a?(Hash) && col[:primary_key] }
+      pk_idx ? { 'PRIMARY' => [pk_idx] } : {}
     end
 
     def resolve_target_indices(table_name, criteria)
