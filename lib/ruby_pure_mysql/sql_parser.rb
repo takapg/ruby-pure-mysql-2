@@ -87,15 +87,24 @@ module RubyPureMysql
       build_update_result(parts, updates)
     end
 
+    def validate_limit_clause(limit_val, statement_type)
+      return nil unless limit_val
+
+      val = limit_val.strip
+      return { error: "Invalid LIMIT syntax for #{statement_type}" } unless val.match?(/\A\d+\z/)
+
+      val.to_i
+    end
+
     def build_update_result(parts, updates)
-      limit_val = parts[:limit]&.strip
-      return { error: 'Invalid LIMIT syntax for UPDATE' } if limit_val && !limit_val.match?(/\A\d+\z/)
+      limit = validate_limit_clause(parts[:limit], 'UPDATE')
+      return limit if limit.is_a?(Hash) && limit[:error]
 
       res = {
         type: :update,
         table_name: strip_backticks(parts[:table_name]),
         updates: updates,
-        limit: limit_val&.to_i
+        limit: limit
       }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
       apply_where_to_result(res, parts[:where_clause])
@@ -113,7 +122,8 @@ module RubyPureMysql
       where = parse_where_clause(where_clause)
       return where if where.is_a?(Hash) && where[:error]
 
-      res.merge(where: where)
+      res[:where] = where
+      res
     end
 
     def parse_update_set_clause(set_clause)
@@ -142,10 +152,10 @@ module RubyPureMysql
     end
 
     def build_delete_result(parts)
-      limit_val = parts[:limit]&.strip
-      return { error: 'Invalid LIMIT syntax for DELETE' } if limit_val && !limit_val.match?(/\A\d+\z/)
+      limit = validate_limit_clause(parts[:limit], 'DELETE')
+      return limit if limit.is_a?(Hash) && limit[:error]
 
-      result = { type: :delete, table_name: strip_backticks(parts[:table_name]), limit: limit_val&.to_i }
+      result = { type: :delete, table_name: strip_backticks(parts[:table_name]), limit: limit }
       SqlParser.parse_order_by_clause(result, parts[:order_clause]) if parts[:order_clause]
       apply_where_to_result(result, parts[:where_clause])
     end
