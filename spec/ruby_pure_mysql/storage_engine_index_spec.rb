@@ -314,5 +314,13 @@ RSpec.describe RubyPureMysql::StorageEngine do
       indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
       expect(indices).to contain_exactly(1)
     end
+
+    it 'インデックスの先頭カラムに NULL 値が含まれている場合に範囲検索を行ってもクラッシュしないこと' do
+      engine.insert(range_table, [nil, 'NullUser', 20])
+      where = [{ column: 'id', operator: '>', value: 10 }]
+      expect {
+        engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      }.not_to raise_error
+    end
   end
 end
