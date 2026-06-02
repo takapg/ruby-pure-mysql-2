@@ -73,11 +73,11 @@ module RubyPureMysql
       candidates
     end
 
-    def filter_candidates(candidates, op, val, i)
-      return candidates unless %w[= > < >= <=].include?(op)
+    def filter_candidates(candidates, operator, value, col_pos)
+      return candidates unless %w[= > < >= <=].include?(operator)
 
-      method = op == '=' ? :== : op.to_sym
-      candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(method, val) }
+      method = operator == '=' ? :== : operator.to_sym
+      candidates.select { |k| !k[col_pos].nil? && !value.nil? && k[col_pos].send(method, value) }
     end
   end
 end
