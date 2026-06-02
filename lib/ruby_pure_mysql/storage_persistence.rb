@@ -52,16 +52,10 @@ module RubyPureMysql
 
     def parse_data_json(name, json_str)
       data = JSON.parse(json_str)
-      if data.is_a?(Hash) && data.key?('rows')
-        indexes = data['indexes'] || {}
-        @index_data[name] = indexes.transform_values do |v|
-          v.is_a?(Hash) ? v.transform_keys { |k| JSON.parse(k) } : v
-        end
-        data['rows'] || []
-      else
-        @index_data[name] = {}
-        data
-      end
+      return handle_simple_data(name, data) unless data.is_a?(Hash) && data.key?('rows')
+
+      restore_indexes(name, data['indexes'] || {})
+      data['rows'] || []
     end
 
     def save_data(name)
@@ -80,6 +74,19 @@ module RubyPureMysql
     def persist_table_deletion(name)
       save_tables
       FileUtils.rm_f(data_file_path(name))
+    end
+
+    private
+
+    def handle_simple_data(name, data)
+      @index_data[name] = {}
+      data
+    end
+
+    def restore_indexes(name, indexes)
+      @index_data[name] = indexes.transform_values do |v|
+        v.is_a?(Hash) ? v.transform_keys { |k| JSON.parse(k) } : v
+      end
     end
   end
 end
