@@ -107,7 +107,7 @@ module RubyPureMysql
         limit: limit
       }
       SqlParser.parse_order_by_clause(res, parts[:order_clause]) if parts[:order_clause]
-      return apply_where_to_result(res, parts[:where_clause])
+      apply_where_to_result(res, parts[:where_clause])
     end
 
     def extract_update_parts(query)
@@ -157,7 +157,7 @@ module RubyPureMysql
 
       result = { type: :delete, table_name: strip_backticks(parts[:table_name]), limit: limit }
       SqlParser.parse_order_by_clause(result, parts[:order_clause]) if parts[:order_clause]
-      return apply_where_to_result(result, parts[:where_clause])
+      apply_where_to_result(result, parts[:where_clause])
     end
   end
 
