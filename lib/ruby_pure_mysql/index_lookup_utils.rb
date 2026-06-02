@@ -69,7 +69,7 @@ module RubyPureMysql
 
       op = clause[:operator]
       val = clause[:value]
-      data.select { |key, _| !key[0].nil? && key[0].send(op == '=' ? :== : op.to_sym, val) }.values.flat_map(&:keys)
+      data.select { |key, _| !key[0].nil? && !val.nil? && key[0].send(op == '=' ? :== : op.to_sym, val) }.values.flat_map(&:keys)
     end
   end
 end
