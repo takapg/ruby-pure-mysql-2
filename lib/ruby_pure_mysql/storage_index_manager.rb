@@ -3,7 +3,7 @@
 module RubyPureMysql
   # インデックス管理ロジックを提供するモジュール
   module StorageIndexManager
-    def update_rows_indexes(table_name, target_indices, update_map, merged_criteria)
+    def update_index_entries(table_name, target_indices, update_map, merged_criteria)
       old_values_map = target_indices.to_h { |idx| [idx, @data[table_name][idx].dup] }
 
       return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
@@ -13,7 +13,7 @@ module RubyPureMysql
       true
     end
 
-    def delete_rows_indexes(table_name, indices)
+    def delete_index_entries(table_name, indices)
       indices.reverse_each do |idx|
         remove_from_index(table_name, idx, @data[table_name][idx])
         @data[table_name].delete_at(idx)
