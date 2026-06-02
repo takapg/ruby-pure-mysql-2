@@ -1198,6 +1198,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values.first).to eq(2)
     end
+
+    it 'supports LIMIT offset, count syntax (LIMIT 1, 1)' do
+      results = client.query('SELECT * FROM users LIMIT 1, 1;')
+      expect(results.count).to eq(1)
+      expect(results.first['name']).to eq('bob')
+    end
+
+    it 'supports LIMIT offset, count syntax (LIMIT 0, 2)' do
+      results = client.query('SELECT * FROM users LIMIT 0, 2;')
+      expect(results.count).to eq(2)
+      expect(results.map { |r| r['name'] }).to eq(%w[alice bob])
+    end
   end
 
   describe 'Multi-column ORDER BY support' do
