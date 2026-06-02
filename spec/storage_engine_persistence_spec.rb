@@ -123,4 +123,29 @@ RSpec.describe RubyPureMysql::StorageEngine do
     index_data = engine.instance_variable_get(:@index_data)['users']['name_idx']
     expect(index_data[['alice'].to_json]).to eq([0, 1])
   end
+
+  it 'optimizes search using indexes' do
+    engine = described_class.new
+    # 複合インデックス [id, name] を作成
+    engine.create_table('users', %w[id name], { 'composite_idx' => [0, 1] })
+    engine.insert('users', [1, 'alice'])
+    engine.insert('users', [2, 'bob'])
+    engine.insert('users', [3, 'charlie'])
+
+    # 1. 完全一致ルックアップの検証 (id=2, name='bob')
+    criteria_exact = { client: nil, where: [[{ column: 'id', operator: '=', value: 2 }, { column: 'name', operator: '=', value: 'bob' }]], table_map: {} }
+    # update_rows_with_where を利用して間接的に get_target_indices を呼び出す
+    engine.update_rows_with_where('users', criteria_exact, { 1 => 'bob_updated' })
+    expect(engine.select('users')[1]).to eq([2, 'bob_updated'])
+
+    # 2. 接頭辞マッチングの検証 (id=1 のみ指定)
+    criteria_prefix = { client: nil, where: [[{ column: 'id', operator: '=', value: 1 }]], table_map: {} }
+    engine.update_rows_with_where('users', criteria_prefix, { 1 => 'alice_updated' })
+    expect(engine.select('users')[0]).to eq([1, 'alice_updated'])
+
+    # 3. インデックスが使えない条件 (name='charlie' のみ指定、idはインデックスの先頭)
+    criteria_no_idx = { client: nil, where: [[{ column: 'name', operator: '=', value: 'charlie' }]], table_map: {} }
+    engine.update_rows_with_where('users', criteria_no_idx, { 1 => 'charlie_updated' })
+    expect(engine.select('users')[2]).to eq([3, 'charlie_updated'])
+  end
 end
