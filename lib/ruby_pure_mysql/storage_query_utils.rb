@@ -38,5 +38,17 @@ module RubyPureMysql
       sort_conditions = resolve_sort_conditions(criteria[:client], columns, criteria[:order])
       indices.sort { |i, j| compare_rows(rows[i], rows[j], sort_conditions) }
     end
+
+    def determine_default_indexes(columns)
+      pk_idx = columns.find_index { |col| col.is_a?(Hash) && col[:primary_key] }
+      pk_idx ? { 'PRIMARY' => [pk_idx] } : {}
+    end
+
+    def resolve_target_indices(table_name, criteria)
+      normalized_criteria = criteria.is_a?(Array) ? { where: criteria } : criteria
+      merged_criteria = normalized_criteria.merge(table_name: table_name)
+      indices = collect_indices_to_delete(@data[table_name], @tables[table_name], merged_criteria)
+      [indices, merged_criteria]
+    end
   end
 end
