@@ -17,7 +17,7 @@ module RubyPureMysql
     def find_best_index_match(table_name, group, lookup_opts)
       @index_definitions[table_name].each do |idx_name, cols|
         res = attempt_index_match(table_name, idx_name, cols, group, lookup_opts)
-        return res if res
+        return res if res && !res.empty?
       end
       nil
     end
@@ -47,7 +47,7 @@ module RubyPureMysql
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
       first_clause = find_clause_for_col(cols[0], group, lookup_opts)
-      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
+      return [] unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
 
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
@@ -67,36 +67,19 @@ module RubyPureMysql
         clause = find_clause_for_col(col_idx, group, lookup_opts)
         break if clause.nil?
 
-        res = apply_clause_filter(candidates, clause, i)
-        candidates = res[:candidates]
-        break if res[:stop]
+        op = clause[:operator]
+        val = clause[:value]
+
+        if op == '='
+          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i] == val }
+        elsif %w[> < >= <=].include?(op)
+          candidates = candidates.select { |k| !k[i].nil? && !val.nil? && k[i].send(op.to_sym, val) }
+          break
+        else
+          break
+        end
       end
       candidates
-    end
-
-    def apply_clause_filter(candidates, clause, col_pos)
-      op = clause[:operator]
-      val = clause[:value]
-
-      if op == '='
-        filter_exact(candidates, val, col_pos)
-      elsif %w[> < >= <=].include?(op)
-        filter_range(candidates, op, val, col_pos)
-      else
-        { candidates: candidates, stop: true }
-      end
-    end
-
-    def filter_exact(candidates, val, col_pos)
-      filtered = candidates.select { |k| !k[col_pos].nil? && !val.nil? && k[col_pos] == val }
-      { candidates: filtered, stop: false }
-    end
-
-    def filter_range(candidates, operator, val, col_pos)
-      filtered = candidates.select do |k|
-        !k[col_pos].nil? && !val.nil? && k[col_pos].send(operator.to_sym, val)
-      end
-      { candidates: filtered, stop: true }
     end
   end
 end
