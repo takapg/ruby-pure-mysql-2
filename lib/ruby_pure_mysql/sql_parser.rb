@@ -26,7 +26,9 @@ module RubyPureMysql
     end
 
     def resolve_pk_indices(columns, pk_names)
-      pk_names.filter_map { |name| columns.index(name) }.uniq
+      pk_names.filter_map do |name|
+        columns.index { |c| c.is_a?(Hash) ? (c[:name] || c[:original])&.casecmp?(name) : c.casecmp?(name) }
+      end.uniq
     end
 
     def build_create_table_result(match, columns, pk_indices)
@@ -45,7 +47,7 @@ module RubyPureMysql
         pk_names.concat(extract_pk_names(column_def))
       else
         name, is_pk = parse_column_definition(column_def)
-        columns << name
+        columns << { name: name, primary_key: is_pk }
         pk_names << name if is_pk
       end
     end
