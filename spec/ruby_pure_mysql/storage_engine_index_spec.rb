@@ -260,4 +260,59 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(engine.insert(no_pk_table, [1, 'Bob', 25])).to be true
     end
   end
+
+  describe 'インデックス接頭辞ルックアップにおける範囲検索の検証' do
+    let(:range_table) { 'range_table' }
+    let(:range_cols) { %w[id name age] }
+    let(:range_indexes) { { 'id_idx' => [0], 'comp_idx' => [0, 2] } }
+
+    before do
+      engine.create_table(range_table, range_cols, range_indexes)
+      [
+        [10, 'A', 20],
+        [20, 'B', 30],
+        [30, 'C', 40],
+        [40, 'D', 50]
+      ].each { |row| engine.insert(range_table, row) }
+    end
+
+    it '単一カラムインデックスで > 検索が正しく動作すること' do
+      where = [{ column: 'id', operator: '>', value: 20 }]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(2, 3)
+    end
+
+    it '単一カラムインデックスで < 検索が正しく動作すること' do
+      where = [{ column: 'id', operator: '<', value: 30 }]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(0, 1)
+    end
+
+    it '単一カラムインデックスで >= 検索が正しく動作すること' do
+      where = [{ column: 'id', operator: '>=', value: 20 }]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(1, 2, 3)
+    end
+
+    it '単一カラムインデックスで <= 検索が正しく動作すること' do
+      where = [{ column: 'id', operator: '<=', value: 30 }]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(0, 1, 2)
+    end
+
+    it '複合インデックスの先頭カラムで範囲検索が動作すること' do
+      where = [{ column: 'id', operator: '>', value: 15 }]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(1, 2, 3)
+    end
+
+    it '複合インデックスの先頭が範囲検索の場合、後続のカラム条件はインデックスルックアップに寄与しないが結果は正しいこと' do
+      where = [
+        { column: 'id', operator: '>', value: 15 },
+        { column: 'age', operator: '=', value: 30 }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(range_table), engine.get_columns(range_table), where)
+      expect(indices).to contain_exactly(1)
+    end
+  end
 end
