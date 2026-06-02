@@ -127,15 +127,6 @@ module RubyPureMysql
       end
     end
 
-    def normalize_lookup_indices(indices)
-      case indices
-      when Hash then indices.keys
-      when Array then indices.flat_map { |item| item.is_a?(Hash) ? item.keys : item }
-      when nil then nil
-      else indices
-      end
-    end
-
     def map_value_to_type(val)
       case val
       when Integer then :integer
