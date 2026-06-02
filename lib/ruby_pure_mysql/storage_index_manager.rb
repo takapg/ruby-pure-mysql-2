@@ -3,10 +3,8 @@
 module RubyPureMysql
   # インデックス管理ロジックを提供するモジュール
   module StorageIndexManager
-    def update_rows_indexes(table_name, target_indices, update_map, merged_criteria)
-      old_values_map = target_indices.each_with_object({}) do |idx, map|
-        map[idx] = @data[table_name][idx].dup
-      end
+    def apply_update_rows_indexes(table_name, target_indices, update_map, merged_criteria)
+      old_values_map = target_indices.to_h { |idx| [idx, @data[table_name][idx].dup] }
 
       return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
 
@@ -15,7 +13,7 @@ module RubyPureMysql
       true
     end
 
-    def delete_rows_indexes(table_name, indices)
+    def apply_delete_rows_indexes(table_name, indices)
       indices.reverse_each do |idx|
         remove_from_index(table_name, idx, @data[table_name][idx])
         @data[table_name].delete_at(idx)
@@ -61,8 +59,12 @@ module RubyPureMysql
       key = values.values_at(*cols)
       val0 = key[0]
       idx_table = @index_data[table_name][idx_name]
-      return unless idx_table && idx_table[val0] && idx_table[val0][key]
+      return unless idx_table&.dig(val0, key)
 
+      cleanup_index_entry(idx_table, val0, key, row_idx)
+    end
+
+    def cleanup_index_entry(idx_table, val0, key, row_idx)
       idx_table[val0][key].delete(row_idx)
       idx_table[val0].delete(key) if idx_table[val0][key].empty?
       idx_table.delete(val0) if idx_table[val0].empty?
