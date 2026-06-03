@@ -9,21 +9,46 @@ module RubyPureMysql
       @index_definitions[name] = final_indexes
       @index_data[name] = {}
       @primary_keys[name] = final_indexes['PRIMARY']
+
+      @unique_indexes ||= {}
+      @unique_indexes[name] = final_indexes.keys.select do |idx_name|
+        idx_name == 'PRIMARY' || idx_name.start_with?('unique_')
+      end
     end
 
     def determine_default_indexes(columns)
       return {} unless columns.is_a?(Array)
 
+      indexes = {}
       pk_indices = find_table_constraint_pk(columns) || find_column_attribute_pks(columns)
-      pk_indices.empty? ? {} : { 'PRIMARY' => pk_indices }
+      indexes['PRIMARY'] = pk_indices unless pk_indices.empty?
+
+      columns.each_with_index do |col, idx|
+        if col.is_a?(Hash) && col[:unique] && !col[:primary_key]
+          indexes["unique_#{col[:name]}"] = [idx]
+        end
+      end
+      indexes
     end
 
-    def duplicate_primary_key?(table_name, values)
-      pk_indices = @primary_keys[table_name]
-      return false unless pk_indices
+    def duplicate_unique_key?(table_name, values)
+      unique_idxs = @unique_indexes[table_name]
+      return false unless unique_idxs
 
-      pk_values = values.values_at(*pk_indices)
-      !!@index_data[table_name]['PRIMARY']&.key?(pk_values)
+      unique_idxs.any? do |idx_name|
+        col_indices = @index_definitions[table_name][idx_name]
+        val = values.values_at(*col_indices)
+        @index_data[table_name][idx_name]&.key?(val)
+      end
+    end
+
+    def rebuild_all_unique_indexes
+      @unique_indexes ||= {}
+      @index_definitions.each do |table_name, indexes|
+        @unique_indexes[table_name] = indexes.keys.select do |idx_name|
+          idx_name == 'PRIMARY' || idx_name.start_with?('unique_')
+        end
+      end
     end
 
     private

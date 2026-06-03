@@ -23,9 +23,11 @@ module RubyPureMysql
       @index_data = {}
       @primary_keys = {}
       @index_sorted_keys = {}
+      @unique_indexes = {}
       @tables_mutex = Mutex.new
       @db_dir = 'db'
       setup_persistence
+      rebuild_all_unique_indexes
     end
 
     def create_table(name, columns, indexes = {})
@@ -64,7 +66,7 @@ module RubyPureMysql
         columns = @tables[table_name]
         return false unless columns && values.size == columns.size
 
-        return :duplicate_pk if duplicate_primary_key?(table_name, values)
+        return :duplicate_pk if duplicate_unique_key?(table_name, values)
 
         @data[table_name] << values.dup
         update_indexes(table_name, values)
