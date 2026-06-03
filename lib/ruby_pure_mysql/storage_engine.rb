@@ -80,8 +80,8 @@ module RubyPureMysql
 
         # 更新されたインデックスが配列である場合のみ、個別にキャッシュをクリア
         if updated_indexes.is_a?(Array)
-          updated_indexes.each do |idx_name|
-            clear_index_cache(table_name, idx_name) if idx_name
+          updated_indexes.compact.each do |idx_name|
+            clear_index_cache(table_name, idx_name)
           end
         end
         true
