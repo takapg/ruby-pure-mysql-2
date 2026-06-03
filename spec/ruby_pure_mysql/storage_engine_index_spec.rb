@@ -503,7 +503,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
       # 範囲を絞り込み、インデックス利用のメリットを明確にする
       where = [{ column: 'name', operator: '>', value: 'Name4000' }]
-      engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where)
+      engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where, table_name: table_name)
 
       # キャッシュが生成されたことを確認
       cache = engine.instance_variable_get(:@index_sorted_keys)
