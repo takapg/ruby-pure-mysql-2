@@ -286,6 +286,7 @@ module RubyPureMysql
 
     def parse_limit_offset_clause(result, limit, offset)
       return { error: 'LIMIT with offset cannot be used with OFFSET keyword' } if limit&.include?(',') && offset
+      return { error: 'OFFSET requires LIMIT' } if offset && limit.nil?
 
       apply_limit_value(result, limit)
       result[:offset] = offset.to_i if offset
