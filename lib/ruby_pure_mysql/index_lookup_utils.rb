@@ -23,8 +23,8 @@ module RubyPureMysql
         # テーブル全体のキャッシュを削除
         @index_sorted_keys.delete(table_name)
       else
-        # テーブルのキャッシュハッシュが存在する場合のみ、特定のインデックスを削除
-        @index_sorted_keys[table_name]&.delete(idx_name)
+        # テーブルのキャッシュハッシュを初期化し、特定のインデックスを削除
+        (@index_sorted_keys[table_name] ||= {}).delete(idx_name)
       end
     end
 
