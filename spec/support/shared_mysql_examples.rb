@@ -883,6 +883,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # 結果として 1 行になる。互換性テストとしてこの挙動に合わせる。
       expect(results.count).to eq(1)
     end
+
+    it 'returns only one NULL when all values in the column are NULL' do
+      client.query('DROP TABLE IF EXISTS all_null_test;')
+      client.query('CREATE TABLE all_null_test (val INT);')
+      client.query('INSERT INTO all_null_test VALUES (NULL);')
+      client.query('INSERT INTO all_null_test VALUES (NULL);')
+      client.query('INSERT INTO all_null_test VALUES (NULL);')
+      results = client.query('SELECT DISTINCT val FROM all_null_test;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns only one row when all composite columns are NULL' do
+      client.query('DROP TABLE IF EXISTS all_null_composite_test;')
+      client.query('CREATE TABLE all_null_composite_test (a INT, b INT);')
+      client.query('INSERT INTO all_null_composite_test VALUES (NULL, NULL);')
+      client.query('INSERT INTO all_null_composite_test VALUES (NULL, NULL);')
+      results = client.query('SELECT DISTINCT a, b FROM all_null_composite_test;')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([nil, nil])
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do
