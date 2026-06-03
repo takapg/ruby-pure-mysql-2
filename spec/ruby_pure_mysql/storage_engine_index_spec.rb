@@ -495,11 +495,19 @@ RSpec.describe RubyPureMysql::StorageEngine do
     end
 
     it 'clear_index_cache 呼び出し後に @index_sorted_keys が適切にクリアされること' do
-      engine.insert(table_name, [1, 'Alice', 30])
+      [
+        [1, 'Alice', 30],
+        [2, 'Bob', 20],
+        [3, 'Charlie', 40]
+      ].each { |row| engine.insert(table_name, row) }
+
       where = [{ column: 'name', operator: '>', value: 'A' }]
       engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where)
 
-      expect(engine.instance_variable_get(:@index_sorted_keys)[table_name]).not_to be_nil
+      # キャッシュが生成されたことを確認
+      cache = engine.instance_variable_get(:@index_sorted_keys)
+      expect(cache).not_to be_nil
+      expect(cache[table_name]).not_to be_nil
 
       engine.clear_index_cache(table_name)
       expect(engine.instance_variable_get(:@index_sorted_keys)[table_name]).to be_nil
