@@ -53,6 +53,8 @@ module RubyPureMysql
     end
 
     def lookup_exact(table_name, idx_name, values)
+      return [] if values.any?(&:nil?)
+
       data = @index_data.dig(table_name, idx_name)
       data ? (data[values]&.keys || []) : []
     end
@@ -110,7 +112,7 @@ module RubyPureMysql
 
       candidates.select do |k|
         val = k[col_pos]
-        operator == '=' ? val == value : safe_compare(val, operator, value)
+        safe_compare(val, operator, value)
       end
     end
   end
