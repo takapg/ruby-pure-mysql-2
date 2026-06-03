@@ -15,7 +15,7 @@ module RubyPureMysql
         updated_indexes.concat(update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx], updated_cols))
       end
       save_data(table_name)
-      updated_indexes.uniq
+      Array(updated_indexes).uniq
     end
 
     def remove_index_entries(table_name, indices)
