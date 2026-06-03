@@ -578,6 +578,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       engine.update_rows_with_where(cache_table, {}, { 1 => 'UpdatedName' })
 
       cache = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache).to be_a(Hash)
       expect(cache).not_to have_key('name_idx')
       expect(cache).to have_key('age_idx')
     end
