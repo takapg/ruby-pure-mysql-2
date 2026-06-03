@@ -19,7 +19,7 @@ module RubyPureMysql
     def clear_index_cache(table_name, idx_name = nil)
       @index_sorted_keys ||= {}
 
-      if idx_name
+      if !idx_name.nil?
         # テーブルのキャッシュハッシュが存在する場合のみ、特定のインデックスを削除
         @index_sorted_keys[table_name]&.delete(idx_name)
       else
