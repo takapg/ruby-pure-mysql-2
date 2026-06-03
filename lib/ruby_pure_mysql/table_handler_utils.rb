@@ -76,8 +76,8 @@ module RubyPureMysql
     end
 
     def normalize_value_by_type(val, type)
+      # NULL (nil) は型に関わらず同一のものとして扱う (NULLマーカー)
       return nil if val.nil?
-      return val if type.nil?
 
       case type
       when :integer then cast_to_numeric(val, :to_i)
