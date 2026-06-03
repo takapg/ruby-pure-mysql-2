@@ -79,6 +79,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'returns NULL for arithmetic with NULL (SELECT 1 + NULL;)' do
+      results = client.query('SELECT 1 + NULL;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for arithmetic with NULL (SELECT NULL - 1;)' do
+      results = client.query('SELECT NULL - 1;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for arithmetic with NULL (SELECT NULL * 1;)' do
+      results = client.query('SELECT NULL * 1;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for arithmetic with NULL (SELECT NULL / 1;)' do
+      results = client.query('SELECT NULL / 1;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for unary operator with NULL (SELECT -NULL;)' do
+      results = client.query('SELECT -NULL;')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'returns NULL for complex nested arithmetic with NULL (SELECT (1 + NULL) * (2 + 2);)' do
+      results = client.query('SELECT (1 + NULL) * (2 + 2);')
+      expect(results.first.values.first).to be_nil
+    end
+
     it 'returns a float for division even if the result is a whole number (SELECT 4/2;)' do
       results = client.query('SELECT 4/2;')
       val = results.first.values.first

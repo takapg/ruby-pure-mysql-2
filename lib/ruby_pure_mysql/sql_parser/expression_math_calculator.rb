@@ -33,7 +33,7 @@ module RubyPureMysql
 
       left, right = resolve_md_operands(left_raw, right_raw)
       return :error if left == :error || right == :error
-      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
+      return :div_by_zero if %w[/ %].include?(operator) && right && right.zero?
 
       tokens[index - 1] = calculate_md(left, right, operator)
       tokens.slice!(index, 2)
@@ -45,7 +45,8 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return val if val.is_a?(Numeric) || val.nil? || %i[error nil].include?(val)
+      return nil if val.nil? || val == :nil
+      return val if val.is_a?(Numeric) || val == :error
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
