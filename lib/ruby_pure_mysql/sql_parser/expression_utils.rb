@@ -217,10 +217,9 @@ module RubyPureMysql
       val = evaluate_inner_token(inner)
       return :error if val == :error
 
-      return nil if val.nil?
-
       numeric_val = resolve_numeric_value(val)
       return :error if numeric_val == :error
+      return nil if numeric_val.nil?
 
       op == '-' ? -numeric_val : numeric_val
     end

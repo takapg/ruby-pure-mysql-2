@@ -28,24 +28,25 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      left_raw, operator, right_raw = tokens[(index - 1)..(index + 1)]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
+      left, operator, right = resolve_operands(tokens, index)
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
 
-      left, right = resolve_md_operands(left_raw, right_raw)
+      status = check_md_status(left, right, operator)
+      return status unless status == :ok
+
+      update_tokens_with_result!(tokens, index, calculate_md(left, right, operator))
+    end
+
+    def check_md_status(left, right, operator)
       return :error if left == :error || right == :error
-      return :div_by_zero if %w[/ %].include?(operator) && right.zero?
+      return :div_by_zero if %w[/ %].include?(operator) && right&.zero?
 
-      tokens[index - 1] = calculate_md(left, right, operator)
-      tokens.slice!(index, 2)
       :ok
     end
 
-    def resolve_md_operands(left, right)
-      [resolve_numeric_value(left), resolve_numeric_value(right)]
-    end
-
     def resolve_numeric_value(val)
-      return val if val.is_a?(Numeric) || val.nil? || %i[error nil].include?(val)
+      return nil if val.nil? || val == :nil
+      return val if val.is_a?(Numeric) || val == :error
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
@@ -84,7 +85,11 @@ module RubyPureMysql
     end
 
     def handle_missing_operand(tokens, index)
-      tokens[index - 1] = nil
+      update_tokens_with_result!(tokens, index, nil)
+    end
+
+    def update_tokens_with_result!(tokens, index, result)
+      tokens[index - 1] = result
       tokens.slice!(index, 2)
       :ok
     end
@@ -102,17 +107,21 @@ module RubyPureMysql
     end
 
     def process_add_sub_op!(tokens, index)
-      left_raw = tokens[index - 1]
-      right_raw = tokens[index + 1]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
-
-      left = resolve_numeric_value(left_raw)
-      right = resolve_numeric_value(right_raw)
+      left, operator, right = resolve_operands(tokens, index)
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
       return :error if left == :error || right == :error
 
-      tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
-      tokens.slice!(index, 2)
-      :ok
+      update_tokens_with_result!(tokens, index, calculate_sum_diff(left, operator, right))
+    end
+
+    private
+
+    def resolve_operands(tokens, index)
+      left_raw = tokens[index - 1]
+      right_raw = tokens[index + 1]
+      return [nil, nil, nil] if left_raw.nil? || right_raw.nil?
+
+      [resolve_numeric_value(left_raw), tokens[index], resolve_numeric_value(right_raw)]
     end
   end
 end
