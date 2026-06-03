@@ -65,10 +65,9 @@ module RubyPureMysql
     def filter_index_candidates(cols, group, lookup_opts, candidates)
       cols.each_with_index do |col_idx, i|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
-        break if clause.nil?
+        next if clause.nil?
 
         candidates = filter_candidates(candidates, clause[:operator], clause[:value], i)
-        break unless clause[:operator] == '='
       end
       candidates
     end

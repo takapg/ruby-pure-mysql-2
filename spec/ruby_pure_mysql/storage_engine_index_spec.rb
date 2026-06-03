@@ -376,5 +376,34 @@ RSpec.describe RubyPureMysql::StorageEngine do
       indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
       expect(indices).to contain_exactly(1)
     end
+
+    it '複合インデックスの途中に範囲検索があり、その後に完全一致条件がある場合に正しく絞り込まれること' do
+      where = [
+        { column: 'col1', operator: '=', value: 'A' },
+        { column: 'col2', operator: '>', value: 15 },
+        { column: 'col3', operator: '=', value: 'Z' }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(2)
+    end
+
+    it '境界値（等号を含む範囲検索）が正しく評価されること' do
+      where = [
+        { column: 'col1', operator: '>=', value: 'B' },
+        { column: 'col2', operator: '<=', value: 20 }
+      ]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(3, 4)
+    end
+
+    it '複合インデックスのカラムに NULL が含まれる場合に、範囲検索や完全一致が正しく動作し、クラッシュしないこと' do
+      engine.insert(comp_table, [nil, 10, 'X'])
+      engine.insert(comp_table, ['A', nil, 'Y'])
+      engine.insert(comp_table, ['A', 20, nil])
+
+      where_null = [{ column: 'col1', operator: '=', value: nil }]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where_null)
+      expect(indices).to be_empty
+    end
   end
 end
