@@ -249,7 +249,8 @@ module RubyPureMysql
       end
 
       parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
-      parse_limit_offset_clause(result, match[:limit], match[:offset])
+      res = parse_limit_offset_clause(result, match[:limit], match[:offset])
+      return res if res.is_a?(Hash) && res[:error]
       nil
     end
 
@@ -273,6 +274,8 @@ module RubyPureMysql
     end
 
     def parse_limit_offset_clause(result, limit, offset)
+      return { error: 'LIMIT with offset cannot be used with OFFSET keyword' } if limit&.include?(',') && offset
+
       if limit
         if limit.include?(',')
           off, lim = limit.split(',').map(&:to_i)
@@ -283,6 +286,7 @@ module RubyPureMysql
         end
       end
       result[:offset] = offset.to_i if offset
+      nil
     end
 
     def parse_where_clause_into(result, clause)
