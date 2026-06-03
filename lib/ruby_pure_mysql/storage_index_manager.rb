@@ -43,11 +43,17 @@ module RubyPureMysql
 
       touched = []
       @index_definitions[table_name].each do |idx_name, cols|
-        if cols.intersect?(updated_cols)
-          remove_entry_from_index_table(table_name, idx_name, cols, row_idx, old_values)
-          add_to_index(table_name, idx_name, cols, new_values, row_idx)
-          touched << idx_name
-        end
+        # インデックス対象カラムが更新対象に含まれているか確認
+        next unless cols.intersect?(updated_cols)
+
+        # 実際にインデックスキーの値が変更されたか確認
+        old_key = old_values.values_at(*cols)
+        new_key = new_values.values_at(*cols)
+        next if old_key == new_key
+
+        remove_entry_from_index_table(table_name, idx_name, cols, row_idx, old_values)
+        add_to_index(table_name, idx_name, cols, new_values, row_idx)
+        touched << idx_name
       end
       touched
     end
