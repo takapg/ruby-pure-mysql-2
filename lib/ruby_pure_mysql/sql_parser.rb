@@ -61,7 +61,7 @@ module RubyPureMysql
 
     def parse_column_definition(def_str)
       name = strip_backticks(def_str.split(/\s+/, 2).first)
-      [name, def_str.match?(/PRIMARY\s+KEY/i), def_str.match?(/UNIQUE/i)]
+      [name, def_str.match?(/PRIMARY\s+KEY/i), def_str.match?(/\bUNIQUE\b/i)]
     end
 
     def parse_drop_table(query)
