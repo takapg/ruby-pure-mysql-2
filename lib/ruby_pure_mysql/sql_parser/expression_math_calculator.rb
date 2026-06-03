@@ -32,18 +32,12 @@ module RubyPureMysql
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left, right = resolve_md_operands(left_raw, right_raw)
-      if left.nil? || right.nil?
-        tokens[index - 1] = nil
-        tokens.slice!(index, 2)
-        return :ok
-      end
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
 
       status = check_md_status(left, right, operator)
       return status unless status == :ok
 
-      tokens[index - 1] = calculate_md(left, right, operator)
-      tokens.slice!(index, 2)
-      :ok
+      update_tokens_with_result!(tokens, index, calculate_md(left, right, operator))
     end
 
     def check_md_status(left, right, operator)
@@ -98,7 +92,11 @@ module RubyPureMysql
     end
 
     def handle_missing_operand(tokens, index)
-      tokens[index - 1] = nil
+      update_tokens_with_result!(tokens, index, nil)
+    end
+
+    def update_tokens_with_result!(tokens, index, result)
+      tokens[index - 1] = result
       tokens.slice!(index, 2)
       :ok
     end
@@ -116,23 +114,14 @@ module RubyPureMysql
     end
 
     def process_add_sub_op!(tokens, index)
-      left_raw = tokens[index - 1]
-      right_raw = tokens[index + 1]
+      left_raw, right_raw = tokens[index - 1], tokens[index + 1]
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
-      left = resolve_numeric_value(left_raw)
-      right = resolve_numeric_value(right_raw)
+      left, right = resolve_numeric_value(left_raw), resolve_numeric_value(right_raw)
       return :error if left == :error || right == :error
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
 
-      if left.nil? || right.nil?
-        tokens[index - 1] = nil
-        tokens.slice!(index, 2)
-        return :ok
-      end
-
-      tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
-      tokens.slice!(index, 2)
-      :ok
+      update_tokens_with_result!(tokens, index, calculate_sum_diff(left, tokens[index], right))
     end
   end
 end
