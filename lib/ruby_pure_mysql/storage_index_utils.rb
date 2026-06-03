@@ -11,7 +11,7 @@ module RubyPureMysql
       @primary_keys[name] = final_indexes['PRIMARY']
 
       @unique_indexes ||= {}
-      @unique_indexes[name] = final_indexes.keys.select { |idx_name| unique_index?(idx_name) }
+      @unique_indexes[name] = unique_index_names(final_indexes)
     end
 
     def determine_default_indexes(columns)
@@ -39,11 +39,15 @@ module RubyPureMysql
     def rebuild_all_unique_indexes
       @unique_indexes ||= {}
       @index_definitions.each do |table_name, indexes|
-        @unique_indexes[table_name] = indexes.keys.select { |idx_name| unique_index?(idx_name) }
+        @unique_indexes[table_name] = unique_index_names(indexes)
       end
     end
 
     private
+
+    def unique_index_names(indexes)
+      indexes.keys.select { |idx_name| unique_index?(idx_name) }
+    end
 
     def unique_index?(idx_name)
       idx_name == 'PRIMARY' || idx_name.start_with?('unique_')
