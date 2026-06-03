@@ -33,7 +33,7 @@ module RubyPureMysql
       return -1 if val1.nil?
       return 1 if val2.nil?
 
-      val1 <=> val2
+      (val1 <=> val2) || 0
     end
   end
 end
