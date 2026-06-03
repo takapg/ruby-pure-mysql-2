@@ -79,6 +79,7 @@ module RubyPureMysql
 
         refresh_index_entries(table_name, indices, update_map, merged_criteria)
         clear_index_cache(table_name)
+        true
       end
     end
 
@@ -91,6 +92,7 @@ module RubyPureMysql
 
         remove_index_entries(table_name, indices)
         clear_index_cache(table_name)
+        true
       end
     end
 
