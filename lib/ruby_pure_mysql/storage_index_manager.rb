@@ -10,11 +10,12 @@ module RubyPureMysql
       return false unless perform_update_rows?(@data[table_name], @tables[table_name], update_map, merged_criteria)
 
       updated_cols = update_map.keys
+      updated_indexes = []
       target_indices.each do |idx|
-        update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx], updated_cols)
+        updated_indexes.concat(update_row_indexes(table_name, idx, old_values_map[idx], @data[table_name][idx], updated_cols))
       end
       save_data(table_name)
-      true
+      updated_indexes.uniq
     end
 
     def remove_index_entries(table_name, indices)
@@ -38,14 +39,17 @@ module RubyPureMysql
     private
 
     def update_row_indexes(table_name, row_idx, old_values, new_values, updated_cols)
-      return unless @index_definitions[table_name]
+      return [] unless @index_definitions[table_name]
 
+      touched = []
       @index_definitions[table_name].each do |idx_name, cols|
         if cols.intersect?(updated_cols)
           remove_entry_from_index_table(table_name, idx_name, cols, row_idx, old_values)
           add_to_index(table_name, idx_name, cols, new_values, row_idx)
+          touched << idx_name
         end
       end
+      touched
     end
 
     def remove_from_index(table_name, row_idx, values)

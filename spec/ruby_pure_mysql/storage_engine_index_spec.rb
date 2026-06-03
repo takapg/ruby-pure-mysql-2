@@ -545,6 +545,55 @@ RSpec.describe RubyPureMysql::StorageEngine do
     end
   end
 
+  describe 'インデックスキャッシュの細粒度クリア検証' do
+    let(:cache_table) { 'cache_table' }
+    let(:cache_cols) { %w[id name age] }
+    let(:cache_indexes) { { 'name_idx' => [1], 'age_idx' => [2] } }
+
+    before do
+      engine.create_table(cache_table, cache_cols, cache_indexes)
+      100.times { |i| engine.insert(cache_table, [i, "Name#{i}", 20 + i]) }
+    end
+
+    it 'インデックス対象外のカラムを更新した場合に、全てのインデックスキャッシュが維持されること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '=', value: 'Name1' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '=', value: 21 }], table_name: cache_table)
+
+      cache_before = engine.instance_variable_get(:@index_sorted_keys)[cache_table].dup
+
+      # id (index 0) はインデックス対象外
+      engine.update_rows_with_where(cache_table, {}, { 0 => 999 })
+
+      cache_after = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache_after).to eq(cache_before)
+    end
+
+    it '特定のインデックス対象カラムを更新した場合に、そのインデックスのみキャッシュがクリアされ、他は維持されること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '=', value: 'Name1' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '=', value: 21 }], table_name: cache_table)
+
+      # name (index 1) を更新
+      engine.update_rows_with_where(cache_table, {}, { 1 => 'UpdatedName' })
+
+      cache = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache).not_to have_key('name_idx')
+      expect(cache).to have_key('age_idx')
+    end
+
+    it '行削除時に、そのテーブルの全インデックスキャッシュがクリアされること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '=', value: 'Name1' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '=', value: 21 }], table_name: cache_table)
+
+      engine.delete_rows_with_where(cache_table, {})
+
+      cache = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache).to be_nil
+    end
+  end
+
   describe 'NULL値の厳格な検証 (MySQL 8.0 互換)' do
     let(:null_table) { 'null_test_table' }
     let(:null_cols) { %w[id val] }

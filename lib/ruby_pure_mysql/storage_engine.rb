@@ -75,8 +75,10 @@ module RubyPureMysql
         indices, merged_criteria = resolve_target_indices(table_name, criteria)
         return false if indices.nil?
 
-        refresh_index_entries(table_name, indices, update_map, merged_criteria)
-        clear_index_cache(table_name)
+        updated_indexes = refresh_index_entries(table_name, indices, update_map, merged_criteria)
+        return false if updated_indexes == false
+
+        updated_indexes.each { |idx_name| clear_index_cache(table_name, idx_name) }
         true
       end
     end
