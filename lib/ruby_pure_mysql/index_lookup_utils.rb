@@ -56,32 +56,41 @@ module RubyPureMysql
       start_idx, end_idx = calculate_range_indices(sorted_keys, first_clause[:value], first_clause[:operator])
 
       candidates = sorted_keys[start_idx...end_idx] || []
-      refined_candidates = filter_index_candidates(cols, group, lookup_opts, candidates)
-      refined_candidates.flat_map { |k| data[k].keys }
+      filter_index_candidates(cols, group, lookup_opts, candidates).flat_map { |k| data[k].keys }
     end
 
     def sort_index_keys(keys)
       keys.sort do |a, b|
         res = 0
-        a.size.times { |i| (res = nil_safe_cmp(a[i], b[i])); break if res != 0 }
+        a.size.times do |i|
+          res = nil_safe_cmp(a[i], b[i])
+          break if res != 0
+        end
         res
       end
     end
 
-    def calculate_range_indices(sorted_keys, val, op)
-      case op
-      when '='
-        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size,
-         sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size]
+    def calculate_range_indices(sorted_keys, val, operator)
+      [find_start_index(sorted_keys, val, operator), find_end_index(sorted_keys, val, operator)]
+    end
+
+    def find_start_index(sorted_keys, val, operator)
+      case operator
+      when '=', '>='
+        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
       when '>'
-        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size, sorted_keys.size]
-      when '>='
-        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size, sorted_keys.size]
+        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
+      else 0
+      end
+    end
+
+    def find_end_index(sorted_keys, val, operator)
+      case operator
+      when '=', '<='
+        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
       when '<'
-        [0, sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size]
-      when '<='
-        [0, sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size]
-      else [0, sorted_keys.size]
+        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+      else sorted_keys.size
       end
     end
 
