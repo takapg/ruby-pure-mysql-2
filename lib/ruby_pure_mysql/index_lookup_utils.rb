@@ -32,31 +32,36 @@ module RubyPureMysql
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
-        return nil unless clause && clause[:operator] == '='
-
+        return nil unless clause&.[](:operator) == '='
         clause[:value]
       end
     end
 
     def lookup_exact(table_name, idx_name, values)
       data = @index_data.dig(table_name, idx_name)
-      return [] unless data
-
-      data[values]&.keys || []
+      data ? (data[values]&.keys || []) : []
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
       first_clause = find_clause_for_col(cols[0], group, lookup_opts)
-      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
+      return nil unless valid_prefix_operator?(first_clause)
 
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      sorted_keys = sort_index_keys(data.keys)
-      start_idx, end_idx = calculate_range_indices(sorted_keys, first_clause[:value], first_clause[:operator])
-
-      candidates = sorted_keys[start_idx...end_idx] || []
+      candidates = extract_range_candidates(data, first_clause)
       filter_index_candidates(cols, group, lookup_opts, candidates).flat_map { |k| data[k].keys }
+    end
+
+    def valid_prefix_operator?(clause)
+      clause && %w[= > < >= <=].include?(clause[:operator])
+    end
+
+    def extract_range_candidates(data, clause)
+      sorted_keys = sort_index_keys(data.keys)
+      start_idx = find_start_index(sorted_keys, clause[:value], clause[:operator])
+      end_idx = find_end_index(sorted_keys, clause[:value], clause[:operator])
+      sorted_keys[start_idx...end_idx] || []
     end
 
     def sort_index_keys(keys)
@@ -70,9 +75,6 @@ module RubyPureMysql
       end
     end
 
-    def calculate_range_indices(sorted_keys, val, operator)
-      [find_start_index(sorted_keys, val, operator), find_end_index(sorted_keys, val, operator)]
-    end
 
     def find_start_index(sorted_keys, val, operator)
       case operator
@@ -121,19 +123,12 @@ module RubyPureMysql
 
     def safe_compare(val, operator, target)
       return false if val.nil? || target.nil?
-
-      method = operator == '=' ? :== : operator.to_sym
-      val.send(method, target)
-    rescue StandardError
-      false
+      val.send(operator == '=' ? :== : operator.to_sym, target) rescue false
     end
 
     def nil_safe_cmp(val1, val2)
       return 0 if val1.nil? && val2.nil?
-      return -1 if val1.nil?
-      return 1 if val2.nil?
-
-      val1 <=> val2
+      val1.nil? ? -1 : (val2.nil? ? 1 : val1 <=> val2)
     end
   end
 end
