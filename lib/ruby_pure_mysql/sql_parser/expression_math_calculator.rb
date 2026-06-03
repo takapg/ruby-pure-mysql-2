@@ -32,6 +32,12 @@ module RubyPureMysql
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left, right = resolve_md_operands(left_raw, right_raw)
+      if left.nil? || right.nil?
+        tokens[index - 1] = nil
+        tokens.slice!(index, 2)
+        return :ok
+      end
+
       status = check_md_status(left, right, operator)
       return status unless status == :ok
 
@@ -117,6 +123,12 @@ module RubyPureMysql
       left = resolve_numeric_value(left_raw)
       right = resolve_numeric_value(right_raw)
       return :error if left == :error || right == :error
+
+      if left.nil? || right.nil?
+        tokens[index - 1] = nil
+        tokens.slice!(index, 2)
+        return :ok
+      end
 
       tokens[index - 1] = calculate_sum_diff(left, tokens[index], right)
       tokens.slice!(index, 2)
