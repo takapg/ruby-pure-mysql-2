@@ -6,6 +6,7 @@ module RubyPureMysql
   # インデックスを利用したルックアップロジックを提供するモジュール
   module IndexLookupUtils
     include IndexLookupHelpers
+
     def try_index_lookup(table_name, _table_columns, where_clauses, lookup_opts)
       return nil unless @index_definitions&.key?(table_name)
 
@@ -88,7 +89,6 @@ module RubyPureMysql
       keys.sort { |a, b| a.zip(b).map { |x, y| nil_safe_cmp(x, y) }.find { |r| r != 0 } || 0 }
     end
 
-
     def find_clause_for_col(col_idx, group, lookup_opts)
       group.find do |c|
         get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
@@ -113,6 +113,5 @@ module RubyPureMysql
         operator == '=' ? val == value : safe_compare(val, operator, value)
       end
     end
-
   end
 end
