@@ -30,7 +30,7 @@ module RubyPureMysql
 
     def find_table_constraint_pk(columns)
       constraint = columns.find { |col| col.is_a?(Hash) && col[:primary_key] && col.key?(:columns) }
-      constraint ? constraint[:columns] : nil
+      constraint && constraint[:columns].is_a?(Array) ? constraint[:columns] : nil
     end
 
     def find_column_attribute_pks(columns)

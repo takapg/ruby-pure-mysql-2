@@ -203,6 +203,19 @@ RSpec.describe RubyPureMysql::StorageEngine do
       index_defs = engine.instance_variable_get(:@index_definitions)['constraint_pk_table']
       expect(index_defs).to eq({ 'PRIMARY' => [0, 1] })
     end
+
+    it '明示的に指定された PRIMARY インデックスが自動検出された主キー定義よりも優先されること' do
+      # カラム定義では id(0) が PK だが、create_table の引数で code(1) を PK として指定
+      cols = [
+        { name: 'id', primary_key: true },
+        { name: 'code', primary_key: false }
+      ]
+      explicit_indexes = { 'PRIMARY' => [1] }
+      engine.create_table('override_pk_table', cols, explicit_indexes)
+
+      index_defs = engine.instance_variable_get(:@index_definitions)['override_pk_table']
+      expect(index_defs['PRIMARY']).to eq([1])
+    end
   end
 
   describe 'インデックスなしテーブルのDML動作検証' do
@@ -258,6 +271,32 @@ RSpec.describe RubyPureMysql::StorageEngine do
       engine.create_table(no_pk_table, columns)
       engine.insert(no_pk_table, [1, 'Alice', 30])
       expect(engine.insert(no_pk_table, [1, 'Bob', 25])).to be true
+    end
+
+    it '自動検出された複合主キーが重複している場合に insert が :duplicate_pk を返すこと（属性定義）' do
+      comp_table = 'auto_comp_pk_table'
+      cols = [
+        { name: 'id', primary_key: true },
+        { name: 'code', primary_key: true },
+        { name: 'name', primary_key: false }
+      ]
+      engine.create_table(comp_table, cols)
+      engine.insert(comp_table, [1, 'A1', 'Alice'])
+      expect(engine.insert(comp_table, [1, 'A1', 'Bob'])).to eq(:duplicate_pk)
+      expect(engine.insert(comp_table, [1, 'A2', 'Bob'])).to be true
+    end
+
+    it '自動検出された複合主キーが重複している場合に insert が :duplicate_pk を返すこと（テーブル制約定義）' do
+      comp_table = 'auto_comp_constraint_table'
+      cols = [
+        { name: 'id' },
+        { name: 'code' },
+        { primary_key: true, columns: [0, 1] }
+      ]
+      engine.create_table(comp_table, cols)
+      engine.insert(comp_table, [1, 'A1', 'Alice'])
+      expect(engine.insert(comp_table, [1, 'A1', 'Bob'])).to eq(:duplicate_pk)
+      expect(engine.insert(comp_table, [1, 'A2', 'Bob'])).to be true
     end
   end
 
@@ -385,6 +424,22 @@ RSpec.describe RubyPureMysql::StorageEngine do
       ]
       indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
       expect(indices).to contain_exactly(2)
+    end
+
+    it '自動検出された複合主キーを用いた WHERE 句ルックアップが正しく動作すること' do
+      comp_table = 'auto_lookup_table'
+      cols = [
+        { name: 'id', primary_key: true },
+        { name: 'code', primary_key: true },
+        { name: 'name' }
+      ]
+      engine.create_table(comp_table, cols)
+      engine.insert(comp_table, [1, 'A1', 'Alice'])
+      engine.insert(comp_table, [2, 'B1', 'Bob'])
+
+      where = [{ column: 'id', operator: '=', value: 1 }, { column: 'code', operator: '=', value: 'A1' }]
+      indices = engine.find_matching_indices(nil, engine.select(comp_table), engine.get_columns(comp_table), where)
+      expect(indices).to contain_exactly(0)
     end
 
     it '境界値（等号を含む範囲検索）が正しく評価されること' do
