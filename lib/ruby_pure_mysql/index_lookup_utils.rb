@@ -33,6 +33,7 @@ module RubyPureMysql
       cols.map do |col_idx|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
         return nil unless clause&.[](:operator) == '='
+
         clause[:value]
       end
     end
@@ -65,41 +66,27 @@ module RubyPureMysql
     end
 
     def sort_index_keys(keys)
-      keys.sort do |a, b|
-        res = 0
-        a.size.times do |i|
-          res = nil_safe_cmp(a[i], b[i])
-          break if res != 0
-        end
-        res
-      end
+      keys.sort { |a, b| a.zip(b).map { |x, y| nil_safe_cmp(x, y) }.find { |r| r != 0 } || 0 }
     end
-
 
     def find_start_index(sorted_keys, val, operator)
       case operator
-      when '=', '>='
-        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when '>'
-        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
+      when '=', '>=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+      when '>' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
       else 0
       end
     end
 
     def find_end_index(sorted_keys, val, operator)
       case operator
-      when '=', '<='
-        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
-      when '<'
-        sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+      when '=', '<=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
+      when '<' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
       else sorted_keys.size
       end
     end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
-      group.find do |c|
-        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
-      end
+      group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
     end
 
     def filter_index_candidates(cols, group, lookup_opts, candidates)
@@ -123,12 +110,19 @@ module RubyPureMysql
 
     def safe_compare(val, operator, target)
       return false if val.nil? || target.nil?
-      val.send(operator == '=' ? :== : operator.to_sym, target) rescue false
+
+      val.send(operator == '=' ? :== : operator.to_sym, target)
+    rescue StandardError
+      false
     end
 
     def nil_safe_cmp(val1, val2)
       return 0 if val1.nil? && val2.nil?
-      val1.nil? ? -1 : (val2.nil? ? 1 : val1 <=> val2)
+
+      return -1 if val1.nil?
+      return 1 if val2.nil?
+
+      val1 <=> val2
     end
   end
 end
