@@ -71,8 +71,11 @@ module RubyPureMysql
     end
 
     def cleanup_index_entry(idx_table, key, row_idx)
-      idx_table[key].delete(row_idx)
-      idx_table.delete(key) if idx_table[key].empty?
+      entry = idx_table[key]
+      return unless entry
+
+      entry.delete(row_idx)
+      idx_table.delete(key) if entry.empty?
     end
   end
   # rubocop:enable Naming/PredicateMethod

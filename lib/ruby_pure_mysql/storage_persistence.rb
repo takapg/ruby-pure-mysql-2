@@ -59,7 +59,9 @@ module RubyPureMysql
     end
 
     def save_data(name)
-      File.write(data_file_path(name), JSON.dump({ rows: @data[name], indexes: @index_data[name] }))
+      # 空のインデックステーブルを除外して保存し、メモリとディスク消費を抑える
+      indexes = (@index_data[name] || {}).reject { |_, v| v.empty? }
+      File.write(data_file_path(name), JSON.dump({ rows: @data[name], indexes: indexes }))
     end
 
     def data_file_path(name)
