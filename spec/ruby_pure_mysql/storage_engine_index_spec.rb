@@ -631,20 +631,36 @@ RSpec.describe RubyPureMysql::StorageEngine do
       ].each { |row| engine.insert(null_table, row) }
     end
 
-    it '単一カラムインデックスで NULL が含まれる場合、範囲検索で NULL が除外されること' do
-      # val > 5 -> [2, 3] (NULLは最小値だが、比較演算子ではマッチしない)
+    it '単一カラムインデックスで NULL が含まれる場合、比較演算子で NULL が除外されること' do
+      # val > 5 -> [2, 3]
       where_gt = [{ column: 'val', operator: '>', value: 5 }]
-      indices_gt = engine.find_matching_indices(
-        nil, engine.select(null_table), engine.get_columns(null_table), where_gt
-      )
-      expect(indices_gt).to contain_exactly(1, 2)
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_gt)).to contain_exactly(1, 2)
 
       # val < 15 -> [2]
       where_lt = [{ column: 'val', operator: '<', value: 15 }]
-      indices_lt = engine.find_matching_indices(
-        nil, engine.select(null_table), engine.get_columns(null_table), where_lt
-      )
-      expect(indices_lt).to contain_exactly(1)
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_lt)).to contain_exactly(1)
+
+      # val = 10 -> [2]
+      where_eq = [{ column: 'val', operator: '=', value: 10 }]
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_eq)).to contain_exactly(1)
+
+      # val >= 10 -> [2, 3]
+      where_ge = [{ column: 'val', operator: '>=', value: 10 }]
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_ge)).to contain_exactly(1, 2)
+
+      # val <= 20 -> [2, 3]
+      where_le = [{ column: 'val', operator: '<=', value: 20 }]
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_le)).to contain_exactly(1, 2)
+    end
+
+    it '検索値に NULL が指定された場合、比較演算子では何も抽出されないこと' do
+      # val = NULL -> []
+      where_nil_eq = [{ column: 'val', operator: '=', value: nil }]
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_nil_eq)).to be_empty
+
+      # val > NULL -> []
+      where_nil_gt = [{ column: 'val', operator: '>', value: nil }]
+      expect(engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_nil_gt)).to be_empty
     end
 
     it '複合インデックスの途中に NULL がある場合に正しくフィルタリングされること' do
