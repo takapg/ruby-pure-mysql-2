@@ -237,28 +237,25 @@ module RubyPureMysql
         return res if res.is_a?(Hash) && res[:error]
       end
 
-      apply_optional_clauses(result, match)
+      res = apply_optional_clauses(result, match)
+      return res if res.is_a?(Hash) && res[:error]
+
       result
     end
 
     def apply_optional_clauses(result, match)
       result[:group_by] = match[:group_by] if match[:group_by]
 
-      res = apply_having_clause(result, match[:having])
+      if match[:having]
+        res = parse_having_clause(result, match[:having])
+        return res if res.is_a?(Hash) && res[:error]
+      end
+
+      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
+      res = parse_limit_offset_clause(result, match[:limit], match[:offset])
       return res if res.is_a?(Hash) && res[:error]
 
-      apply_order_and_limit(result, match)
-    end
-
-    def apply_having_clause(result, having)
-      return nil unless having
-
-      parse_having_clause(result, having)
-    end
-
-    def apply_order_and_limit(result, match)
-      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
-      parse_limit_offset_clause(result, match[:limit], match[:offset])
+      result
     end
 
     def parse_having_clause(result, clause)
