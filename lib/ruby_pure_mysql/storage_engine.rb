@@ -78,9 +78,9 @@ module RubyPureMysql
         updated_indexes = refresh_index_entries(table_name, indices, update_map, merged_criteria)
         return false if updated_indexes == false
 
-        # 更新されたインデックスが配列である場合のみ、個別にキャッシュをクリア
+        # 更新されたインデックスが配列である場合のみ、有効なインデックス名について個別にキャッシュをクリア
         if updated_indexes.is_a?(Array)
-          updated_indexes.compact.each do |idx_name|
+          updated_indexes.grep(String).each do |idx_name|
             clear_index_cache(table_name, idx_name)
           end
         end
