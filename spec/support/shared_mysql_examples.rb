@@ -1251,6 +1251,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'LIMIT and OFFSET combinations' do
+    before do
+      client.query('DROP TABLE IF EXISTS limit_offset_test;')
+      client.query('CREATE TABLE limit_offset_test (id INT);')
+      15.times { |i| client.query("INSERT INTO limit_offset_test VALUES (#{i + 1});") }
+    end
+
+    it 'returns 5 rows starting from the 11th row (LIMIT 5 OFFSET 10)' do
+      results = client.query('SELECT id FROM limit_offset_test LIMIT 5 OFFSET 10;')
+      expect(results.count).to eq(5)
+      expect(results.map { |r| r['id'] }).to eq([11, 12, 13, 14, 15])
+    end
+
+    it 'returns 5 rows starting from the 1st row (LIMIT 5 OFFSET 0)' do
+      results = client.query('SELECT id FROM limit_offset_test LIMIT 5 OFFSET 0;')
+      expect(results.count).to eq(5)
+      expect(results.map { |r| r['id'] }).to eq([1, 2, 3, 4, 5])
+    end
+
+    it 'returns empty result set when OFFSET exceeds row count (LIMIT 5 OFFSET 100)' do
+      results = client.query('SELECT id FROM limit_offset_test LIMIT 5 OFFSET 100;')
+      expect(results.count).to eq(0)
+    end
+
+    it 'returns 0 rows when LIMIT is 0 (LIMIT 0 OFFSET 5)' do
+      results = client.query('SELECT id FROM limit_offset_test LIMIT 0 OFFSET 5;')
+      expect(results.count).to eq(0)
+    end
+  end
+
   describe 'Multi-column ORDER BY support' do
     before do
       client.query('DROP TABLE IF EXISTS products;')
