@@ -203,6 +203,19 @@ RSpec.describe RubyPureMysql::StorageEngine do
       index_defs = engine.instance_variable_get(:@index_definitions)['constraint_pk_table']
       expect(index_defs).to eq({ 'PRIMARY' => [0, 1] })
     end
+
+    it '明示的に指定された PRIMARY インデックスが自動検出された主キー定義よりも優先されること' do
+      # カラム定義では id(0) が PK だが、create_table の引数で code(1) を PK として指定
+      cols = [
+        { name: 'id', primary_key: true },
+        { name: 'code', primary_key: false }
+      ]
+      explicit_indexes = { 'PRIMARY' => [1] }
+      engine.create_table('override_pk_table', cols, explicit_indexes)
+
+      index_defs = engine.instance_variable_get(:@index_definitions)['override_pk_table']
+      expect(index_defs['PRIMARY']).to eq([1])
+    end
   end
 
   describe 'インデックスなしテーブルのDML動作検証' do
