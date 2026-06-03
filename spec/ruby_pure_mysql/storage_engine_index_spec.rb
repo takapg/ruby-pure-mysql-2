@@ -495,12 +495,14 @@ RSpec.describe RubyPureMysql::StorageEngine do
     end
 
     it 'clear_index_cache 呼び出し後に @index_sorted_keys が適切にクリアされること' do
-      # インデックスが確実に使用されるよう、十分なデータ量を挿入
-      100.times do |i|
-        engine.insert(table_name, [i, "Name#{i}", 20 + i])
+      # インデックスが確実に使用されるよう、データ量を大幅に増やし、
+      # 文字列比較が正しく動作するようにゼロパディングを行う
+      1000.times do |i|
+        engine.insert(table_name, [i, "Name#{i.to_s.rjust(4, '0')}", 20 + i])
       end
 
-      where = [{ column: 'name', operator: '>', value: 'Name50' }]
+      # 範囲を絞り込み、インデックス利用のメリットを明確にする
+      where = [{ column: 'name', operator: '>', value: 'Name0900' }]
       engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where)
 
       # キャッシュが生成されたことを確認
