@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require_relative 'index_lookup_helpers'
+
 module RubyPureMysql
   # インデックスを利用したルックアップロジックを提供するモジュール
   module IndexLookupUtils
+    include IndexLookupHelpers
     def try_index_lookup(table_name, _table_columns, where_clauses, lookup_opts)
       return nil unless @index_definitions&.key?(table_name)
 
@@ -14,6 +17,7 @@ module RubyPureMysql
 
     def clear_index_cache(table_name, idx_name = nil)
       return unless @index_sorted_keys
+
       if idx_name
         @index_sorted_keys[table_name]&.delete(idx_name)
       else
@@ -84,21 +88,6 @@ module RubyPureMysql
       keys.sort { |a, b| a.zip(b).map { |x, y| nil_safe_cmp(x, y) }.find { |r| r != 0 } || 0 }
     end
 
-    def find_start_index(sorted_keys, val, operator)
-      case operator
-      when '=', '>=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when '>' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
-      else 0
-      end
-    end
-
-    def find_end_index(sorted_keys, val, operator)
-      case operator
-      when '=', '<=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
-      when '<' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      else sorted_keys.size
-      end
-    end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
       group.find do |c|
@@ -125,21 +114,5 @@ module RubyPureMysql
       end
     end
 
-    def safe_compare(val, operator, target)
-      return false if val.nil? || target.nil?
-
-      val.send(operator == '=' ? :== : operator.to_sym, target)
-    rescue StandardError
-      false
-    end
-
-    def nil_safe_cmp(val1, val2)
-      return 0 if val1.nil? && val2.nil?
-
-      return -1 if val1.nil?
-      return 1 if val2.nil?
-
-      val1 <=> val2
-    end
   end
 end

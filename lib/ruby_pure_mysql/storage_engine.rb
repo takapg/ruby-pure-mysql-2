@@ -44,15 +44,19 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @tables.key?(name)
 
-        @tables.delete(name)
-        @data.delete(name)
-        @index_definitions.delete(name)
-        @index_data.delete(name)
-        @primary_keys.delete(name)
-        clear_index_cache(name)
+        delete_table_state(name)
         persist_table_deletion(name)
         true
       end
+    end
+
+    def delete_table_state(name)
+      @tables.delete(name)
+      @data.delete(name)
+      @index_definitions.delete(name)
+      @index_data.delete(name)
+      @primary_keys.delete(name)
+      clear_index_cache(name)
     end
 
     def insert(table_name, values)
