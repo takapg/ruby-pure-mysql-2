@@ -1279,6 +1279,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT id FROM limit_offset_test LIMIT 0 OFFSET 5;')
       expect(results.count).to eq(0)
     end
+
+    it 'returns an error when LIMIT comma syntax and OFFSET keyword are used together' do
+      expect do
+        client.query('SELECT id FROM limit_offset_test LIMIT 0, 10 OFFSET 5;')
+      end.to raise_error(Mysql2::Error)
+    end
   end
 
   describe 'Multi-column ORDER BY support' do
