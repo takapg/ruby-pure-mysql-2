@@ -491,6 +491,60 @@ RSpec.describe RubyPureMysql::StorageEngine do
     end
   end
 
+  describe 'インデックスキャッシュの細粒度クリアの検証' do
+    let(:cache_table) { 'cache_test_table' }
+    let(:cache_cols) { %w[id name age] }
+    let(:cache_indexes) { { 'name_idx' => [1], 'age_idx' => [2] } }
+
+    before do
+      engine.create_table(cache_table, cache_cols, cache_indexes)
+      1000.times do |i|
+        engine.insert(cache_table, [i, "Name#{i}", 20 + i])
+      end
+    end
+
+    it 'インデックス対象外のカラムを更新した際に、全てのインデックスキャッシュが維持されること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+
+      cache_before = engine.instance_variable_get(:@index_sorted_keys)[cache_table].dup
+      expect(cache_before).to have_key('name_idx')
+      expect(cache_before).to have_key('age_idx')
+
+      # id (index 0) を更新。インデックス対象外
+      engine.update_rows_with_where(cache_table, {}, { 0 => 9999 })
+
+      cache_after = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache_after).to eq(cache_before)
+    end
+
+    it '特定のインデックス対象カラムを更新した際に、該当するインデックスのみキャッシュがクリアされること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+
+      # name (index 1) を更新
+      engine.update_rows_with_where(cache_table, {}, { 1 => 'UpdatedName' })
+
+      cache_after = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache_after).not_to have_key('name_idx')
+      expect(cache_after).to have_key('age_idx')
+    end
+
+    it '行を削除した際に、テーブルの全インデックスキャッシュがクリアされること' do
+      # キャッシュを生成
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
+      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+
+      # 行を削除
+      engine.delete_rows_with_where(cache_table, {})
+
+      cache_after = engine.instance_variable_get(:@index_sorted_keys)[cache_table]
+      expect(cache_after).to be_nil
+    end
+  end
+
   describe 'インデックスの自動クリーンアップ検証' do
     it 'カラム更新後、古い値のインデックスエントリが@index_dataから完全に削除されること' do
       engine.insert(table_name, [1, 'Alice', 30])
