@@ -86,7 +86,9 @@ module RubyPureMysql
     end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
-      group.find { |c| get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx }
+      group.find do |c|
+        get_column_index(lookup_opts[:client], lookup_opts[:columns], c[:column], lookup_opts[:table_map]) == col_idx
+      end
     end
 
     def filter_index_candidates(cols, group, lookup_opts, candidates)
