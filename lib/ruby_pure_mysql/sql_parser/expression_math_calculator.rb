@@ -44,7 +44,6 @@ module RubyPureMysql
       :ok
     end
 
-
     def resolve_numeric_value(val)
       return nil if val.nil? || val == :nil
       return val if val.is_a?(Numeric) || val == :error
