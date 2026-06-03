@@ -52,43 +52,37 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      # インデックスキーをソートしてバイナリサーチを可能にする
-      # 本来はストレージエンジン側でソート済みリストを維持すべきだが、ここではルックアップ時にソートする
-      sorted_keys = data.keys.sort do |a, b|
-        res = 0
-        a.size.times do |i|
-          cmp = nil_safe_cmp(a[i], b[i])
-          if cmp != 0
-            res = cmp
-            break
-          end
-        end
-        res
-      end
-
-      # 先頭カラムの条件に基づいて範囲を絞り込む
-      val = first_clause[:value]
-      op = first_clause[:operator]
-      start_idx = 0
-      end_idx = sorted_keys.size
-
-      case op
-      when '='
-        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
-      when '>'
-        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
-      when '>='
-        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when '<'
-        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when '<='
-        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
-      end
+      sorted_keys = sort_index_keys(data.keys)
+      start_idx, end_idx = calculate_range_indices(sorted_keys, first_clause[:value], first_clause[:operator])
 
       candidates = sorted_keys[start_idx...end_idx] || []
       refined_candidates = filter_index_candidates(cols, group, lookup_opts, candidates)
       refined_candidates.flat_map { |k| data[k].keys }
+    end
+
+    def sort_index_keys(keys)
+      keys.sort do |a, b|
+        res = 0
+        a.size.times { |i| (res = nil_safe_cmp(a[i], b[i])); break if res != 0 }
+        res
+      end
+    end
+
+    def calculate_range_indices(sorted_keys, val, op)
+      case op
+      when '='
+        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size,
+         sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size]
+      when '>'
+        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size, sorted_keys.size]
+      when '>='
+        [sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size, sorted_keys.size]
+      when '<'
+        [0, sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size]
+      when '<='
+        [0, sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size]
+      else [0, sorted_keys.size]
+      end
     end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
@@ -125,13 +119,12 @@ module RubyPureMysql
       false
     end
 
-    private
+    def nil_safe_cmp(val1, val2)
+      return 0 if val1.nil? && val2.nil?
+      return -1 if val1.nil?
+      return 1 if val2.nil?
 
-    def nil_safe_cmp(a, b)
-      return 0 if a.nil? && b.nil?
-      return -1 if a.nil?
-      return 1 if b.nil?
-      a <=> b
+      val1 <=> val2
     end
   end
 end
