@@ -252,6 +252,7 @@ module RubyPureMysql
 
     def apply_having_clause(result, having)
       return nil unless having
+
       parse_having_clause(result, having)
     end
 
