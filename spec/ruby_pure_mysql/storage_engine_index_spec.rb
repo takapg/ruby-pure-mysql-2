@@ -406,4 +406,68 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(indices).to be_empty
     end
   end
+
+  describe 'NULL値の厳格な検証 (MySQL 8.0 互換)' do
+    let(:null_table) { 'null_test_table' }
+    let(:null_cols) { %w[id val] }
+    let(:null_indexes) { { 'val_idx' => [1] } }
+
+    before do
+      engine.create_table(null_table, null_cols, null_indexes)
+      [
+        [1, nil],
+        [2, 10],
+        [3, 20]
+      ].each { |row| engine.insert(null_table, row) }
+    end
+
+    it '単一カラムインデックスで NULL が含まれる場合、範囲検索で NULL が除外されること' do
+      # val > 5 -> [2, 3] (NULLは最小値だが、比較演算子ではマッチしない)
+      where_gt = [{ column: 'val', operator: '>', value: 5 }]
+      indices_gt = engine.find_matching_indices(
+        nil, engine.select(null_table), engine.get_columns(null_table), where_gt
+      )
+      expect(indices_gt).to contain_exactly(1, 2)
+
+      # val < 15 -> [2]
+      where_lt = [{ column: 'val', operator: '<', value: 15 }]
+      indices_lt = engine.find_matching_indices(
+        nil, engine.select(null_table), engine.get_columns(null_table), where_lt
+      )
+      expect(indices_lt).to contain_exactly(1)
+    end
+
+    it '複合インデックスの途中に NULL がある場合に正しくフィルタリングされること' do
+      comp_null_table = 'comp_null_table'
+      comp_null_cols = %w[id c1 c2 c3]
+      comp_null_indexes = { 'comp_idx' => [1, 2, 3] }
+      engine.create_table(comp_null_table, comp_null_cols, comp_null_indexes)
+      [
+        [1, 'A', nil, 'X'],
+        [2, 'A', 10, 'X'],
+        [3, 'B', 20, 'Y']
+      ].each { |row| engine.insert(comp_null_table, row) }
+
+      # c1 = 'A' AND c3 = 'X' -> [1, 2] (c2がNULLでもc1, c3が一致すれば抽出される)
+      where_partial = [
+        { column: 'c1', operator: '=', value: 'A' },
+        { column: 'c3', operator: '=', value: 'X' }
+      ]
+      indices_partial = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_partial
+      )
+      expect(indices_partial).to contain_exactly(0, 1)
+
+      # c1 = 'A' AND c2 = 10 AND c3 = 'X' -> [2] (c2がNULLの行は除外される)
+      where_full = [
+        { column: 'c1', operator: '=', value: 'A' },
+        { column: 'c2', operator: '=', value: 10 },
+        { column: 'c3', operator: '=', value: 'X' }
+      ]
+      indices_full = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_full
+      )
+      expect(indices_full).to contain_exactly(1)
+    end
+  end
 end
