@@ -23,11 +23,7 @@ module RubyPureMysql
       pk_indices = find_table_constraint_pk(columns) || find_column_attribute_pks(columns)
       indexes['PRIMARY'] = pk_indices unless pk_indices.empty?
 
-      columns.each_with_index do |col, idx|
-        if col.is_a?(Hash) && col[:unique] && !col[:primary_key]
-          indexes["unique_#{col[:name]}"] = [idx]
-        end
-      end
+      add_unique_indexes(indexes, columns)
       indexes
     end
 
@@ -52,6 +48,12 @@ module RubyPureMysql
     end
 
     private
+
+    def add_unique_indexes(indexes, columns)
+      columns.each_with_index do |col, idx|
+        indexes["unique_#{col[:name]}"] = [idx] if col.is_a?(Hash) && col[:unique] && !col[:primary_key]
+      end
+    end
 
     def find_table_constraint_pk(columns)
       constraint = columns.find { |col| col.is_a?(Hash) && col[:primary_key] && col.key?(:columns) }

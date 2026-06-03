@@ -17,15 +17,7 @@ module RubyPureMysql
     include StorageIndexUtils
 
     def initialize
-      @tables = {}
-      @data = {}
-      @index_definitions = {}
-      @index_data = {}
-      @primary_keys = {}
-      @index_sorted_keys = {}
-      @unique_indexes = {}
-      @tables_mutex = Mutex.new
-      @db_dir = 'db'
+      init_storage_state
       setup_persistence
       rebuild_all_unique_indexes
     end
@@ -119,6 +111,20 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         @tables.keys
       end
+    end
+
+    private
+
+    def init_storage_state
+      @tables = {}
+      @data = {}
+      @index_definitions = {}
+      @index_data = {}
+      @primary_keys = {}
+      @index_sorted_keys = {}
+      @unique_indexes = {}
+      @tables_mutex = Mutex.new
+      @db_dir = 'db'
     end
 
     private(*StoragePersistence.instance_methods(false))
