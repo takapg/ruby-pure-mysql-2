@@ -208,7 +208,8 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>`[^`]+`|\w+)(?:\s+(?:AS\s+)?(?!(?:JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|OFFSET)\b)(?<alias1>\w+))?',
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>`[^`]+`|\w+)',
+        '(?:\s+(?:AS\s+)?(?!(?:JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|OFFSET)\b)(?<alias1>\w+))?',
         '(?:\s+(?<join_type>INNER|LEFT)\s+JOIN\s+(?<table2>`[^`]+`|\w+)' \
         '(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
