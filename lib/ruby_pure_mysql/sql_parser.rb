@@ -243,15 +243,21 @@ module RubyPureMysql
 
     def apply_optional_clauses(result, match)
       result[:group_by] = match[:group_by] if match[:group_by]
-      if match[:having]
-        res = parse_having_clause(result, match[:having])
-        return res if res.is_a?(Hash) && res[:error]
-      end
 
-      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
-      res = parse_limit_offset_clause(result, match[:limit], match[:offset])
+      res = apply_having_clause(result, match[:having])
       return res if res.is_a?(Hash) && res[:error]
-      nil
+
+      apply_order_and_limit(result, match)
+    end
+
+    def apply_having_clause(result, having)
+      return nil unless having
+      parse_having_clause(result, having)
+    end
+
+    def apply_order_and_limit(result, match)
+      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
+      parse_limit_offset_clause(result, match[:limit], match[:offset])
     end
 
     def parse_having_clause(result, clause)
@@ -276,17 +282,21 @@ module RubyPureMysql
     def parse_limit_offset_clause(result, limit, offset)
       return { error: 'LIMIT with offset cannot be used with OFFSET keyword' } if limit&.include?(',') && offset
 
-      if limit
-        if limit.include?(',')
-          off, lim = limit.split(',').map(&:to_i)
-          result[:offset] = off
-          result[:limit] = lim
-        else
-          result[:limit] = limit.to_i
-        end
-      end
+      apply_limit_value(result, limit)
       result[:offset] = offset.to_i if offset
       nil
+    end
+
+    def apply_limit_value(result, limit)
+      return unless limit
+
+      if limit.include?(',')
+        off, lim = limit.split(',').map(&:to_i)
+        result[:offset] = off
+        result[:limit] = lim
+      else
+        result[:limit] = limit.to_i
+      end
     end
 
     def parse_where_clause_into(result, clause)
@@ -705,6 +715,7 @@ module RubyPureMysql
                          :extract_delete_parts, :build_delete_result, :apply_where_to_result,
                          :determine_union_type, :parse_table_definitions, :resolve_pk_indices,
                          :build_create_table_result, :process_definition, :extract_pk_names,
-                         :parse_column_definition
+                         :parse_column_definition, :apply_having_clause, :apply_order_and_limit,
+                         :apply_limit_value
   end
 end
