@@ -52,8 +52,43 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      candidates = filter_index_candidates(cols, group, lookup_opts, data.keys)
-      candidates.flat_map { |k| data[k].keys }
+      # インデックスキーをソートしてバイナリサーチを可能にする
+      # 本来はストレージエンジン側でソート済みリストを維持すべきだが、ここではルックアップ時にソートする
+      sorted_keys = data.keys.sort do |a, b|
+        res = 0
+        a.size.times do |i|
+          cmp = nil_safe_cmp(a[i], b[i])
+          if cmp != 0
+            res = cmp
+            break
+          end
+        end
+        res
+      end
+
+      # 先頭カラムの条件に基づいて範囲を絞り込む
+      val = first_clause[:value]
+      op = first_clause[:operator]
+      start_idx = 0
+      end_idx = sorted_keys.size
+
+      case op
+      when '='
+        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
+      when '>'
+        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
+      when '>='
+        start_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+      when '<'
+        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
+      when '<='
+        end_idx = sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) > 0 } || sorted_keys.size
+      end
+
+      candidates = sorted_keys[start_idx...end_idx] || []
+      refined_candidates = filter_index_candidates(cols, group, lookup_opts, candidates)
+      refined_candidates.flat_map { |k| data[k].keys }
     end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
@@ -75,7 +110,10 @@ module RubyPureMysql
     def filter_candidates(candidates, operator, value, col_pos)
       return candidates unless %w[= > < >= <=].include?(operator)
 
-      candidates.select { |k| safe_compare(k[col_pos], operator, value) }
+      candidates.select do |k|
+        val = k[col_pos]
+        operator == '=' ? val == value : safe_compare(val, operator, value)
+      end
     end
 
     def safe_compare(val, operator, target)
@@ -85,6 +123,15 @@ module RubyPureMysql
       val.send(method, target)
     rescue StandardError
       false
+    end
+
+    private
+
+    def nil_safe_cmp(a, b)
+      return 0 if a.nil? && b.nil?
+      return -1 if a.nil?
+      return 1 if b.nil?
+      a <=> b
     end
   end
 end
