@@ -713,7 +713,6 @@ module RubyPureMysql
                          :extract_delete_parts, :build_delete_result, :apply_where_to_result,
                          :determine_union_type, :parse_table_definitions, :resolve_pk_indices,
                          :build_create_table_result, :process_definition, :extract_pk_names,
-                         :parse_column_definition, :apply_having_clause, :apply_order_and_limit,
-                         :apply_limit_value
+                         :parse_column_definition, :apply_limit_value
   end
 end
