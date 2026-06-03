@@ -32,11 +32,18 @@ module RubyPureMysql
       return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
 
       left, right = resolve_md_operands(left_raw, right_raw)
-      return :error if left == :error || right == :error
-      return :div_by_zero if %w[/ %].include?(operator) && right && right.zero?
+      status = check_md_status(left, right, operator)
+      return status unless status == :ok
 
       tokens[index - 1] = calculate_md(left, right, operator)
       tokens.slice!(index, 2)
+      :ok
+    end
+
+    def check_md_status(left, right, operator)
+      return :error if left == :error || right == :error
+      return :div_by_zero if %w[/ %].include?(operator) && right&.zero?
+
       :ok
     end
 
