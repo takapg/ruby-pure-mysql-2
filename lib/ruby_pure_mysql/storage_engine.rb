@@ -22,6 +22,7 @@ module RubyPureMysql
       @index_definitions = {}
       @index_data = {}
       @primary_keys = {}
+      @index_sorted_keys = {}
       @tables_mutex = Mutex.new
       @db_dir = 'db'
       setup_persistence
@@ -43,14 +44,19 @@ module RubyPureMysql
       @tables_mutex.synchronize do
         return false unless @tables.key?(name)
 
-        @tables.delete(name)
-        @data.delete(name)
-        @index_definitions.delete(name)
-        @index_data.delete(name)
-        @primary_keys.delete(name)
+        delete_table_state(name)
         persist_table_deletion(name)
         true
       end
+    end
+
+    def delete_table_state(name)
+      @tables.delete(name)
+      @data.delete(name)
+      @index_definitions.delete(name)
+      @index_data.delete(name)
+      @primary_keys.delete(name)
+      clear_index_cache(name)
     end
 
     def insert(table_name, values)
@@ -62,6 +68,7 @@ module RubyPureMysql
 
         @data[table_name] << values.dup
         update_indexes(table_name, values)
+        clear_index_cache(table_name)
         save_data(table_name)
         true
       end
@@ -75,6 +82,8 @@ module RubyPureMysql
         return false if indices.nil?
 
         refresh_index_entries(table_name, indices, update_map, merged_criteria)
+        clear_index_cache(table_name)
+        true
       end
     end
 
@@ -86,6 +95,8 @@ module RubyPureMysql
         return false if indices.nil?
 
         remove_index_entries(table_name, indices)
+        clear_index_cache(table_name)
+        true
       end
     end
 

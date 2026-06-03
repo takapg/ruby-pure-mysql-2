@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require_relative 'index_lookup_helpers'
+
 module RubyPureMysql
   # インデックスを利用したルックアップロジックを提供するモジュール
   module IndexLookupUtils
+    include IndexLookupHelpers
+
     def try_index_lookup(table_name, _table_columns, where_clauses, lookup_opts)
       return nil unless @index_definitions&.key?(table_name)
 
@@ -10,6 +14,16 @@ module RubyPureMysql
       return nil if groups.size > 1
 
       find_best_index_match(table_name, groups.first, lookup_opts)
+    end
+
+    def clear_index_cache(table_name, idx_name = nil)
+      return unless @index_sorted_keys
+
+      if idx_name
+        @index_sorted_keys[table_name]&.delete(idx_name)
+      else
+        @index_sorted_keys.delete(table_name)
+      end
     end
 
     private
@@ -32,7 +46,7 @@ module RubyPureMysql
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
-        return nil unless clause && clause[:operator] == '='
+        return nil unless clause&.[](:operator) == '='
 
         clause[:value]
       end
@@ -40,20 +54,39 @@ module RubyPureMysql
 
     def lookup_exact(table_name, idx_name, values)
       data = @index_data.dig(table_name, idx_name)
-      return [] unless data
-
-      data[values]&.keys || []
+      data ? (data[values]&.keys || []) : []
     end
 
     def lookup_prefix(table_name, idx_name, cols, group, lookup_opts)
       first_clause = find_clause_for_col(cols[0], group, lookup_opts)
-      return nil unless first_clause && %w[= > < >= <=].include?(first_clause[:operator])
+      return nil unless valid_prefix_operator?(first_clause)
 
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      candidates = filter_index_candidates(cols, group, lookup_opts, data.keys)
-      candidates.flat_map { |k| data[k].keys }
+      candidates = extract_range_candidates(table_name, idx_name, data, first_clause)
+      filter_index_candidates(cols, group, lookup_opts, candidates).flat_map { |k| data[k].keys }
+    end
+
+    def valid_prefix_operator?(clause)
+      clause && %w[= > < >= <=].include?(clause[:operator])
+    end
+
+    def extract_range_candidates(table_name, idx_name, data, clause)
+      sorted_keys = get_sorted_keys(table_name, idx_name, data)
+      start_idx = find_start_index(sorted_keys, clause[:value], clause[:operator])
+      end_idx = find_end_index(sorted_keys, clause[:value], clause[:operator])
+      sorted_keys[start_idx...end_idx] || []
+    end
+
+    def get_sorted_keys(table_name, idx_name, data)
+      @index_sorted_keys ||= {}
+      @index_sorted_keys[table_name] ||= {}
+      @index_sorted_keys[table_name][idx_name] ||= sort_index_keys(data.keys)
+    end
+
+    def sort_index_keys(keys)
+      keys.sort { |a, b| a.zip(b).map { |x, y| nil_safe_cmp(x, y) }.find { |r| r != 0 } || 0 }
     end
 
     def find_clause_for_col(col_idx, group, lookup_opts)
@@ -75,16 +108,10 @@ module RubyPureMysql
     def filter_candidates(candidates, operator, value, col_pos)
       return candidates unless %w[= > < >= <=].include?(operator)
 
-      candidates.select { |k| safe_compare(k[col_pos], operator, value) }
-    end
-
-    def safe_compare(val, operator, target)
-      return false if val.nil? || target.nil?
-
-      method = operator == '=' ? :== : operator.to_sym
-      val.send(method, target)
-    rescue StandardError
-      false
+      candidates.select do |k|
+        val = k[col_pos]
+        operator == '=' ? val == value : safe_compare(val, operator, value)
+      end
     end
   end
 end
