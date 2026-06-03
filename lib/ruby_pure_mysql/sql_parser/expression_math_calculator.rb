@@ -28,14 +28,7 @@ module RubyPureMysql
     end
 
     def process_md_op!(tokens, index)
-      window = tokens[(index - 1)..(index + 1)]
-      left_raw = window[0]
-      operator = window[1]
-      right_raw = window[2]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
-
-      left = resolve_numeric_value(left_raw)
-      right = resolve_numeric_value(right_raw)
+      left, operator, right = resolve_operands(tokens, index)
       return handle_missing_operand(tokens, index) if left.nil? || right.nil?
 
       status = check_md_status(left, right, operator)
@@ -115,16 +108,21 @@ module RubyPureMysql
     end
 
     def process_add_sub_op!(tokens, index)
+      left, operator, right = resolve_operands(tokens, index)
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return :error if left == :error || right == :error
+
+      update_tokens_with_result!(tokens, index, calculate_sum_diff(left, operator, right))
+    end
+
+    private
+
+    def resolve_operands(tokens, index)
       left_raw = tokens[index - 1]
       right_raw = tokens[index + 1]
-      return handle_missing_operand(tokens, index) if left_raw.nil? || right_raw.nil?
+      return [nil, nil, nil] if left_raw.nil? || right_raw.nil?
 
-      left = resolve_numeric_value(left_raw)
-      right = resolve_numeric_value(right_raw)
-      return :error if left == :error || right == :error
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
-
-      update_tokens_with_result!(tokens, index, calculate_sum_diff(left, tokens[index], right))
+      [resolve_numeric_value(left_raw), tokens[index], resolve_numeric_value(right_raw)]
     end
   end
 end
