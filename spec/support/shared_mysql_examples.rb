@@ -1324,10 +1324,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       15.times { |i| client.query("INSERT INTO offset_test VALUES (#{i + 1});") }
     end
 
-    it 'returns rows from the offset when OFFSET is used without LIMIT (SELECT * FROM table OFFSET 5;)' do
-      results = client.query('SELECT * FROM offset_test OFFSET 5;')
-      expect(results.count).to eq(10)
-      expect(results.first.values.first).to eq(6)
+    it 'returns an error when OFFSET is used without LIMIT (SELECT * FROM table OFFSET 5;)' do
+      expect do
+        client.query('SELECT * FROM offset_test OFFSET 5;')
+      end.to raise_error(Mysql2::Error)
     end
 
     it 'combines LIMIT and OFFSET (SELECT * FROM table LIMIT 10 OFFSET 5;)' do
