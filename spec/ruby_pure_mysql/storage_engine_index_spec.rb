@@ -424,12 +424,16 @@ RSpec.describe RubyPureMysql::StorageEngine do
     it '単一カラムインデックスで NULL が含まれる場合、範囲検索で NULL が除外されること' do
       # val > 5 -> [2, 3] (NULLは最小値だが、比較演算子ではマッチしない)
       where_gt = [{ column: 'val', operator: '>', value: 5 }]
-      indices_gt = engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_gt)
+      indices_gt = engine.find_matching_indices(
+        nil, engine.select(null_table), engine.get_columns(null_table), where_gt
+      )
       expect(indices_gt).to contain_exactly(1, 2)
 
       # val < 15 -> [2]
       where_lt = [{ column: 'val', operator: '<', value: 15 }]
-      indices_lt = engine.find_matching_indices(nil, engine.select(null_table), engine.get_columns(null_table), where_lt)
+      indices_lt = engine.find_matching_indices(
+        nil, engine.select(null_table), engine.get_columns(null_table), where_lt
+      )
       expect(indices_lt).to contain_exactly(1)
     end
 
@@ -449,7 +453,9 @@ RSpec.describe RubyPureMysql::StorageEngine do
         { column: 'c1', operator: '=', value: 'A' },
         { column: 'c3', operator: '=', value: 'X' }
       ]
-      indices_partial = engine.find_matching_indices(nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_partial)
+      indices_partial = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_partial
+      )
       expect(indices_partial).to contain_exactly(0, 1)
 
       # c1 = 'A' AND c2 = 10 AND c3 = 'X' -> [2] (c2がNULLの行は除外される)
@@ -458,7 +464,9 @@ RSpec.describe RubyPureMysql::StorageEngine do
         { column: 'c2', operator: '=', value: 10 },
         { column: 'c3', operator: '=', value: 'X' }
       ]
-      indices_full = engine.find_matching_indices(nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_full)
+      indices_full = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_full
+      )
       expect(indices_full).to contain_exactly(1)
     end
   end
