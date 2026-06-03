@@ -80,7 +80,7 @@ module RubyPureMysql
 
         # 更新されたインデックスがある場合のみ、個別にキャッシュをクリア
         if updated_indexes.is_a?(Array)
-          updated_indexes.each { |idx_name| clear_index_cache(table_name, idx_name) if idx_name }
+          updated_indexes.compact.each { |idx_name| clear_index_cache(table_name, idx_name) }
         end
         true
       end
