@@ -215,7 +215,7 @@ module RubyPureMysql
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
         '(?:\s+ORDER\s+BY\s+(?<order_clause>.+?))?',
-        '(?:\s+LIMIT\s+(?<limit>\d+(?:\s*,\s*\d+)?)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
+        '(?:\s+LIMIT\s+(?<limit>\d+(?:\s*,\s*\d+)?))?(?:\s+OFFSET\s+(?<offset>\d+))?',
         '\s*;?\s*\z'
       ].join,
       Regexp::IGNORECASE
