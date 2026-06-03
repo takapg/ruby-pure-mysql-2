@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'json'
 require_relative '../../lib/ruby_pure_mysql/storage_engine'
 
 RSpec.describe RubyPureMysql::StorageEngine do
