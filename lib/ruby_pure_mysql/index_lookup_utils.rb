@@ -75,8 +75,16 @@ module RubyPureMysql
     def filter_candidates(candidates, operator, value, col_pos)
       return candidates unless %w[= > < >= <=].include?(operator)
 
+      candidates.select { |k| safe_compare(k[col_pos], operator, value) }
+    end
+
+    def safe_compare(val, operator, target)
+      return false if val.nil? || target.nil?
+
       method = operator == '=' ? :== : operator.to_sym
-      candidates.select { |k| !k[col_pos].nil? && !value.nil? && k[col_pos].send(method, value) }
+      val.send(method, target)
+    rescue StandardError
+      false
     end
   end
 end
