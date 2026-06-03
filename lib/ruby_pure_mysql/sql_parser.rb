@@ -244,18 +244,25 @@ module RubyPureMysql
     end
 
     def apply_optional_clauses(result, match)
-      result[:group_by] = match[:group_by] if match[:group_by]
+      res = apply_group_and_having(result, match)
+      return res if res.is_a?(Hash) && res[:error]
 
-      if match[:having]
-        res = parse_having_clause(result, match[:having])
-        return res if res.is_a?(Hash) && res[:error]
-      end
-
-      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
-      res = parse_limit_offset_clause(result, match[:limit], match[:offset])
+      res = apply_order_and_limit(result, match)
       return res if res.is_a?(Hash) && res[:error]
 
       result
+    end
+
+    def apply_group_and_having(result, match)
+      result[:group_by] = match[:group_by] if match[:group_by]
+      return nil unless match[:having]
+
+      parse_having_clause(result, match[:having])
+    end
+
+    def apply_order_and_limit(result, match)
+      parse_order_by_clause(result, match[:order_clause]) if match[:order_clause]
+      parse_limit_offset_clause(result, match[:limit], match[:offset])
     end
 
     def parse_having_clause(result, clause)
@@ -713,6 +720,7 @@ module RubyPureMysql
                          :extract_delete_parts, :build_delete_result, :apply_where_to_result,
                          :determine_union_type, :parse_table_definitions, :resolve_pk_indices,
                          :build_create_table_result, :process_definition, :extract_pk_names,
-                         :parse_column_definition, :apply_limit_value
+                         :parse_column_definition, :apply_limit_value,
+                         :apply_group_and_having, :apply_order_and_limit
   end
 end
