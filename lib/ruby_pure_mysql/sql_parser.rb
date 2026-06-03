@@ -208,14 +208,15 @@ module RubyPureMysql
   module SqlParserQueryParsers
     SELECT_REGEX = Regexp.new(
       [
-        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>\w+)(?:\s+(?:AS\s+)?(?<alias1>\w+))?',
-        '(?:\s+(?<join_type>INNER|LEFT)\s+JOIN\s+(?<table2>\w+)' \
+        '\ASELECT\s+(?<distinct>DISTINCT\s+)?(?<columns>.+?)\s+FROM\s+(?<table1>`[^`]+`|\w+)',
+        '(?:\s+(?:AS\s+)?(?!(?:JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|OFFSET)\b)(?<alias1>\w+))?',
+        '(?:\s+(?<join_type>INNER|LEFT)\s+JOIN\s+(?<table2>`[^`]+`|\w+)' \
         '(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
         '(?:\s+WHERE\s+(?<where>.+?))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
         '(?:\s+ORDER\s+BY\s+(?<order_clause>.+?))?',
-        '(?:\s+LIMIT\s+(?<limit>\d+(?:\s*,\s*\d+)?)(?:\s+OFFSET\s+(?<offset>\d+))?)?',
+        '(?:\s+LIMIT\s+(?<limit>\d+(?:\s*,\s*\d+)?))?(?:\s+OFFSET\s+(?<offset>\d+))?',
         '\s*;?\s*\z'
       ].join,
       Regexp::IGNORECASE
@@ -286,6 +287,7 @@ module RubyPureMysql
 
     def parse_limit_offset_clause(result, limit, offset)
       return { error: 'LIMIT with offset cannot be used with OFFSET keyword' } if limit&.include?(',') && offset
+      return { error: 'OFFSET requires LIMIT' } if offset && limit.nil?
 
       apply_limit_value(result, limit)
       result[:offset] = offset.to_i if offset
