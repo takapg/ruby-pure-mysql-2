@@ -18,10 +18,9 @@ module RubyPureMysql
 
     def clear_index_cache(table_name, idx_name = nil)
       return unless @index_sorted_keys
-      return unless @index_sorted_keys[table_name]
 
       if idx_name
-        @index_sorted_keys[table_name].delete(idx_name)
+        @index_sorted_keys[table_name]&.delete(idx_name)
       else
         @index_sorted_keys.delete(table_name)
       end
