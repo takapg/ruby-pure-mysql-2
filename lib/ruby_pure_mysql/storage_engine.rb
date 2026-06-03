@@ -78,8 +78,10 @@ module RubyPureMysql
         updated_indexes = refresh_index_entries(table_name, indices, update_map, merged_criteria)
         return false if updated_indexes == false
 
-        # 更新されたインデックスのみを個別にクリア
-        updated_indexes.compact.each { |idx_name| clear_index_cache(table_name, idx_name) }
+        # 更新されたインデックスが配列である場合のみ、個別にキャッシュをクリア
+        if updated_indexes.is_a?(Array)
+          updated_indexes.compact.each { |idx_name| clear_index_cache(table_name, idx_name) }
+        end
         true
       end
     end
