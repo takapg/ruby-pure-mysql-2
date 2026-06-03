@@ -46,8 +46,8 @@ module RubyPureMysql
       if column_def.match?(/\APRIMARY\s+KEY\s*\(/i)
         pk_names.concat(extract_pk_names(column_def))
       else
-        name, is_pk = parse_column_definition(column_def)
-        columns << { name: name, primary_key: is_pk }
+        name, is_pk, is_unique = parse_column_definition(column_def)
+        columns << { name: name, primary_key: is_pk, unique: is_unique }
         pk_names << name if is_pk
       end
     end
@@ -61,7 +61,7 @@ module RubyPureMysql
 
     def parse_column_definition(def_str)
       name = strip_backticks(def_str.split(/\s+/, 2).first)
-      [name, def_str.match?(/PRIMARY\s+KEY/i)]
+      [name, def_str.match?(/PRIMARY\s+KEY/i), def_str.match?(/\bUNIQUE\b/i)]
     end
 
     def parse_drop_table(query)

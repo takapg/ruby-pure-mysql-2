@@ -274,6 +274,34 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(engine.insert(no_pk_table, [1, 'Bob', 25])).to be true
     end
 
+    it 'UNIQUE 制約が指定されたカラムに重複値を挿入した際に :duplicate_pk が返されること' do
+      unique_table = 'unique_test_table'
+      # email (index 1) を UNIQUE に設定
+      cols = [
+        { name: 'id' },
+        { name: 'email', unique: true },
+        { name: 'age' }
+      ]
+      engine.create_table(unique_table, cols)
+      engine.insert(unique_table, [1, 'test@example.com', 20])
+      # 同じメールアドレスで挿入
+      expect(engine.insert(unique_table, [2, 'test@example.com', 30])).to eq(:duplicate_pk)
+      # 異なるメールアドレスなら成功
+      expect(engine.insert(unique_table, [3, 'other@example.com', 40])).to be true
+    end
+
+    it 'UNIQUE 制約が自動的にインデックス定義に追加されること' do
+      unique_table = 'auto_unique_table'
+      cols = [
+        { name: 'id' },
+        { name: 'email', unique: true }
+      ]
+      engine.create_table(unique_table, cols)
+      index_defs = engine.instance_variable_get(:@index_definitions)[unique_table]
+      expect(index_defs).to have_key('unique_email')
+      expect(index_defs['unique_email']).to eq([1])
+    end
+
     it '自動検出された複合主キーが重複している場合に insert が :duplicate_pk を返すこと（属性定義）' do
       comp_table = 'auto_comp_pk_table'
       cols = [
