@@ -505,8 +505,14 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
     it 'インデックス対象外のカラムを更新した際に、全てのインデックスキャッシュが維持されること' do
       # キャッシュを生成
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table
+      )
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table
+      )
 
       cache_before = engine.instance_variable_get(:@index_sorted_keys)[cache_table].dup
       expect(cache_before).to have_key('name_idx')
@@ -521,8 +527,14 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
     it '特定のインデックス対象カラムを更新した際に、該当するインデックスのみキャッシュがクリアされること' do
       # キャッシュを生成
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table
+      )
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table
+      )
 
       # name (index 1) を更新
       engine.update_rows_with_where(cache_table, {}, { 1 => 'UpdatedName' })
@@ -534,8 +546,14 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
     it '行を削除した際に、テーブルの全インデックスキャッシュがクリアされること' do
       # キャッシュを生成
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table)
-      engine.find_matching_indices(nil, engine.select(cache_table), engine.get_columns(cache_table), [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table)
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'name', operator: '>', value: 'Name500' }], table_name: cache_table
+      )
+      engine.find_matching_indices(
+        nil, engine.select(cache_table), engine.get_columns(cache_table),
+        [{ column: 'age', operator: '>', value: 520 }], table_name: cache_table
+      )
 
       # 行を削除
       engine.delete_rows_with_where(cache_table, {})
