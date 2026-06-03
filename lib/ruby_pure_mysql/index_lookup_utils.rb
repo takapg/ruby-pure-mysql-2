@@ -12,6 +12,15 @@ module RubyPureMysql
       find_best_index_match(table_name, groups.first, lookup_opts)
     end
 
+    def clear_index_cache(table_name, idx_name = nil)
+      return unless @index_sorted_keys
+      if idx_name
+        @index_sorted_keys[table_name]&.delete(idx_name)
+      else
+        @index_sorted_keys.delete(table_name)
+      end
+    end
+
     private
 
     def find_best_index_match(table_name, group, lookup_opts)
@@ -50,7 +59,7 @@ module RubyPureMysql
       data = @index_data.dig(table_name, idx_name)
       return [] unless data
 
-      candidates = extract_range_candidates(data, first_clause)
+      candidates = extract_range_candidates(table_name, idx_name, data, first_clause)
       filter_index_candidates(cols, group, lookup_opts, candidates).flat_map { |k| data[k].keys }
     end
 
@@ -58,11 +67,17 @@ module RubyPureMysql
       clause && %w[= > < >= <=].include?(clause[:operator])
     end
 
-    def extract_range_candidates(data, clause)
-      sorted_keys = sort_index_keys(data.keys)
+    def extract_range_candidates(table_name, idx_name, data, clause)
+      sorted_keys = get_sorted_keys(table_name, idx_name, data)
       start_idx = find_start_index(sorted_keys, clause[:value], clause[:operator])
       end_idx = find_end_index(sorted_keys, clause[:value], clause[:operator])
       sorted_keys[start_idx...end_idx] || []
+    end
+
+    def get_sorted_keys(table_name, idx_name, data)
+      @index_sorted_keys ||= {}
+      @index_sorted_keys[table_name] ||= {}
+      @index_sorted_keys[table_name][idx_name] ||= sort_index_keys(data.keys)
     end
 
     def sort_index_keys(keys)
