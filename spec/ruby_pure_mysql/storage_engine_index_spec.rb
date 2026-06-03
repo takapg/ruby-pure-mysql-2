@@ -299,7 +299,6 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(engine.insert(comp_table, [1, 'A2', 'Bob'])).to be true
     end
   end
-  end
 
   describe 'インデックス接頭辞ルックアップにおける範囲検索の検証' do
     let(:range_table) { 'range_table' }
