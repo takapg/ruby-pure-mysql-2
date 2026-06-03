@@ -463,6 +463,49 @@ RSpec.describe RubyPureMysql::StorageEngine do
     end
   end
 
+  describe 'インデックスの自動クリーンアップ検証' do
+    it 'カラム更新後、古い値のインデックスエントリが@index_dataから完全に削除されること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      engine.update_rows_with_where(table_name, {}, { 1 => 'Bob' })
+
+      index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
+      expect(index_data).not_to have_key(['Alice'])
+      expect(index_data).to have_key(['Bob'])
+    end
+
+    it '行削除後、その行が唯一の参照であったインデックスキーが@index_dataから消滅すること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      engine.delete_rows_with_where(table_name, {})
+
+      index_data = engine.instance_variable_get(:@index_data)[table_name]['name_idx']
+      expect(index_data).not_to have_key(['Alice'])
+    end
+
+    it '永続化後のJSONファイルに空のインデックスキーが含まれていないこと' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      engine.update_rows_with_where(table_name, {}, { 1 => 'Bob' })
+      engine.send(:save_data, table_name)
+
+      file_path = engine.send(:data_file_path, table_name)
+      json_content = JSON.parse(File.read(file_path))
+      indexes = json_content['indexes']['name_idx']
+
+      expect(indexes).not_to have_key('["Alice"]')
+      expect(indexes).to have_key('["Bob"]')
+    end
+
+    it 'clear_index_cache 呼び出し後に @index_sorted_keys が適切にクリアされること' do
+      engine.insert(table_name, [1, 'Alice', 30])
+      where = [{ column: 'name', operator: '=', value: 'Alice' }]
+      engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where)
+
+      expect(engine.instance_variable_get(:@index_sorted_keys)[table_name]).not_to be_nil
+
+      engine.clear_index_cache(table_name)
+      expect(engine.instance_variable_get(:@index_sorted_keys)[table_name]).to be_nil
+    end
+  end
+
   describe 'NULL値の厳格な検証 (MySQL 8.0 互換)' do
     let(:null_table) { 'null_test_table' }
     let(:null_cols) { %w[id val] }
