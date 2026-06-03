@@ -496,7 +496,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
 
     it 'clear_index_cache 呼び出し後に @index_sorted_keys が適切にクリアされること' do
       engine.insert(table_name, [1, 'Alice', 30])
-      where = [{ column: 'name', operator: '=', value: 'Alice' }]
+      where = [{ column: 'name', operator: '>', value: 'A' }]
       engine.find_matching_indices(nil, engine.select(table_name), engine.get_columns(table_name), where)
 
       expect(engine.instance_variable_get(:@index_sorted_keys)[table_name]).not_to be_nil
