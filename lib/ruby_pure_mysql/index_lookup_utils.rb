@@ -50,6 +50,8 @@ module RubyPureMysql
         value = clause&.[](:value)
 
         return nil unless %w[= <=>].include?(operator)
+        # '=' の場合のみ、値が NULL ならインデックスルックアップ不可（MySQL仕様）
+        # '<=>' (NULL-safe equal) の場合は value が nil でもルックアップを継続する
         return nil if operator == '=' && value.nil?
 
         value
