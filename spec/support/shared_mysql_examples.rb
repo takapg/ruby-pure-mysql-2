@@ -1374,14 +1374,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
-    it 'combines LIMIT and OFFSET (SELECT * FROM table LIMIT 10 OFFSET 5;)' do
+    it 'combines LIMIT and OFFSET (SELECT * FROM offset_test LIMIT 10 OFFSET 5;)' do
       results = client.query('SELECT * FROM offset_test LIMIT 10 OFFSET 5;')
       expect(results.count).to eq(10)
       expect(results.first.values.first).to eq(6)
       expect(results.to_a.last.values.first).to eq(15)
     end
 
-    it 'supports LIMIT offset, count syntax (SELECT * FROM table LIMIT 5, 10;)' do
+    it 'supports LIMIT offset, count syntax (SELECT * FROM offset_test LIMIT 5, 10;)' do
       results = client.query('SELECT * FROM offset_test LIMIT 5, 10;')
       expect(results.count).to eq(10)
       expect(results.first.values.first).to eq(6)
