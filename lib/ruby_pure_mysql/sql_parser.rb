@@ -541,7 +541,7 @@ module RubyPureMysql
       res = parse_between_condition(condition, column_pattern)
       return res if res
 
-      where_match = condition.match(/\A(#{column_pattern})\s*(<=>|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      where_match = condition.match(/\A(#{column_pattern})\s*(<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       build_standard_condition(where_match)
