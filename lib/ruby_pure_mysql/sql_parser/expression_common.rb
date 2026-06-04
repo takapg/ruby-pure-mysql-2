@@ -57,6 +57,7 @@ module RubyPureMysql
       when 'version' then 'Hi-MySQL-8.0'
       when 'concat' then args.join
       when 'coalesce' then handle_coalesce(args)
+      when 'ifnull' then handle_ifnull(args)
       else :error
       end
     end
@@ -65,6 +66,12 @@ module RubyPureMysql
       return :error if args.empty?
 
       args.find { |arg| !arg.nil? }
+    end
+
+    def handle_ifnull(args)
+      return :error unless args.size == 2
+
+      args[0].nil? ? args[1] : args[0]
     end
   end
 end
