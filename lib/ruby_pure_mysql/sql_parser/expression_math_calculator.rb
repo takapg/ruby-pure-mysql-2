@@ -85,7 +85,7 @@ module RubyPureMysql
     end
 
     def handle_missing_operand(tokens, index)
-      update_tokens_with_result!(tokens, index, nil)
+      update_tokens_with_result!(tokens, index, :error)
     end
 
     def update_tokens_with_result!(tokens, index, result)
@@ -118,10 +118,13 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         op = tokens[index]
-        res = op == '<=>' ? process_null_safe_equal_op!(tokens, index) : :skipped
-        return res if res == :error
-
-        index += 1 if res == :skipped
+        if op == '<=>'
+          res = process_null_safe_equal_op!(tokens, index)
+          return :error if res == :error
+          # tokensが書き換えられたため、indexはそのまま（次の要素をチェック）
+        else
+          index += 1
+        end
       end
       tokens
     end
