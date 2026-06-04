@@ -725,5 +725,32 @@ RSpec.describe RubyPureMysql::StorageEngine do
       indices = engine.find_matching_indices(nil, rows, cols, where_is_null)
       expect(indices).to contain_exactly(0) # row 0 is [1, nil]
     end
+
+    it 'NULL安全等価演算子 (<=>) で NULL 同士がマッチすること' do
+      rows = engine.select(null_table)
+      cols = engine.get_columns(null_table)
+      where_null_safe = [{ column: 'val', operator: '<=>', value: nil }]
+      indices = engine.find_matching_indices(nil, rows, cols, where_null_safe)
+      expect(indices).to contain_exactly(0)
+    end
+
+    it 'NULL安全等価演算子 (<=>) で 非NULL <=> NULL がマッチしないこと' do
+      rows = engine.select(null_table)
+      cols = engine.get_columns(null_table)
+      # val = 10 の行 (index 1) に対して NULL で比較
+      where_null_safe = [{ column: 'val', operator: '<=>', value: nil }]
+      # 実際には find_matching_indices は全行を評価するので、
+      # 期待されるのは NULL の行 (index 0) だけであること
+      indices = engine.find_matching_indices(nil, rows, cols, where_null_safe)
+      expect(indices).not_to include(1, 2)
+    end
+
+    it 'NULL安全等価演算子 (<=>) で 非NULL <=> 非NULL が正しくマッチすること' do
+      rows = engine.select(null_table)
+      cols = engine.get_columns(null_table)
+      where_null_safe = [{ column: 'val', operator: '<=>', value: 10 }]
+      indices = engine.find_matching_indices(nil, rows, cols, where_null_safe)
+      expect(indices).to contain_exactly(1)
+    end
   end
 end

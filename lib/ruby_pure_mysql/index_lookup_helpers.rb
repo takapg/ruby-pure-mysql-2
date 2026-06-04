@@ -23,10 +23,12 @@ module RubyPureMysql
 
     # MySQL 8.0 の比較演算仕様に準拠し、いずれかが NULL の場合は
     # IS NULL / IS NOT NULL 以外では常に false (UNKNOWN) を返す
+    # ただし <=> (NULL-safe equal) は例外的に NULL 同士を true とする
     def safe_compare(val, operator, target)
       case operator
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
+      when '<=>' then val.nil? ? target.nil? : (!target.nil? && val == target)
       else
         return false if val.nil? || target.nil?
 

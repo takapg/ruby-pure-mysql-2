@@ -204,6 +204,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(3.5)
     end
 
+    it 'supports NULL-safe equal operator (<=>) in constant expressions' do
+      expect(client.query('SELECT NULL <=> NULL;').first.values.first).to eq(1)
+      expect(client.query('SELECT 1 <=> NULL;').first.values.first).to eq(0)
+      expect(client.query('SELECT 1 <=> 1;').first.values.first).to eq(1)
+    end
+
     it 'can calculate 1 + 2 * 3 and returns 7 (Integer)' do
       results = client.query('SELECT 1 + 2 * 3;')
       val = results.first.values.first
@@ -473,6 +479,24 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect do
         client.query('SELECT NOW(;')
       end.to raise_error(Mysql2::Error)
+    end
+
+    it 'filters rows correctly using NULL-safe equal operator (<=>)' do
+      client.query('DROP TABLE IF EXISTS null_safe_test;')
+      client.query('CREATE TABLE null_safe_test (id INT, val INT);')
+      client.query('INSERT INTO null_safe_test VALUES (1, NULL), (2, 10), (3, 20);')
+
+      # val <=> NULL -> id 1
+      results = client.query('SELECT id FROM null_safe_test WHERE val <=> NULL;')
+      expect(results.map { |r| r['id'] }).to contain_exactly(1)
+
+      # val <=> 10 -> id 2
+      results = client.query('SELECT id FROM null_safe_test WHERE val <=> 10;')
+      expect(results.map { |r| r['id'] }).to contain_exactly(2)
+
+      # val <=> 30 -> empty
+      results = client.query('SELECT id FROM null_safe_test WHERE val <=> 30;')
+      expect(results.count).to eq(0)
     end
   end
 
