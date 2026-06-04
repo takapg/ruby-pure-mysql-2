@@ -595,13 +595,41 @@ module RubyPureMysql
     def convert_value(val)
       if (m = val.match(/\A(['"])(.*)\1\z/m))
         content = m[2]
-        return m[1] == "'" ? content.gsub("''", "'") : content
+        content = content.gsub("''", "'") if m[1] == "'"
+        return decode_mysql_string(content)
       end
 
       return nil if val.casecmp?('NULL')
       return val.to_i if val.match?(/\A-?\d+\z/)
 
       { error: "Invalid INSERT value: #{val}" }
+    end
+
+    def decode_mysql_string(str)
+      res = String.new
+      i = 0
+      while i < str.length
+        char = str[i]
+        if char == '\\' && i + 1 < str.length
+          next_char = str[i + 1]
+          case next_char
+          when '0' then res << "\0"
+          when 'n' then res << "\n"
+          when 'r' then res << "\r"
+          when 't' then res << "\t"
+          when 'Z' then res << "\x1a"
+          when '\\' then res << "\\"
+          when "'" then res << "'"
+          when '"' then res << '"'
+          else res << next_char
+          end
+          i += 2
+        else
+          res << char
+          i += 1
+        end
+      end
+      res
     end
   end
 
