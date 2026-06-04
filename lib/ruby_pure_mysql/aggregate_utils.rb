@@ -10,7 +10,7 @@ module RubyPureMysql
       return values.size if type == :count
       return nil if values.empty?
 
-      type == :avg ? values.sum / values.size : values.public_send(type)
+      type == :avg ? values.sum.to_f / values.size : values.public_send(type)
     end
 
     def resolve_group_column_value(columns, col, group_val, group_rows, group_indices)
@@ -29,7 +29,7 @@ module RubyPureMysql
       agg_idx = columns.index(agg_col)
       return :error unless agg_idx
 
-      values = group_rows.filter_map { |r| r[agg_idx] }.map(&:to_f)
+      values = group_rows.filter_map { |r| r[agg_idx] }
       calculate_aggregate_value(values, agg_type, distinct: agg[:distinct])
     end
 
@@ -44,7 +44,7 @@ module RubyPureMysql
       col_idx = columns.index(agg[:column])
       return :error unless col_idx
 
-      values = rows.filter_map { |r| r[col_idx] }.map(&:to_f)
+      values = rows.filter_map { |r| r[col_idx] }
       calculate_aggregate_value(values, agg[:type], distinct: agg[:distinct])
     end
   end
