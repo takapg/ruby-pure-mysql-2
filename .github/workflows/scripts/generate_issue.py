@@ -53,7 +53,7 @@ print("Gemini API にリクエストを送信中...")
 # 6. API呼び出し
 try:
     response = client.models.generate_content(
-        model="gemma-4-31b-it",
+        model="gemini-3.5-flash",
         contents=full_prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
