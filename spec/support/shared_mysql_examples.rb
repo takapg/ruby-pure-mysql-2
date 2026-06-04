@@ -396,6 +396,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    it 'returns the second argument if the first is NULL using IFNULL (SELECT IFNULL(NULL, 1);)' do
+      results = client.query('SELECT IFNULL(NULL, 1);')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns the first argument if it is not NULL using IFNULL (SELECT IFNULL(2, 1);)' do
+      results = client.query('SELECT IFNULL(2, 1);')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns an error for IFNULL with wrong number of arguments (SELECT IFNULL(1);)' do
+      expect do
+        client.query('SELECT IFNULL(1);')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for IFNULL with wrong number of arguments (SELECT IFNULL(1, 2, 3);)' do
+      expect do
+        client.query('SELECT IFNULL(1, 2, 3);')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
