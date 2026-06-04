@@ -426,17 +426,17 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
       it 'extracts string with length (SELECT SUBSTRING("Quadratically", 5, 6);)' do
         results = client.query('SELECT SUBSTRING("Quadratically", 5, 6);')
-        expect(results.first.values.first).to eq('ratic')
+        expect(results.first.values.first).to eq('ratica')
       end
 
       it 'extracts string from negative position (SELECT SUBSTRING("Quadratically", -5);)' do
         results = client.query('SELECT SUBSTRING("Quadratically", -5);')
-        expect(results.first.values.first).to eq('ically')
+        expect(results.first.values.first).to eq('cally')
       end
 
       it 'extracts string from negative position with length (SELECT SUBSTRING("Quadratically", -5, 3);)' do
         results = client.query('SELECT SUBSTRING("Quadratically", -5, 3);')
-        expect(results.first.values.first).to eq('ica')
+        expect(results.first.values.first).to eq('cal')
       end
 
       it 'works with SUBSTR alias (SELECT SUBSTR("Quadratically", 5);)' do

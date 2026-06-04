@@ -87,7 +87,7 @@ module RubyPureMysql
       return '' if len && len <= 0
 
       start_index = pos > 0 ? pos - 1 : pos
-      result = str[start_index, len]
+      result = len ? str[start_index, len] : str[start_index..-1]
       result || ''
     end
   end
