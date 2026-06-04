@@ -370,6 +370,32 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq('Result: 2')
     end
 
+    it 'returns the first non-NULL value using COALESCE (SELECT COALESCE(NULL, 1, 2);)' do
+      results = client.query('SELECT COALESCE(NULL, 1, 2);')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns the first non-NULL string using COALESCE (SELECT COALESCE(NULL, NULL, "hello", NULL);)' do
+      results = client.query('SELECT COALESCE(NULL, NULL, "hello", NULL);')
+      expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'returns NULL when all arguments to COALESCE are NULL (SELECT COALESCE(NULL, NULL);)' do
+      results = client.query('SELECT COALESCE(NULL, NULL);')
+      expect(results.first.values.first).to be_nil
+    end
+
+    it 'works with expressions in COALESCE (SELECT COALESCE(1 + NULL, 2);)' do
+      results = client.query('SELECT COALESCE(1 + NULL, 2);')
+      expect(results.first.values.first).to eq(2)
+    end
+
+    it 'returns an error for COALESCE with no arguments (SELECT COALESCE();)' do
+      expect do
+        client.query('SELECT COALESCE();')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
