@@ -16,9 +16,23 @@ module RubyPureMysql
     end
 
     def pack_column_definition(type, name, org_name)
-      data = [lenenc_str('def'), lenenc_str(''), lenenc_str(''), lenenc_str(''),
-              lenenc_str(name), lenenc_str(org_name), 0x0c, 0x0021, 0, type, 0, 0, 0]
-      data.pack('a*a*a*a*a*a*C v V C v C v')
+      # Column Name, Alias, Type, Length, Charset, Collation
+      data = [
+        lenenc_str(org_name),
+        lenenc_str(name),
+        lenenc_str(''),
+        lenenc_str(''),
+        lenenc_str(''),
+        lenenc_str(''),
+        0x0c, # Privilege
+        0x0021, # Flags
+        0, # Numeric Flags
+        0, # Space
+        type, # Type
+        0, # Unsigned
+        0 # Zero Fill
+      ]
+      data.pack('a*a*a*a*a*a*C v V C C C C')
     end
 
     def resolve_column_names(name_info, index, original_names)
@@ -67,16 +81,22 @@ module RubyPureMysql
       return unless valid_row_width?(client, rows, cols)
 
       # 1. Column Count (seq 1)
-      send_packet(client, 1, lenenc_int(cols.size))
+      seq = 1
+      send_packet(client, seq, lenenc_int(cols.size))
 
       # 2. Column Definition (seq 2...)
-      seq = send_column_definitions(client, 2, cols, rows, original_columns)
+      seq = send_column_definitions(client, seq + 1, cols, rows, original_columns)
 
-      # 3. EOF (seq N)
+      # 3. EOF (結果セットの定義終了を示す)
       send_eof(client, seq & 0xFF)
+      seq += 1
 
-      # 4. Row Data / 終端
-      send_result_set_data(client, seq + 1, rows)
+      # 4. Row Data (seq N+1...)
+      if rows.any?
+        send_rows(client, seq & 0xFF, rows)
+      else
+        send_eof(client, seq & 0xFF)
+      end
     end
 
     def valid_row_width?(client, rows, cols)
@@ -87,13 +107,6 @@ module RubyPureMysql
       true
     end
 
-    def send_result_set_data(client, start_seq, rows)
-      if rows.empty?
-        send_eof(client, start_seq & 0xFF)
-      else
-        send_rows(client, start_seq & 0xFF, rows)
-      end
-    end
 
     def resolve_columns(rows, columns)
       return resolve_explicit_columns(columns) if columns && !columns.empty?
