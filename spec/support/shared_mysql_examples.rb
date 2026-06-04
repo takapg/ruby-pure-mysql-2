@@ -723,13 +723,15 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'filters by escaped percent (LIKE "a\%")' do
-        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\%';")
+        # Ruby string "a\\\\%" -> SQL 'a\\%' -> MySQL string 'a\%' -> LIKE pattern 'a\%' -> matches 'a%'
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\%';")
         expect(results.count).to eq(1)
         expect(results.first.values.first).to eq('a%')
       end
 
       it 'filters by escaped underscore (LIKE "a\_b")' do
-        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\_b';")
+        # Ruby string "a\\\\_b" -> SQL 'a\\_b' -> MySQL string 'a\_b' -> LIKE pattern 'a\_b' -> matches 'a_b'
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\_b';")
         expect(results.count).to eq(1)
         expect(results.first.values.first).to eq('a_b')
       end
