@@ -418,6 +418,52 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    describe 'SUBSTRING / SUBSTR support' do
+      it 'extracts string from positive position (SELECT SUBSTRING("Quadratically", 5);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", 5);')
+        expect(results.first.values.first).to eq('ratically')
+      end
+
+      it 'extracts string with length (SELECT SUBSTRING("Quadratically", 5, 6);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", 5, 6);')
+        expect(results.first.values.first).to eq('ratica')
+      end
+
+      it 'extracts string from negative position (SELECT SUBSTRING("Quadratically", -5);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", -5);')
+        expect(results.first.values.first).to eq('cally')
+      end
+
+      it 'extracts string from negative position with length (SELECT SUBSTRING("Quadratically", -5, 3);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", -5, 3);')
+        expect(results.first.values.first).to eq('cal')
+      end
+
+      it 'works with SUBSTR alias (SELECT SUBSTR("Quadratically", 5);)' do
+        results = client.query('SELECT SUBSTR("Quadratically", 5);')
+        expect(results.first.values.first).to eq('ratically')
+      end
+
+      it 'returns empty string for position 0 (SELECT SUBSTRING("Quadratically", 0);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", 0);')
+        expect(results.first.values.first).to eq('')
+      end
+
+      it 'returns empty string for length 0 (SELECT SUBSTRING("Quadratically", 5, 0);)' do
+        results = client.query('SELECT SUBSTRING("Quadratically", 5, 0);')
+        expect(results.first.values.first).to eq('')
+      end
+
+      it 'returns NULL if any argument is NULL (SELECT SUBSTRING(NULL, 5);)' do
+        results = client.query('SELECT SUBSTRING(NULL, 5);')
+        expect(results.first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments (SELECT SUBSTRING("abc");)' do
+        expect { client.query('SELECT SUBSTRING("abc");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)

@@ -56,8 +56,16 @@ module RubyPureMysql
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
       when 'concat' then args.join
+      else
+        handle_complex_builtin(name, args)
+      end
+    end
+
+    def handle_complex_builtin(name, args)
+      case name
       when 'coalesce' then handle_coalesce(args)
       when 'ifnull' then handle_ifnull(args)
+      when 'substring', 'substr' then handle_substring(args)
       else :error
       end
     end
@@ -72,6 +80,20 @@ module RubyPureMysql
       return :error unless args.size == 2
 
       args[0].nil? ? args[1] : args[0]
+    end
+
+    def handle_substring(args)
+      return :error unless [2, 3].include?(args.size)
+      return nil if args.any?(&:nil?)
+
+      execute_substring(args[0].to_s, args[1].to_i, args[2]&.to_i)
+    end
+
+    def execute_substring(str, pos, len)
+      return '' if pos.zero? || (len && len <= 0)
+
+      start = pos.positive? ? pos - 1 : pos
+      (len ? str[start, len] : str[start..]) || ''
     end
   end
 end
