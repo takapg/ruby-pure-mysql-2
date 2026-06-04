@@ -390,6 +390,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(2)
     end
 
+    it 'returns an error for COALESCE with no arguments (SELECT COALESCE();)' do
+      expect do
+        client.query('SELECT COALESCE();')
+      end.to raise_error(Mysql2::Error)
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
