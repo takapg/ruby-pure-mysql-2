@@ -203,10 +203,10 @@ module RubyPureMysql
     end
 
     def process_math_token(token)
-      return token if operator?(token) || token == '<=>'
-      return nil if token.casecmp?('NULL')
-
       token_s = token.strip
+      return token_s if operator?(token_s)
+      return nil if token_s.casecmp?('NULL')
+
       return handle_unary_token(token_s) if token_s.start_with?('-', '+') && token_s.length > 1
 
       evaluate_inner_token(token_s)
