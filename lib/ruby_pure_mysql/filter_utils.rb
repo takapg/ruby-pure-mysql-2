@@ -9,6 +9,7 @@ module RubyPureMysql
       escaped = false
       str.each_char do |char|
         if escaped
+          # エスケープされた文字はすべてリテラルとして扱う
           result << Regexp.escape(char)
           escaped = false
         elsif char == '\\'
@@ -21,6 +22,7 @@ module RubyPureMysql
           result << Regexp.escape(char)
         end
       end
+      # 末尾にバックスラッシュが残った場合はリテラルとして扱う
       result << Regexp.escape('\\') if escaped
       Regexp.new("\\A#{result}\\z", Regexp::IGNORECASE)
     end
