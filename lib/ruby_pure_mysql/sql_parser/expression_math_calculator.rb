@@ -114,6 +114,32 @@ module RubyPureMysql
       update_tokens_with_result!(tokens, index, calculate_sum_diff(left, operator, right))
     end
 
+    def apply_comparison_operators(tokens)
+      index = 1
+      while index < tokens.size
+        op = tokens[index]
+        res = op == '<=>' ? process_null_safe_equal_op!(tokens, index) : :skipped
+        return res if res == :error
+
+        index += 1 if res == :skipped
+      end
+      tokens
+    end
+
+    def process_null_safe_equal_op!(tokens, index)
+      left, operator, right = resolve_operands(tokens, index)
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+
+      update_tokens_with_result!(tokens, index, calculate_null_safe_equal(left, right))
+    end
+
+    def calculate_null_safe_equal(left, right)
+      return 1 if left.nil? && right.nil?
+      return 0 if left.nil? || right.nil?
+
+      left == right ? 1 : 0
+    end
+
     private
 
     def resolve_operands(tokens, index)
