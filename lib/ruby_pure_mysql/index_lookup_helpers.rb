@@ -5,20 +5,18 @@ module RubyPureMysql
   module IndexLookupHelpers
     def find_start_index(sorted_keys, val, operator)
       case operator
-      when '=', '>=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when '>' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
-      when 'IS NULL' then 0
-      when 'IS NOT NULL' then sorted_keys.bsearch_index { |k| !k[0].nil? } || sorted_keys.size
+      when '=', '>=' then bsearch_index_or_size(sorted_keys) { |k| nil_safe_cmp(k[0], val) >= 0 }
+      when '>' then bsearch_index_or_size(sorted_keys) { |k| nil_safe_cmp(k[0], val).positive? }
+      when 'IS NOT NULL' then bsearch_index_or_size(sorted_keys) { |k| !k[0].nil? }
       else 0
       end
     end
 
     def find_end_index(sorted_keys, val, operator)
       case operator
-      when '=', '<=' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val).positive? } || sorted_keys.size
-      when '<' then sorted_keys.bsearch_index { |k| nil_safe_cmp(k[0], val) >= 0 } || sorted_keys.size
-      when 'IS NULL' then sorted_keys.bsearch_index { |k| !k[0].nil? } || sorted_keys.size
-      when 'IS NOT NULL' then sorted_keys.size
+      when '=', '<=' then bsearch_index_or_size(sorted_keys) { |k| nil_safe_cmp(k[0], val).positive? }
+      when '<' then bsearch_index_or_size(sorted_keys) { |k| nil_safe_cmp(k[0], val) >= 0 }
+      when 'IS NULL' then bsearch_index_or_size(sorted_keys) { |k| !k[0].nil? }
       else sorted_keys.size
       end
     end
@@ -49,6 +47,10 @@ module RubyPureMysql
     end
 
     private
+
+    def bsearch_index_or_size(sorted_keys)
+      sorted_keys.bsearch_index { |k| yield k } || sorted_keys.size
+    end
 
     def matches_operator?(val, operator, target)
       case operator
