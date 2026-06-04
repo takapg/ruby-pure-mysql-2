@@ -717,7 +717,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('CREATE TABLE like_test (val VARCHAR(255));')
         client.query("INSERT INTO like_test VALUES ('a%');")
         client.query("INSERT INTO like_test VALUES ('a_b');")
-        client.query("INSERT INTO like_test VALUES ('a\\b');")
+        client.query("INSERT INTO like_test VALUES ('a\\\\b');")
         client.query("INSERT INTO like_test VALUES ('ab');")
         client.query("INSERT INTO like_test VALUES ('axb');")
       end
@@ -742,7 +742,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
       it 'still filters by unescaped percent (LIKE "a%")' do
         results = client.query("SELECT * FROM like_test WHERE val LIKE 'a%';")
-        expect(results.count).to eq(3)
+        expect(results.count).to eq(5)
       end
     end
   end
