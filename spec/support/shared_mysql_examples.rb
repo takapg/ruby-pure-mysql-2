@@ -1374,6 +1374,17 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    it 'returns an error when OFFSET 0 is used without LIMIT (SELECT id FROM offset_test OFFSET 0;)' do
+      expect do
+        client.query('SELECT id FROM offset_test OFFSET 0;')
+      end.to raise_error(Mysql2::Error)
+    end
+
+    it 'works when LIMIT is 0 and OFFSET is used (SELECT id FROM offset_test LIMIT 0 OFFSET 5;)' do
+      results = client.query('SELECT id FROM offset_test LIMIT 0 OFFSET 5;')
+      expect(results.count).to eq(0)
+    end
+
     it 'combines LIMIT and OFFSET (SELECT * FROM offset_test LIMIT 10 OFFSET 5;)' do
       results = client.query('SELECT * FROM offset_test LIMIT 10 OFFSET 5;')
       expect(results.count).to eq(10)
