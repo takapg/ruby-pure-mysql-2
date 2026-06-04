@@ -86,7 +86,6 @@ module RubyPureMysql
       return :error if tokens == :error
 
       result = tokens.size == 1 ? tokens[0] : apply_string_concatenation(tokens)
-      return nil if result.is_a?(String) && result.casecmp?('NULL')
 
       result
     end
