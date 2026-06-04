@@ -4,9 +4,14 @@ module RubyPureMysql
   # フィルタリングおよびWHERE句のコンパイルを支援するモジュール
   module FilterUtils
     def build_like_regex(target_value)
-      escaped = Regexp.escape(target_value.to_s)
-      pattern = escaped.gsub('%', '.*').tr('_', '.')
-      Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
+      result = +''
+      escaped = false
+      target_value.to_s.each_char do |char|
+        res, escaped = translate_like_char(char, escaped)
+        result << res
+      end
+      result << Regexp.escape('\\') if escaped
+      Regexp.new("\\A#{result}\\z", Regexp::IGNORECASE)
     end
 
     def compile_where_clauses(client, table_columns, where_clauses, table_map = {})
@@ -24,6 +29,17 @@ module RubyPureMysql
       when 'LIKE' then build_like_regex(value)
       when 'REGEXP', 'RLIKE' then Regexp.new(value.to_s, Regexp::IGNORECASE)
       end
+    end
+
+    private
+
+    def translate_like_char(char, escaped)
+      return [Regexp.escape(char), false] if escaped
+      return ['', true] if char == '\\'
+      return ['.*', false] if char == '%'
+      return ['.', false] if char == '_'
+
+      [Regexp.escape(char), false]
     end
   end
 end

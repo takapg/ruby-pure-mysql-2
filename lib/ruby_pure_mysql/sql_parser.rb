@@ -524,6 +524,11 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    ESCAPE_MAP = {
+      '0' => "\0", 'n' => "\n", 'r' => "\r", 't' => "\t",
+      'Z' => "\x1a", '\\' => '\\', "'" => "'", '"' => '"'
+    }.freeze
+
     def parse_is_null_condition(condition, column_pattern)
       m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
       return nil unless m
@@ -595,13 +600,22 @@ module RubyPureMysql
     def convert_value(val)
       if (m = val.match(/\A(['"])(.*)\1\z/m))
         content = m[2]
-        return m[1] == "'" ? content.gsub("''", "'") : content
+        content = content.gsub("''", "'") if m[1] == "'"
+        return decode_mysql_string(content)
       end
 
       return nil if val.casecmp?('NULL')
       return val.to_i if val.match?(/\A-?\d+\z/)
 
       { error: "Invalid INSERT value: #{val}" }
+    end
+
+    def decode_mysql_string(str)
+      str.gsub(/\\(.)/) { |m| decode_escaped_char(m[1]) }
+    end
+
+    def decode_escaped_char(char)
+      ESCAPE_MAP.fetch(char, char)
     end
   end
 
