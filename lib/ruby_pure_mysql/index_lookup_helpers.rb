@@ -28,7 +28,7 @@ module RubyPureMysql
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
       else
-        evaluate_comparison(val, operator, target)
+        evaluate_comparison?(val, operator, target)
       end
     rescue StandardError
       false
@@ -46,7 +46,7 @@ module RubyPureMysql
 
     private
 
-    def evaluate_comparison(val, operator, target)
+    def evaluate_comparison?(val, operator, target)
       if operator == '<=>'
         return val.nil? == target.nil? if val.nil? || target.nil?
       elsif val.nil? || target.nil?
