@@ -33,17 +33,24 @@ module RubyPureMysql
       end
     end
 
+    def ensure_rows_array(rows)
+      return [] if rows.nil?
+      return rows if rows.empty?
+
+      # rows.first が Row オブジェクトまたは配列であれば、既に「行の配列」であると判断
+      return rows if rows.first.respond_to?(:values) || rows.first.is_a?(Array)
+
+      # それ以外（単一の値の配列など）の場合は、行の配列としてラップする
+      [rows]
+    end
+
     def extract_row_values(row)
       row.respond_to?(:values) ? row.values : (row.is_a?(Array) ? row : [row])
     end
 
     def determine_base_types(rows)
-      return [] if rows.nil? || rows.empty?
-
-      # rows が単一行（値の配列）として渡された場合に、行の配列に変換する
-      unless rows.first.respond_to?(:values) || rows.first.is_a?(Array)
-        rows = [rows]
-      end
+      rows = ensure_rows_array(rows)
+      return [] if rows.empty?
 
       vals = extract_row_values(rows.first)
       (0...vals.size).map { |col_idx| resolve_column_type(rows, col_idx) }
