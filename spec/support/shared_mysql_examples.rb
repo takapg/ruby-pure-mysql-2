@@ -204,6 +204,12 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(3.5)
     end
 
+    it 'supports NULL-safe equal operator (<=>) in expressions' do
+      expect(client.query('SELECT NULL <=> NULL;').first.values.first).to eq(1)
+      expect(client.query('SELECT 1 <=> NULL;').first.values.first).to eq(0)
+      expect(client.query('SELECT 1 <=> 1;').first.values.first).to eq(1)
+    end
+
     it 'can calculate 1 + 2 * 3 and returns 7 (Integer)' do
       results = client.query('SELECT 1 + 2 * 3;')
       val = results.first.values.first
@@ -814,6 +820,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT * FROM null_test WHERE val IS NOT NULL;')
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([1, 'hello'])
+    end
+
+    it 'filters rows by NULL-safe equal operator (<=>)' do
+      # val <=> NULL -> NULLである行がマッチ
+      results_null = client.query('SELECT * FROM null_test WHERE val <=> NULL;')
+      expect(results_null.count).to eq(1)
+      expect(results_null.first.values).to eq([2, nil])
+
+      # val <=> "hello" -> "hello"である行がマッチ
+      results_val = client.query("SELECT * FROM null_test WHERE val <=> 'hello';")
+      expect(results_val.count).to eq(1)
+      expect(results_val.first.values).to eq([1, 'hello'])
     end
 
     it 'returns empty result set when IS NULL finds nothing' do

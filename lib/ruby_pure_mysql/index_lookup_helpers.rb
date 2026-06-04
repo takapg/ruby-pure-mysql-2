@@ -27,6 +27,10 @@ module RubyPureMysql
       case operator
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
+      when '<=>'
+        return true if val.nil? && target.nil?
+        return false if val.nil? || target.nil?
+        val == target
       else
         return false if val.nil? || target.nil?
 

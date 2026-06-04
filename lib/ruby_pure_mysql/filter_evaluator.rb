@@ -22,6 +22,7 @@ module RubyPureMysql
       when 'IN' then handle_in_operator(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
+      when '<=>' then handle_null_safe_equal(val, target_value)
       else compare_generic_operator(val, operator, target_value)
       end
     end
@@ -58,6 +59,13 @@ module RubyPureMysql
       rescue StandardError
         false
       end
+    end
+
+    def handle_null_safe_equal(val, target_value)
+      return true if val.nil? && target_value.nil?
+      return false if val.nil? || target_value.nil?
+
+      compare_equality?(val, '=', target_value)
     end
 
     def handle_in_operator(val, target_value)
