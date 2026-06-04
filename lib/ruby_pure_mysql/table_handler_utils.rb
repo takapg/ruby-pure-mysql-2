@@ -59,10 +59,13 @@ module RubyPureMysql
       return normalized_rows if normalized_rows.empty?
 
       base_types = determine_base_types(normalized_rows)
+      seen = {}
 
-      normalized_rows.uniq do |row|
+      normalized_rows.select do |row|
         vals = extract_row_values(row)
-        vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
+        key = vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
+
+        !seen.key?(key) && seen.store(key, true)
       end
     end
 
