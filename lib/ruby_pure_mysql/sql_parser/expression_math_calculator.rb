@@ -134,6 +134,7 @@ module RubyPureMysql
     end
 
     def calculate_null_safe_equal(left, right)
+      return :error if left == :error || right == :error
       return 1 if left.nil? && right.nil?
       return 0 if left.nil? || right.nil?
 
