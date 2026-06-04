@@ -63,6 +63,8 @@ module RubyPureMysql
 
       normalized_rows.select do |row|
         vals = extract_row_values(row)
+        next false if vals.size != base_types.size
+
         key = vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
 
         !seen.key?(key) && seen.store(key, true)

@@ -57,8 +57,9 @@ module RubyPureMysql
       rows = ensure_rows_array(rows)
       return [] if rows.empty?
 
-      max_cols = rows.map { |row| extract_row_values(row).size }.max || 0
-      (0...max_cols).map { |col_idx| resolve_column_type(rows, col_idx) }
+      first_row_vals = extract_row_values(rows.first)
+      num_cols = first_row_vals.size
+      (0...num_cols).map { |col_idx| resolve_column_type(rows, col_idx) }
     end
 
     private
