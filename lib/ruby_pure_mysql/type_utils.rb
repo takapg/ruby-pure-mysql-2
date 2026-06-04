@@ -40,6 +40,11 @@ module RubyPureMysql
     def determine_base_types(rows)
       return [] if rows.nil? || rows.empty?
 
+      # rows が単一行（値の配列）として渡された場合に、行の配列に変換する
+      unless rows.first.respond_to?(:values) || rows.first.is_a?(Array)
+        rows = [rows]
+      end
+
       vals = extract_row_values(rows.first)
       (0...vals.size).map { |col_idx| resolve_column_type(rows, col_idx) }
     end

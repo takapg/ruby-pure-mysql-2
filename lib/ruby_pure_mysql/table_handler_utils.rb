@@ -57,6 +57,11 @@ module RubyPureMysql
     def apply_distinct(rows)
       return rows if rows.nil? || rows.empty?
 
+      # rows が単一行（値の配列）として渡された場合に、行の配列に変換する
+      unless rows.first.respond_to?(:values) || rows.first.is_a?(Array)
+        rows = [rows]
+      end
+
       base_types = determine_base_types(rows)
       seen = {}
       rows.select do |row|
