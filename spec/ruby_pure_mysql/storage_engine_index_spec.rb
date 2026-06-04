@@ -717,5 +717,13 @@ RSpec.describe RubyPureMysql::StorageEngine do
       )
       expect(indices_range_null).to contain_exactly(2) # 行3のみ
     end
+
+    it 'IS NULL 演算子を使用した場合に、正しく NULL 行が抽出されること' do
+      rows = engine.select(null_table)
+      cols = engine.get_columns(null_table)
+      where_is_null = [{ column: 'val', operator: 'IS NULL', value: nil }]
+      indices = engine.find_matching_indices(nil, rows, cols, where_is_null)
+      expect(indices).to contain_exactly(0) # row 0 is [1, nil]
+    end
   end
 end
