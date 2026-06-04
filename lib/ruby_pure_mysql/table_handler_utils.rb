@@ -59,18 +59,11 @@ module RubyPureMysql
 
       base_types = determine_base_types(rows)
       seen = {}
-      distinct_rows = []
-
-      rows.each do |row|
-        vals = row.respond_to?(:values) ? row.values : row
+      rows.select do |row|
+        vals = extract_row_values(row)
         key = vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
-        unless seen.key?(key)
-          seen[key] = true
-          distinct_rows << row
-        end
+        !seen.key?(key) && seen.store(key, true)
       end
-
-      distinct_rows
     end
 
     def normalize_where_groups(where_clauses)

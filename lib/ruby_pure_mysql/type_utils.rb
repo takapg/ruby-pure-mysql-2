@@ -33,13 +33,15 @@ module RubyPureMysql
       end
     end
 
+    def extract_row_values(row)
+      row.respond_to?(:values) ? row.values : (row.is_a?(Array) ? row : [row])
+    end
+
     def determine_base_types(rows)
       return [] if rows.nil? || rows.empty?
 
-      first_row = rows.first
-      vals = first_row.respond_to?(:values) ? first_row.values : first_row
-      num_cols = vals.size
-      (0...num_cols).map { |col_idx| resolve_column_type(rows, col_idx) }
+      vals = extract_row_values(rows.first)
+      (0...vals.size).map { |col_idx| resolve_column_type(rows, col_idx) }
     end
 
     private
