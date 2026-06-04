@@ -56,9 +56,15 @@ module RubyPureMysql
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
       when 'concat' then args.join
-      when 'coalesce' then args.empty? ? :error : args.find { |arg| !arg.nil? }
+      when 'coalesce' then handle_coalesce(args)
       else :error
       end
+    end
+
+    def handle_coalesce(args)
+      return :error if args.empty?
+
+      args.find { |arg| !arg.nil? }
     end
   end
 end
