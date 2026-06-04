@@ -86,14 +86,14 @@ module RubyPureMysql
       return :error unless [2, 3].include?(args.size)
       return nil if args.any?(&:nil?)
 
-      str = args[0].to_s
-      pos = args[1].to_i
-      len = args[2]&.to_i
+      execute_substring(args[0].to_s, args[1].to_i, args[2]&.to_i)
+    end
 
+    def execute_substring(str, pos, len)
       return '' if pos.zero? || (len && len <= 0)
 
-      start_index = pos.positive? ? pos - 1 : pos
-      (len ? str[start_index, len] : str[start_index..]) || ''
+      start = pos.positive? ? pos - 1 : pos
+      (len ? str[start, len] : str[start..]) || ''
     end
   end
 end
