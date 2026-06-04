@@ -717,7 +717,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('CREATE TABLE like_test (val VARCHAR(255));')
         client.query("INSERT INTO like_test VALUES ('a%');")
         client.query("INSERT INTO like_test VALUES ('a_b');")
-        client.query("INSERT INTO like_test VALUES ('a\\\\b');")
+        client.query("INSERT INTO like_test VALUES ('a\\b');")
         client.query("INSERT INTO like_test VALUES ('ab');")
         client.query("INSERT INTO like_test VALUES ('axb');")
       end
@@ -735,7 +735,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'filters by escaped backslash (LIKE "a\\b")' do
-        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\\\\\b';")
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\b';")
         expect(results.count).to eq(1)
         expect(results.first.values.first).to eq('a\b')
       end
