@@ -47,7 +47,10 @@ module RubyPureMysql
     end
 
     def extract_row_values(row)
-      row.respond_to?(:values) ? row.values : (row.is_a?(Array) ? row : [row])
+      return row if row.is_a?(Array)
+      return row.values if row.respond_to?(:values)
+
+      [row]
     end
 
     def determine_base_types(rows)
