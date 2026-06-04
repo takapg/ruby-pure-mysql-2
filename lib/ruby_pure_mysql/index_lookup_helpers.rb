@@ -24,14 +24,7 @@ module RubyPureMysql
     def safe_compare(val, operator, target)
       return false if val.nil? || target.nil?
 
-      case operator
-      when '='  then val == target
-      when '>'  then val > target
-      when '<'  then val < target
-      when '>=' then val >= target
-      when '<=' then val <= target
-      else false
-      end
+      perform_comparison(val, operator, target)
     rescue StandardError
       false
     end
@@ -44,6 +37,19 @@ module RubyPureMysql
       return 1 if val2.nil?
 
       (val1 <=> val2) || 0
+    end
+
+    private
+
+    def perform_comparison(val, operator, target)
+      case operator
+      when '='  then val == target
+      when '>'  then val > target
+      when '<'  then val < target
+      when '>=' then val >= target
+      when '<=' then val <= target
+      else false
+      end
     end
   end
 end
