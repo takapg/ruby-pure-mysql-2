@@ -112,7 +112,7 @@ module RubyPureMysql
     end
 
     def filter_candidates(candidates, operator, value, col_pos)
-      return candidates unless %w[= > < >= <= IS NULL IS NOT NULL].include?(operator)
+      return candidates unless %w[= <=> > < >= <= IS NULL IS NOT NULL].include?(operator)
 
       candidates.select do |k|
         val = k[col_pos]
