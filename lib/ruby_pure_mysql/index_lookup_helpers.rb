@@ -28,7 +28,11 @@ module RubyPureMysql
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
       else
-        return false if val.nil? || target.nil?
+        if operator != '<=>'
+          return false if val.nil? || target.nil?
+        elsif val.nil? || target.nil?
+          return val.nil? == target.nil?
+        end
 
         matches_operator?(val, operator, target)
       end
@@ -54,7 +58,7 @@ module RubyPureMysql
 
     def matches_operator?(val, operator, target)
       case operator
-      when '='  then val == target
+      when '=', '<=>' then val == target
       when '>'  then val > target
       when '<'  then val < target
       when '>=' then val >= target
