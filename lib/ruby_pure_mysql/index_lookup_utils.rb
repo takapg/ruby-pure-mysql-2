@@ -71,7 +71,7 @@ module RubyPureMysql
     end
 
     def valid_prefix_operator?(clause)
-      clause && %w[= > < >= <=].include?(clause[:operator])
+      clause && %w[= > < >= <= IS NULL IS NOT NULL].include?(clause[:operator])
     end
 
     # インデックスから範囲候補を抽出する。
@@ -114,7 +114,7 @@ module RubyPureMysql
     end
 
     def filter_candidates(candidates, operator, value, col_pos)
-      return candidates unless %w[= > < >= <=].include?(operator)
+      return candidates unless %w[= > < >= <= IS NULL IS NOT NULL].include?(operator)
 
       candidates.select do |k|
         val = k[col_pos]
