@@ -57,8 +57,8 @@ module RubyPureMysql
       rows = ensure_rows_array(rows)
       return [] if rows.empty?
 
-      vals = extract_row_values(rows.first)
-      (0...vals.size).map { |col_idx| resolve_column_type(rows, col_idx) }
+      max_cols = rows.map { |row| extract_row_values(row).size }.max || 0
+      (0...max_cols).map { |col_idx| resolve_column_type(rows, col_idx) }
     end
 
     private
@@ -67,7 +67,7 @@ module RubyPureMysql
       # 全ての非NULL値をチェックして、最も汎用的な型を決定する
       # 優先順位: String > Float > Integer
       types = rows.filter_map do |row|
-        val = row.respond_to?(:values) ? row.values[col_idx] : row[col_idx]
+        val = extract_row_values(row)[col_idx]
         map_value_to_type(val)
       end
       return :string if types.include?(:string)
