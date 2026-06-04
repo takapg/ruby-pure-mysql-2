@@ -927,6 +927,25 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       results = client.query('SELECT DISTINCT val FROM large_distinct_test;')
       expect(results.count).to eq(50)
     end
+
+    it 'treats numeric and string equivalents as identical in UNION DISTINCT' do
+      # SELECT DISTINCT 1 UNION SELECT DISTINCT '1' -> 1 row
+      results = client.query('SELECT DISTINCT 1 UNION SELECT DISTINCT "1";')
+      expect(results.count).to eq(1)
+    end
+
+    it 'treats float and integer equivalents as identical in UNION DISTINCT' do
+      # SELECT DISTINCT 1.0 UNION SELECT DISTINCT 1 -> 1 row
+      results = client.query('SELECT DISTINCT 1.0 UNION SELECT DISTINCT 1;')
+      expect(results.count).to eq(1)
+    end
+
+    it 'distinguishes between different columns even if values are equivalent' do
+      # SELECT DISTINCT 1, "1" -> 1 row with 2 columns [1, "1"]
+      results = client.query('SELECT DISTINCT 1, "1";')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([1, '1'])
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do

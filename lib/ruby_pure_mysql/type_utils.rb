@@ -11,15 +11,26 @@ module RubyPureMysql
       case type
       when :integer then cast_to_numeric(val, :to_i)
       when :float   then cast_to_numeric(val, :to_f)
-      when :string  then val.to_s
+      when :string
+        # 数値の 1.0 と 1 が異なる文字列 ("1.0" vs "1") になり
+        # DISTINCT で重複排除されないのを防ぐため、整数値は整数形式にする
+        val.is_a?(Numeric) ? (val == val.to_i ? val.to_i.to_s : val.to_s) : val.to_s
       else val
       end
     end
 
     def cast_to_numeric(val, method)
       return nil if val.nil?
+      return val.send(method) if val.is_a?(Numeric)
 
-      val.is_a?(Numeric) ? val.send(method) : val.to_s.send(method)
+      # 文字列が数値形式である場合のみキャストし、それ以外は元の値を返す
+      # これにより 'abc' が 0 に変換されて 0 と同一視されるのを防ぐ
+      str = val.to_s
+      if str.match?(/\A[-+]?\d*\.?\d+([eE][-+]?\d+)?\z/)
+        str.send(method)
+      else
+        val
+      end
     end
 
     def determine_base_types(rows)
@@ -33,11 +44,12 @@ module RubyPureMysql
 
     def resolve_column_type(rows, col_idx)
       # 全ての非NULL値をチェックして、最も汎用的な型を決定する
-      # 優先順位: String > Float > Integer
+      # MySQL 8.0 の挙動に合わせ、数値優先の優先順位に変更
+      # 優先順位: Float > Integer > String
       types = rows.filter_map { |row| map_value_to_type(row[col_idx]) }
-      return :string if types.include?(:string)
       return :float if types.include?(:float)
       return :integer if types.include?(:integer)
+      return :string if types.include?(:string)
 
       nil
     end
