@@ -5,7 +5,7 @@ module RubyPureMysql
   module FilterUtils
     def build_like_regex(target_value)
       str = target_value.to_s
-      result = String.new
+      result = +''
       escaped = false
       str.each_char do |char|
         if escaped

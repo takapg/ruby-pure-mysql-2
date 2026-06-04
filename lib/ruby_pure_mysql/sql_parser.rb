@@ -606,23 +606,23 @@ module RubyPureMysql
     end
 
     def decode_mysql_string(str)
-      res = String.new
+      res = +''
       i = 0
       while i < str.length
         char = str[i]
         if char == '\\' && i + 1 < str.length
           next_char = str[i + 1]
-          case next_char
-          when '0' then res << "\0"
-          when 'n' then res << "\n"
-          when 'r' then res << "\r"
-          when 't' then res << "\t"
-          when 'Z' then res << "\x1a"
-          when '\\' then res << "\\"
-          when "'" then res << "'"
-          when '"' then res << '"'
-          else res << next_char
-          end
+          res << case next_char
+                 when '0' then "\0"
+                 when 'n' then "\n"
+                 when 'r' then "\r"
+                 when 't' then "\t"
+                 when 'Z' then "\x1a"
+                 when '\\' then '\\'
+                 when "'" then "'"
+                 when '"' then '"'
+                 else next_char
+                 end
           i += 2
         else
           res << char
