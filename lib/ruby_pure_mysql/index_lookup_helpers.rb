@@ -24,7 +24,7 @@ module RubyPureMysql
     def safe_compare(val, operator, target)
       return false if val.nil? || target.nil?
 
-      val.send(operator == '=' ? :== : operator.to_sym, target)
+      matches_operator?(val, operator, target)
     rescue StandardError
       false
     end
@@ -37,6 +37,19 @@ module RubyPureMysql
       return 1 if val2.nil?
 
       (val1 <=> val2) || 0
+    end
+
+    private
+
+    def matches_operator?(val, operator, target)
+      case operator
+      when '='  then val == target
+      when '>'  then val > target
+      when '<'  then val < target
+      when '>=' then val >= target
+      when '<=' then val <= target
+      else false
+      end
     end
   end
 end
