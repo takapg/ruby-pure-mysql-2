@@ -74,6 +74,9 @@ module RubyPureMysql
       clause && %w[= > < >= <=].include?(clause[:operator])
     end
 
+    # インデックスから範囲候補を抽出する。
+    # nil_safe_cmp により NULL は先頭に配置されるため、演算子によっては
+    # 候補に NULL が含まれるが、後の filter_index_candidates で safe_compare により除外される。
     def extract_range_candidates(table_name, idx_name, data, clause)
       sorted_keys = get_sorted_keys(table_name, idx_name, data)
       start_idx = find_start_index(sorted_keys, clause[:value], clause[:operator])
@@ -97,6 +100,9 @@ module RubyPureMysql
       end
     end
 
+    # 抽出された候補を各カラムの条件で絞り込む。
+    # safe_compare を使用することで、比較演算子を用いた検索時に
+    # カラム値または検索値が NULL である行が確実に除外されることを保証する。
     def filter_index_candidates(cols, group, lookup_opts, candidates)
       cols.each_with_index do |col_idx, i|
         clause = find_clause_for_col(col_idx, group, lookup_opts)

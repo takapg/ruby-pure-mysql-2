@@ -667,6 +667,10 @@ RSpec.describe RubyPureMysql::StorageEngine do
       # val > NULL -> []
       where_nil_gt = [{ column: 'val', operator: '>', value: nil }]
       expect(engine.find_matching_indices(nil, rows, cols, where_nil_gt)).to be_empty
+
+      # val < NULL -> []
+      where_nil_lt = [{ column: 'val', operator: '<', value: nil }]
+      expect(engine.find_matching_indices(nil, rows, cols, where_nil_lt)).to be_empty
     end
 
     it '複合インデックスの途中に NULL がある場合に正しくフィルタリングされること' do
@@ -677,7 +681,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       [
         [1, 'A', nil, 'X'],
         [2, 'A', 10, 'X'],
-        [3, 'B', 20, 'Y']
+        [3, 'B', 10, 'Y']
       ].each { |row| engine.insert(comp_null_table, row) }
 
       # c1 = 'A' AND c3 = 'X' -> [1, 2] (c2がNULLでもc1, c3が一致すれば抽出される)
@@ -700,6 +704,18 @@ RSpec.describe RubyPureMysql::StorageEngine do
         nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_full
       )
       expect(indices_full).to contain_exactly(1)
+
+      # 範囲検索 + NULL値の検証: c1 > 'A' AND c2 = 10
+      # 行3 ('B', 20, 'Y') はマッチするが、もし ('B', nil, 'Y') があれば除外されるべき
+      engine.insert(comp_null_table, [4, 'B', nil, 'Z'])
+      where_range_null = [
+        { column: 'c1', operator: '>', value: 'A' },
+        { column: 'c2', operator: '=', value: 10 }
+      ]
+      indices_range_null = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_range_null
+      )
+      expect(indices_range_null).to contain_exactly(2) # 行3のみ
     end
   end
 end
