@@ -4,25 +4,11 @@ module RubyPureMysql
   # フィルタリングおよびWHERE句のコンパイルを支援するモジュール
   module FilterUtils
     def build_like_regex(target_value)
-      str = target_value.to_s
-      result = +''
-      escaped = false
-      str.each_char do |char|
-        if escaped
-          # エスケープされた文字はすべてリテラルとして扱う
-          result << Regexp.escape(char)
-          escaped = false
-        elsif char == '\\'
-          escaped = true
-        elsif char == '%'
-          result << '.*'
-        elsif char == '_'
-          result << '.'
-        else
-          result << Regexp.escape(char)
-        end
+      result, escaped = +'', false
+      target_value.to_s.each_char do |char|
+        res, escaped = translate_like_char(char, escaped)
+        result << res
       end
-      # 末尾にバックスラッシュが残った場合はリテラルとして扱う
       result << Regexp.escape('\\') if escaped
       Regexp.new("\\A#{result}\\z", Regexp::IGNORECASE)
     end
@@ -42,6 +28,16 @@ module RubyPureMysql
       when 'LIKE' then build_like_regex(value)
       when 'REGEXP', 'RLIKE' then Regexp.new(value.to_s, Regexp::IGNORECASE)
       end
+    end
+
+    private
+
+    def translate_like_char(char, escaped)
+      return [Regexp.escape(char), false] if escaped
+      return ['', true] if char == '\\'
+      return ['.*', false] if char == '%'
+      return ['.', false] if char == '_'
+      [Regexp.escape(char), false]
     end
   end
 end
