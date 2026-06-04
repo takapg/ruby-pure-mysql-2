@@ -923,7 +923,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       # 100行挿入: 50種類の値をそれぞれ2回ずつ挿入
       50.times { |i| client.query("INSERT INTO large_distinct_test VALUES (#{i});") }
       50.times { |i| client.query("INSERT INTO large_distinct_test VALUES (#{i});") }
-      
+
       results = client.query('SELECT DISTINCT val FROM large_distinct_test;')
       expect(results.count).to eq(50)
     end
