@@ -735,7 +735,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'filters by escaped backslash (LIKE "a\\b")' do
-        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\b';")
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\\\\\b';")
         expect(results.count).to eq(1)
         expect(results.first.values.first).to eq('a\b')
       end
