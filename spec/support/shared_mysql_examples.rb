@@ -904,6 +904,29 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first.values).to eq([nil, nil])
     end
+
+    it 'handles SELECT DISTINCT with composite columns and mixed types via UNION' do
+      # (1, 'a') と (1.0, 'a') は同一行として扱われるべき
+      results = client.query('SELECT DISTINCT 1, "a" UNION SELECT DISTINCT 1.0, "a";')
+      expect(results.count).to eq(1)
+    end
+
+    it 'handles SELECT DISTINCT with composite columns where some are NULL and some are mixed types' do
+      # (1, NULL) と (1.0, NULL) は同一行として扱われるべき
+      results = client.query('SELECT DISTINCT 1, NULL UNION SELECT DISTINCT 1.0, NULL;')
+      expect(results.count).to eq(1)
+    end
+
+    it 'handles SELECT DISTINCT with a larger dataset' do
+      client.query('DROP TABLE IF EXISTS large_distinct_test;')
+      client.query('CREATE TABLE large_distinct_test (val INT);')
+      # 100行挿入: 50種類の値をそれぞれ2回ずつ挿入
+      50.times { |i| client.query("INSERT INTO large_distinct_test VALUES (#{i});") }
+      50.times { |i| client.query("INSERT INTO large_distinct_test VALUES (#{i});") }
+
+      results = client.query('SELECT DISTINCT val FROM large_distinct_test;')
+      expect(results.count).to eq(50)
+    end
   end
 
   describe 'Query Filtering (WHERE clause with AND)' do
