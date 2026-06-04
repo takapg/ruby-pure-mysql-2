@@ -46,9 +46,13 @@ module RubyPureMysql
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
-        return nil unless %w[= <=>].include?(clause&.[](:operator))
+        operator = clause&.[](:operator)
+        value = clause&.[](:value)
 
-        clause[:value]
+        return nil unless %w[= <=>].include?(operator)
+        return nil if operator == '=' && value.nil?
+
+        value
       end
     end
 
