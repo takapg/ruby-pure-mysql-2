@@ -681,7 +681,7 @@ RSpec.describe RubyPureMysql::StorageEngine do
       [
         [1, 'A', nil, 'X'],
         [2, 'A', 10, 'X'],
-        [3, 'B', 20, 'Y']
+        [3, 'B', 10, 'Y']
       ].each { |row| engine.insert(comp_null_table, row) }
 
       # c1 = 'A' AND c3 = 'X' -> [1, 2] (c2がNULLでもc1, c3が一致すれば抽出される)
