@@ -710,6 +710,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.count).to eq(1)
       expect(results.first['id']).to eq(1)
     end
+
+    describe 'LIKE operator with escapes' do
+      before do
+        client.query('DROP TABLE IF EXISTS like_test;')
+        client.query('CREATE TABLE like_test (val VARCHAR(255));')
+        client.query("INSERT INTO like_test VALUES ('a%');")
+        client.query("INSERT INTO like_test VALUES ('a_b');")
+        client.query("INSERT INTO like_test VALUES ('a\\b');")
+        client.query("INSERT INTO like_test VALUES ('ab');")
+        client.query("INSERT INTO like_test VALUES ('axb');")
+      end
+
+      it 'filters by escaped percent (LIKE "a\%")' do
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\%';")
+        expect(results.count).to eq(1)
+        expect(results.first.values.first).to eq('a%')
+      end
+
+      it 'filters by escaped underscore (LIKE "a\_b")' do
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\_b';")
+        expect(results.count).to eq(1)
+        expect(results.first.values.first).to eq('a_b')
+      end
+
+      it 'filters by escaped backslash (LIKE "a\\b")' do
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a\\\\b';")
+        expect(results.count).to eq(1)
+        expect(results.first.values.first).to eq('a\b')
+      end
+
+      it 'still filters by unescaped percent (LIKE "a%")' do
+        results = client.query("SELECT * FROM like_test WHERE val LIKE 'a%';")
+        expect(results.count).to eq(3)
+      end
+    end
   end
 
   describe 'IS NULL / IS NOT NULL support' do
