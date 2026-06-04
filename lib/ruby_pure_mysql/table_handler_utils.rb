@@ -60,7 +60,8 @@ module RubyPureMysql
       base_types = determine_base_types(rows)
 
       rows.uniq do |row|
-        row.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
+        vals = row.respond_to?(:values) ? row.values : row
+        vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
       end
     end
 

@@ -36,7 +36,9 @@ module RubyPureMysql
     def determine_base_types(rows)
       return [] if rows.nil? || rows.empty?
 
-      num_cols = rows.first.size
+      first_row = rows.first
+      vals = first_row.respond_to?(:values) ? first_row.values : first_row
+      num_cols = vals.size
       (0...num_cols).map { |col_idx| resolve_column_type(rows, col_idx) }
     end
 
@@ -45,7 +47,10 @@ module RubyPureMysql
     def resolve_column_type(rows, col_idx)
       # 全ての非NULL値をチェックして、最も汎用的な型を決定する
       # 優先順位: String > Float > Integer
-      types = rows.filter_map { |row| map_value_to_type(row[col_idx]) }
+      types = rows.filter_map do |row|
+        val = row.respond_to?(:values) ? row.values[col_idx] : row[col_idx]
+        map_value_to_type(val)
+      end
       return :string if types.include?(:string)
       return :float if types.include?(:float)
       return :integer if types.include?(:integer)
