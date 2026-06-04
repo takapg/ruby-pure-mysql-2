@@ -98,7 +98,8 @@ module RubyPureMysql
       match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|\w+)(?:\s*\((.+?)\))?\s+VALUES\s+(.+)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
-      values = parse_insert_values(match[3])
+      values_str = match[3].strip.chomp(';')
+      values = parse_insert_values(values_str)
       return values if values.is_a?(Hash) && values[:error]
 
       {
