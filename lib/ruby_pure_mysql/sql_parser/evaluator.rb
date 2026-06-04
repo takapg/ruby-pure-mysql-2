@@ -64,10 +64,7 @@ module RubyPureMysql
     end
 
     def evaluate_math(col)
-      result = process_math_tokens(col)
-      return result if result == :error || result.nil?
-
-      result
+      process_math_tokens(col)
     end
 
     def process_math_tokens(col)
@@ -77,7 +74,7 @@ module RubyPureMysql
       # 優先順位: 乗除算 -> 加減算 -> 比較演算子 -> 文字列結合
       tokens = apply_multiplication_division(tokens)
       return :error if tokens == :error
-      return nil if tokens.nil?
+      return nil if tokens.nil? # 除算エラー等の場合にnilが返るため維持
 
       tokens = apply_addition_subtraction(tokens)
       return :error if tokens == :error
@@ -85,9 +82,7 @@ module RubyPureMysql
       tokens = apply_comparison_operators(tokens)
       return :error if tokens == :error
 
-      result = tokens.size == 1 ? tokens[0] : apply_string_concatenation(tokens)
-
-      result
+      tokens.size == 1 ? tokens[0] : apply_string_concatenation(tokens)
     end
 
     private
