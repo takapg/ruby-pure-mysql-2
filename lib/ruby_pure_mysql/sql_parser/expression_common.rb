@@ -58,6 +58,7 @@ module RubyPureMysql
       when 'concat' then args.join
       when 'coalesce' then handle_coalesce(args)
       when 'ifnull' then handle_ifnull(args)
+      when 'substring', 'substr' then handle_substring(args)
       else :error
       end
     end
@@ -72,6 +73,22 @@ module RubyPureMysql
       return :error unless args.size == 2
 
       args[0].nil? ? args[1] : args[0]
+    end
+
+    def handle_substring(args)
+      return :error unless args.size == 2 || args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s
+      pos = args[1].to_i
+      len = args[2] ? args[2].to_i : nil
+
+      return '' if pos == 0
+      return '' if len && len <= 0
+
+      start_index = pos > 0 ? pos - 1 : pos
+      result = str[start_index, len]
+      result || ''
     end
   end
 end
