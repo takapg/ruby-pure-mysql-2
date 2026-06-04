@@ -19,6 +19,8 @@ module RubyPureMysql
       end
     end
 
+    # MySQL 8.0 の比較演算仕様に準拠し、いずれかが NULL の場合は
+    # IS NULL / IS NOT NULL 以外では常に false (UNKNOWN) を返す
     def safe_compare(val, operator, target)
       return false if val.nil? || target.nil?
 
@@ -27,6 +29,7 @@ module RubyPureMysql
       false
     end
 
+    # MySQL 8.0 のソート順に準拠し、NULL を最小値として扱う
     def nil_safe_cmp(val1, val2)
       return 0 if val1.nil? && val2.nil?
 

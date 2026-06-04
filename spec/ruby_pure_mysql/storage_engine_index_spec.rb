@@ -704,6 +704,18 @@ RSpec.describe RubyPureMysql::StorageEngine do
         nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_full
       )
       expect(indices_full).to contain_exactly(1)
+
+      # 範囲検索 + NULL値の検証: c1 > 'A' AND c2 = 10
+      # 行3 ('B', 20, 'Y') はマッチするが、もし ('B', nil, 'Y') があれば除外されるべき
+      engine.insert(comp_null_table, [4, 'B', nil, 'Z'])
+      where_range_null = [
+        { column: 'c1', operator: '>', value: 'A' },
+        { column: 'c2', operator: '=', value: 10 }
+      ]
+      indices_range_null = engine.find_matching_indices(
+        nil, engine.select(comp_null_table), engine.get_columns(comp_null_table), where_range_null
+      )
+      expect(indices_range_null).to contain_exactly(2) # 行3のみ
     end
   end
 end
