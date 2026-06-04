@@ -121,12 +121,11 @@ module RubyPureMysql
         if op == '<=>'
           res = process_null_safe_equal_op!(tokens, index)
           return :error if res == :error
-          # tokensが書き換えられたため、indexはそのまま（次の要素をチェック）
         else
           index += 1
         end
       end
-      tokens
+      tokens.size == 1 ? tokens.first : tokens
     end
 
     def process_null_safe_equal_op!(tokens, index)
