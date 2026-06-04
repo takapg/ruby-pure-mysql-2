@@ -95,7 +95,7 @@ module RubyPureMysql
     /ix
 
     def parse_insert(query)
-      match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|\w+)(?:\s*\((.+?)\))?\s+VALUES\s*\((.+)\)\s*;?\s*\z/i)
+      match = query.match(/\AINSERT\s+INTO\s+(`[^`]+`|\w+)(?:\s*\((.+?)\))?\s+VALUES\s+(.+)\s*;?\s*\z/i)
       return { error: 'Invalid INSERT syntax' } unless match
 
       values = parse_insert_values(match[3])
@@ -116,8 +116,18 @@ module RubyPureMysql
     end
 
     def parse_insert_values(values_str)
-      values = split_insert_values(values_str).map { |val| convert_value(val) }
-      values.find { |v| v.is_a?(Hash) && v[:error] } || values
+      tuples = split_columns(values_str)
+      return { error: 'Invalid INSERT values syntax' } if tuples.empty?
+
+      tuples.map do |tuple_str|
+        inner = tuple_str.strip[1...-1]
+        return { error: 'Invalid tuple syntax' } unless inner
+
+        values = split_insert_values(inner).map { |val| convert_value(val) }
+        return values.find { |v| v.is_a?(Hash) && v[:error] } if values.any? { |v| v.is_a?(Hash) && v[:error] }
+
+        values
+      end
     end
 
     def parse_update(query)

@@ -74,7 +74,7 @@ module RubyPureMysql
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
-      # 優先順位: 乗除算 -> 加減算 -> 文字列結合
+      # 優先順位: 乗除算 -> 加減算 -> 文字列結合 -> 比較
       tokens = apply_multiplication_division(tokens)
       return :error if tokens == :error
       return nil if tokens.nil?
@@ -82,10 +82,50 @@ module RubyPureMysql
       tokens = apply_addition_subtraction(tokens)
       return :error if tokens == :error
 
+      tokens = apply_comparisons(tokens)
+      return :error if tokens == :error
+
       apply_string_concatenation(tokens)
     end
 
     private
+
+    def apply_comparisons(tokens)
+      return nil if tokens.nil?
+
+      index = 1
+      while index < tokens.size
+        op = tokens[index]
+        if %w[= != <> < > <= >= <=>].include?(op)
+          left = tokens[index - 1]
+          right = tokens[index + 1]
+          res = evaluate_comparison(left, op, right)
+          tokens[index - 1] = res
+          tokens.slice!(index, 2)
+        else
+          index += 1
+        end
+      end
+      tokens
+    end
+
+    def evaluate_comparison(left, op, right)
+      res = case op
+            when '=' then left == right
+            when '!=', '<>' then left != right
+            when '<' then left < right
+            when '>' then left > right
+            when '<=' then left <= right
+            when '>=' then left >= right
+            when '<=>'
+              return true if left.nil? && right.nil?
+              return false if left.nil? || right.nil?
+              left == right
+            else
+              false
+            end
+      res ? 1 : 0
+    end
 
     def single_function_call?(col)
       return false unless col.match?(/\A\w+\s*\(.*\)\z/)
