@@ -667,6 +667,10 @@ RSpec.describe RubyPureMysql::StorageEngine do
       # val > NULL -> []
       where_nil_gt = [{ column: 'val', operator: '>', value: nil }]
       expect(engine.find_matching_indices(nil, rows, cols, where_nil_gt)).to be_empty
+
+      # val < NULL -> []
+      where_nil_lt = [{ column: 'val', operator: '<', value: nil }]
+      expect(engine.find_matching_indices(nil, rows, cols, where_nil_lt)).to be_empty
     end
 
     it '複合インデックスの途中に NULL がある場合に正しくフィルタリングされること' do
