@@ -28,13 +28,7 @@ module RubyPureMysql
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
       else
-        if operator != '<=>'
-          return false if val.nil? || target.nil?
-        elsif val.nil? || target.nil?
-          return val.nil? == target.nil?
-        end
-
-        matches_operator?(val, operator, target)
+        evaluate_comparison(val, operator, target)
       end
     rescue StandardError
       false
@@ -51,6 +45,16 @@ module RubyPureMysql
     end
 
     private
+
+    def evaluate_comparison(val, operator, target)
+      if operator == '<=>'
+        return val.nil? == target.nil? if val.nil? || target.nil?
+      elsif val.nil? || target.nil?
+        return false
+      end
+
+      matches_operator?(val, operator, target)
+    end
 
     def bsearch_index_or_size(sorted_keys, ...)
       sorted_keys.bsearch_index(...) || sorted_keys.size

@@ -20,7 +20,7 @@ module RubyPureMysql
       when 'LIKE' then match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
       when 'IN' then handle_in_operator(val, target_value)
-      when '<=>' then handle_null_safe_equal(val, target_value)
+      when '<=>' then null_safe_equal?(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
       else compare_generic_operator(val, operator, target_value)
@@ -96,7 +96,7 @@ module RubyPureMysql
       n1.is_a?(Numeric) && n2.is_a?(Numeric) ? [n1, n2] : [val1, val2]
     end
 
-    def handle_null_safe_equal(val, target_value)
+    def null_safe_equal?(val, target_value)
       return true if val.nil? && target_value.nil?
       return false if val.nil? || target_value.nil?
 
