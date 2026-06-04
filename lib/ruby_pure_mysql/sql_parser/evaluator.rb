@@ -85,6 +85,8 @@ module RubyPureMysql
       tokens = apply_comparison_operators(tokens)
       return :error if tokens == :error
 
+      return tokens[0] if tokens.size == 1 && (tokens[0].is_a?(Numeric) || tokens[0].nil?)
+
       apply_string_concatenation(tokens)
     end
 
