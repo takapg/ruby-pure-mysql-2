@@ -48,8 +48,8 @@ module RubyPureMysql
 
     private
 
-    def bsearch_index_or_size(sorted_keys, &block)
-      sorted_keys.bsearch_index(&block) || sorted_keys.size
+    def bsearch_index_or_size(sorted_keys, ...)
+      sorted_keys.bsearch_index(...) || sorted_keys.size
     end
 
     def matches_operator?(val, operator, target)
