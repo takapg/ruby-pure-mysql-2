@@ -44,12 +44,11 @@ module RubyPureMysql
 
     def resolve_column_type(rows, col_idx)
       # 全ての非NULL値をチェックして、最も汎用的な型を決定する
-      # MySQL 8.0 の挙動に合わせ、数値優先の優先順位に変更
-      # 優先順位: Float > Integer > String
+      # 優先順位: String > Float > Integer
       types = rows.filter_map { |row| map_value_to_type(row[col_idx]) }
+      return :string if types.include?(:string)
       return :float if types.include?(:float)
       return :integer if types.include?(:integer)
-      return :string if types.include?(:string)
 
       nil
     end
