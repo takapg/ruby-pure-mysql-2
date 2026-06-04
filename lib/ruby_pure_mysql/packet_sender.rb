@@ -36,13 +36,14 @@ module RubyPureMysql
     end
 
     def resolve_column_names(name_info, index, original_names)
-      name = name_info.is_a?(Hash) ? (name_info[:alias] || name_info[:original].split('.').last) : name_info
-      org_name = name_info.is_a?(Hash) ? name_info[:original].split('.').last : name
-      if original_names
-        raw_org = original_names[index]
-        org_name = raw_org.is_a?(Hash) ? raw_org[:original].split('.').last : raw_org
-      end
-      [name, org_name]
+      name = name_info.is_a?(Hash) ? (name_info[:alias] || name_info[:original]) : name_info
+      org_name = if original_names
+                   raw_org = original_names[index]
+                   raw_org.is_a?(Hash) ? (raw_org[:original] || raw_org) : raw_org
+                 else
+                   name
+                 end
+      [name.to_s.split('.').last, org_name.to_s.split('.').last]
     end
   end
 
