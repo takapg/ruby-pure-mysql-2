@@ -37,11 +37,13 @@ module RubyPureMysql
       return [] if rows.nil?
       return rows if rows.empty?
 
-      # rows.first が Row オブジェクトまたは配列であれば、既に「行の配列」であると判断
-      return rows if rows.first.respond_to?(:values) || rows.first.is_a?(Array)
+      # 最初の要素が配列またはRowオブジェクトでない場合は、
+      # rows全体を「1つの行」として扱うため、配列でラップする
+      unless rows.first.respond_to?(:values) || rows.first.is_a?(Array)
+        return [rows]
+      end
 
-      # それ以外（単一の値の配列など）の場合は、行の配列としてラップする
-      [rows]
+      rows
     end
 
     def extract_row_values(row)

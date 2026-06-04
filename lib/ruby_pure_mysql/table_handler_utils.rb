@@ -55,16 +55,41 @@ module RubyPureMysql
     end
 
     def apply_distinct(rows)
-      rows = ensure_rows_array(rows)
-      return rows if rows.empty?
+      # 入力を確実に「行の配列」形式にする
+      normalized_rows = ensure_rows_array(rows)
+      return normalized_rows if normalized_rows.empty?
 
-      base_types = determine_base_types(rows)
+      base_types = determine_base_types(normalized_rows)
       seen = {}
-      rows.select do |row|
+      
+      # 元の rows の構造を維持したままフィルタリングを行う
+      # normalized_rows をベースに判定し、元の rows から該当する要素を抽出する
+      result = []
+      normalized_rows.each_with_index do |row, idx|
+        vals = extract_row_values(row)
+        key = vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
+        
+        unless seen.key?(key)
+          seen[key] = true
+          # 元の rows がラップされていた場合はラップ後の要素を、
+          # そうでない場合は元の要素をそのまま追加する
+          result << (rows.is_a?(Array) && rows.first.is_a?(Array) || rows.first.respond_to?(:values) ? rows[idx] : rows)
+          # 上記の三項演算子が複雑なため、シンプルに normalized_rows の要素を返す
+          # (ensure_rows_array でラップした場合、normalized_rows[0] は元の rows そのものになる)
+        end
+      end
+      
+      # 修正: シンプルに normalized_rows から select する
+      # 構造を破壊しないよう、元の rows が単一行だった場合はその結果を適切に返す
+      final_rows = normalized_rows.select do |row|
         vals = extract_row_values(row)
         key = vals.each_with_index.map { |val, i| normalize_value_by_type(val, base_types[i]) }
         !seen.key?(key) && seen.store(key, true)
       end
+      
+      # もし元の rows が単一行（1D配列）として渡され、ラップされていた場合、
+      # 結果は [[val1, val2]] となる。これをそのまま返せば 1行2列として正しく処理される。
+      final_rows
     end
 
     def normalize_where_groups(where_clauses)
