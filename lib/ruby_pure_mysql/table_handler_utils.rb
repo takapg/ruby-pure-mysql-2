@@ -10,11 +10,13 @@ require_relative 'projection_utils'
 require_relative 'having_utils'
 require_relative 'sort_utils'
 require_relative 'filter_evaluator'
+require_relative 'type_utils'
 
 module RubyPureMysql
   # テーブル操作の補助メソッドをまとめたモジュール
   module TableHandlerUtils
     include AggregateUtils
+    include TypeUtils
     include FilterUtils
     include ColumnUtils
     include JoinUtils
@@ -75,45 +77,6 @@ module RubyPureMysql
       compiled.any?(&:nil?) ? nil : compiled
     end
 
-    def normalize_value_by_type(val, type)
-      # NULL (nil) は型に関わらず同一のものとして扱う (NULLマーカー)
-      return nil if val.nil?
-      return val if type.nil?
-
-      case type
-      when :integer then cast_to_numeric(val, :to_i)
-      when :float   then cast_to_numeric(val, :to_f)
-      when :string  then val.to_s
-      else val
-      end
-    end
-
-    def cast_to_numeric(val, method)
-      return nil if val.nil?
-
-      val.is_a?(Numeric) ? val.send(method) : val.to_s.send(method)
-    end
-
-    def determine_base_types(rows)
-      return [] if rows.nil? || rows.empty?
-
-      num_cols = rows.first.size
-      (0...num_cols).map do |col_idx|
-        # 全ての非NULL値をチェックして、最も汎用的な型を決定する
-        # 優先順位: String > Float > Integer
-        types = rows.map { |row| map_value_to_type(row[col_idx]) }.compact
-        if types.include?(:string)
-          :string
-        elsif types.include?(:float)
-          :float
-        elsif types.include?(:integer)
-          :integer
-        else
-          nil
-        end
-      end
-    end
-
     private
 
     def handle_unknown_column(client)
@@ -138,12 +101,5 @@ module RubyPureMysql
       end
     end
 
-    def map_value_to_type(val)
-      case val
-      when Integer then :integer
-      when Float   then :float
-      when String  then :string
-      end
-    end
   end
 end
