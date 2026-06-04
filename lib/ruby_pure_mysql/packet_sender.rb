@@ -142,9 +142,15 @@ module RubyPureMysql
       rows ||= []
       column_names.each_with_index do |name_info, index|
         name, org_name = resolve_column_names(name_info, index, original_names)
-        # 最初の非NULL値を探して型を決定する
-        sample_val = rows.lazy.map { |row| row[index] }.find { |v| !v.nil? }
-        type = determine_column_type(sample_val)
+
+        # 型の決定: 1. name_info (Hash) からの指定, 2. 実際のデータから判定
+        type = if name_info.is_a?(Hash) && name_info[:type]
+                 name_info[:type]
+               else
+                 sample_val = rows.lazy.map { |row| row[index] }.find { |v| !v.nil? }
+                 determine_column_type(sample_val)
+               end
+
         send_packet(client, seq & 0xFF, pack_column_definition(type, name, org_name))
         seq += 1
       end
