@@ -38,6 +38,7 @@ module RubyPureMysql
       return :string if types.include?(:string)
       return :float if types.include?(:float)
       return :integer if types.include?(:integer)
+
       nil
     end
 

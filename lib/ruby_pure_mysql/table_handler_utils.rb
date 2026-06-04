@@ -100,6 +100,5 @@ module RubyPureMysql
       else indices
       end
     end
-
   end
 end
