@@ -46,15 +46,13 @@ module RubyPureMysql
     def collect_exact_values(cols, group, lookup_opts)
       cols.map do |col_idx|
         clause = find_clause_for_col(col_idx, group, lookup_opts)
-        return nil unless clause&.[](:operator) == '='
+        return nil unless %w[= <=>].include?(clause&.[](:operator))
 
         clause[:value]
       end
     end
 
     def lookup_exact(table_name, idx_name, values)
-      return [] if values.any?(&:nil?)
-
       data = @index_data.dig(table_name, idx_name)
       data ? (data[values]&.keys || []) : []
     end
@@ -71,7 +69,7 @@ module RubyPureMysql
     end
 
     def valid_prefix_operator?(clause)
-      clause && %w[= > < >= <= IS NULL IS NOT NULL].include?(clause[:operator])
+      clause && %w[= <=> > < >= <= IS NULL IS NOT NULL].include?(clause[:operator])
     end
 
     # インデックスから範囲候補を抽出する。
