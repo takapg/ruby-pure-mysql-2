@@ -99,8 +99,18 @@ module RubyPureMysql
 
       num_cols = rows.first.size
       (0...num_cols).map do |col_idx|
-        first_val = rows.find { |row| !row[col_idx].nil? }&.[](col_idx)
-        map_value_to_type(first_val)
+        # 全ての非NULL値をチェックして、最も汎用的な型を決定する
+        # 優先順位: String > Float > Integer
+        types = rows.map { |row| map_value_to_type(row[col_idx]) }.compact
+        if types.include?(:string)
+          :string
+        elsif types.include?(:float)
+          :float
+        elsif types.include?(:integer)
+          :integer
+        else
+          nil
+        end
       end
     end
 
