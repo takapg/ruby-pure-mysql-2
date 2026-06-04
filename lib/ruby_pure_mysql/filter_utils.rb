@@ -4,7 +4,8 @@ module RubyPureMysql
   # フィルタリングおよびWHERE句のコンパイルを支援するモジュール
   module FilterUtils
     def build_like_regex(target_value)
-      result, escaped = +'', false
+      result = +''
+      escaped = false
       target_value.to_s.each_char do |char|
         res, escaped = translate_like_char(char, escaped)
         result << res
@@ -37,6 +38,7 @@ module RubyPureMysql
       return ['', true] if char == '\\'
       return ['.*', false] if char == '%'
       return ['.', false] if char == '_'
+
       [Regexp.escape(char), false]
     end
   end
