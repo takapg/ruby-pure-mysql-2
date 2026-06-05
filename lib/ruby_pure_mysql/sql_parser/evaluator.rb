@@ -122,9 +122,9 @@ module RubyPureMysql
 
       index = 1
       while index < tokens.size
-        if tokens[index] =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/
+        op = tokens[index].to_s.strip
+        if op =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/
           left = tokens[index - 1]
-          op = tokens[index]
           return :error if index + 1 >= tokens.size
           right = tokens[index + 1]
 
