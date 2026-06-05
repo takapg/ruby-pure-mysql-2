@@ -102,7 +102,6 @@ module RubyPureMysql
       :ok
     end
 
-
     def apply_addition_subtraction(tokens)
       index = 1
       while index < tokens.size

@@ -6,13 +6,13 @@ module RubyPureMysql
     include ExpressionCommon
 
     COMPARISON_OPS = {
-      '='  => ->(l, r) { l == r ? 1 : 0 },
-      '!=' => ->(l, r) { l == r ? 0 : 1 },
-      '<>' => ->(l, r) { l == r ? 0 : 1 },
-      '<'  => ->(l, r) { l < r ? 1 : 0 },
-      '>'  => ->(l, r) { l > r ? 1 : 0 },
-      '<=' => ->(l, r) { l <= r ? 1 : 0 },
-      '>=' => ->(l, r) { l >= r ? 1 : 0 }
+      '='   => ->(l, r) { l == r ? 1 : 0 },
+      '!='  => ->(l, r) { l == r ? 0 : 1 },
+      '<>'  => ->(l, r) { l == r ? 0 : 1 },
+      '<'   => ->(l, r) { l < r ? 1 : 0 },
+      '>'   => ->(l, r) { l > r ? 1 : 0 },
+      '<='  => ->(l, r) { l <= r ? 1 : 0 },
+      '>='  => ->(l, r) { l >= r ? 1 : 0 }
     }.freeze
 
     def apply_comparisons(tokens)
@@ -51,9 +51,7 @@ module RubyPureMysql
     def calculate_comparison(left, right, operator)
       op_str = operator.to_s
 
-      if op_str == '<=>'
-        return calculate_null_safe_equal(left, right)
-      end
+      return calculate_null_safe_equal(left, right) if op_str == '<=>'
 
       return nil if left.nil? || right.nil?
 
@@ -73,6 +71,5 @@ module RubyPureMysql
       op = COMPARISON_OPS[operator.to_s]
       op ? op.call(left, right) : 0
     end
-
   end
 end
