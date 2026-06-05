@@ -65,6 +65,7 @@ module RubyPureMysql
       case name
       when 'coalesce' then handle_coalesce(args)
       when 'ifnull' then handle_ifnull(args)
+      when 'if' then handle_if(args)
       when 'substring', 'substr' then handle_substring(args)
       else :error
       end
@@ -80,6 +81,15 @@ module RubyPureMysql
       return :error unless args.size == 2
 
       args[0].nil? ? args[1] : args[0]
+    end
+
+    def handle_if(args)
+      return :error unless args.size == 3
+
+      expr1 = args[0]
+      is_true = !expr1.nil? && expr1 != 0 && expr1 != '0' && expr1 != false
+
+      is_true ? args[1] : args[2]
     end
 
     def handle_substring(args)
