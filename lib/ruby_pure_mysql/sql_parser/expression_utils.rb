@@ -179,12 +179,12 @@ module RubyPureMysql
             when '>=' then left >= right
             when '<=' then left <= right
             when '<=>' then left == right
-            else return :error
+            else return nil
             end
 
       res ? 1 : 0
     rescue StandardError
-      :error
+      nil
     end
 
     # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
