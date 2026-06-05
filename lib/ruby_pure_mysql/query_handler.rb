@@ -26,8 +26,9 @@ module RubyPureMysql
 
       result = SqlParser.parse(sql)
 
-      if result[:error]
-        send_err_packet(client, 1, result[:error])
+      if result == :error || (result.is_a?(Hash) && result[:error])
+        error_msg = result.is_a?(Hash) ? result[:error] : 'Syntax Error'
+        send_err_packet(client, 1, error_msg, 1064)
       else
         dispatch_query(client, result)
       end
