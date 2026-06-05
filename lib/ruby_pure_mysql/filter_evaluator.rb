@@ -6,7 +6,7 @@ module RubyPureMysql
     def apply_filter(val, operator, target_value, regex = nil)
       return val.nil? if operator == 'IS NULL'
       return !val.nil? if operator == 'IS NOT NULL'
-      return false if val.nil? && operator != 'IS NULL'
+      return false if val.nil? && !['IS NULL', '<=>'].include?(operator)
 
       return regex.match?(val.to_s) if regex.is_a?(Regexp)
 
@@ -19,6 +19,7 @@ module RubyPureMysql
       case operator
       when 'LIKE' then match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
+      when '<=>' then handle_null_safe_equal(val, target_value)
       when 'IN' then handle_in_operator(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
@@ -93,6 +94,13 @@ module RubyPureMysql
       n1 = cast_to_numeric_for_comparison(val1)
       n2 = cast_to_numeric_for_comparison(val2)
       n1.is_a?(Numeric) && n2.is_a?(Numeric) ? [n1, n2] : [val1, val2]
+    end
+
+    def handle_null_safe_equal(val, target)
+      return true if val.nil? && target.nil?
+      return false if val.nil? || target.nil?
+
+      compare_equality?(val, '=', target)
     end
 
     def cast_to_numeric_for_comparison(val)
