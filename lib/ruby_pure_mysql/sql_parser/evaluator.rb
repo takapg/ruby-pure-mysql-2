@@ -140,20 +140,24 @@ module RubyPureMysql
     end
 
     def evaluate_comparison(left, op, right)
+      # トークンが文字列の "NULL" である場合は nil として扱う
+      l = left.is_a?(String) && left.casecmp?('NULL') ? nil : left
+      r = right.is_a?(String) && right.casecmp?('NULL') ? nil : right
+
       if op == '<=>'
-        return (left == right) ? 1 : 0
+        return (l == r) ? 1 : 0
       end
 
       # <=> 以外の演算子では、いずれかが NULL の場合は 0 (UNKNOWN/FALSE)
-      return 0 if left.nil? || right.nil?
+      return 0 if l.nil? || r.nil?
 
       res = case op
-            when '=' then left == right
-            when '!=', '<>' then left != right
-            when '>' then left > right
-            when '<' then left < right
-            when '>=' then left >= right
-            when '<=' then left <= right
+            when '=' then l == r
+            when '!=', '<>' then l != r
+            when '>' then l > r
+            when '<' then l < r
+            when '>=' then l >= r
+            when '<=' then l <= r
             else return :error
             end
       res ? 1 : 0
