@@ -45,7 +45,7 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return nil if val == :nil || val.nil? || (val.is_a?(String) && val.casecmp?('NULL'))
+      return nil if val.nil? || val == :nil || (val.is_a?(String) && val.casecmp?('NULL'))
       return val if val.is_a?(Numeric) || val == :error
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
