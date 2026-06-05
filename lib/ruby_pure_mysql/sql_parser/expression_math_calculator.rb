@@ -120,6 +120,8 @@ module RubyPureMysql
 
       return :error if left == :error || right == :error
 
+      # <=> (NULL-safe equal) の場合は nil が許容されるため、
+      # ここで nil チェックによる早期リターンを行わず calculate_comparison に委ねる
       result = calculate_comparison(left, right, operator)
       update_tokens_with_result!(tokens, index, result)
       :ok
@@ -127,6 +129,7 @@ module RubyPureMysql
 
     def calculate_comparison(left, right, operator)
       op_str = operator.to_s
+      # <=> (NULL-safe equal) は NULL 同士の比較を許容するため、nil チェックより前に評価する
       if op_str == '<=>'
         return (left == right) ? 1 : 0
       end
