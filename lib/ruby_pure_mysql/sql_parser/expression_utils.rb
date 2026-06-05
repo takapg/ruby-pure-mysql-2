@@ -105,6 +105,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
+      return scanner.matched if scanner.scan(/<=>|!=|<>|>=|<=|=|>|</)
       return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
@@ -263,6 +264,54 @@ module RubyPureMysql
 
     def function_call?(token)
       token.match?(/\A\w+\(.*\)\z/)
+    end
+
+    def apply_comparisons(tokens)
+      return tokens unless tokens.is_a?(Array)
+
+      i = 0
+      while i < tokens.length
+        token = tokens[i]
+        if token.is_a?(String) && token.match?(/<=>|!=|<>|>=|<=|=|>|</)
+          left = tokens[i - 1]
+          right = tokens[i + 1]
+          return :error if left.nil? || right.nil?
+
+          res = evaluate_comparison(left, token, right)
+          return :error if res == :error
+
+          tokens[i - 1..i + 1] = [res]
+          i -= 1
+        end
+        i += 1
+      end
+      tokens.first
+    end
+
+    def evaluate_comparison(left, op, right)
+      case op
+      when '<=>'
+        (left == right) ? 1 : 0
+      else
+        return nil if left.nil? || right.nil?
+
+        case op
+        when '=', '=='
+          (left == right) ? 1 : 0
+        when '!=', '<>'
+          (left != right) ? 1 : 0
+        when '>'
+          (left > right) ? 1 : 0
+        when '<'
+          (left < right) ? 1 : 0
+        when '>='
+          (left >= right) ? 1 : 0
+        when '<='
+          (left <= right) ? 1 : 0
+        else
+          :error
+        end
+      end
     end
   end
 
