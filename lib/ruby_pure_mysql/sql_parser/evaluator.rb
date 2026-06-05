@@ -82,7 +82,10 @@ module RubyPureMysql
       tokens = apply_addition_subtraction(tokens)
       return :error if tokens == :error
 
-      apply_string_concatenation(tokens)
+      tokens = apply_string_concatenation(tokens)
+      return :error if tokens == :error
+
+      apply_comparisons(tokens)
     end
 
     private
@@ -111,6 +114,50 @@ module RubyPureMysql
 
         val
       end
+    end
+
+    def apply_comparisons(tokens)
+      return tokens unless tokens.is_a?(Array)
+      return tokens.first if tokens.size == 1
+
+      index = 1
+      while index < tokens.size
+        if tokens[index] =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/
+          left = tokens[index - 1]
+          op = tokens[index]
+          right = tokens[index + 1]
+          return :error if right.nil?
+
+          res = evaluate_comparison(left, op, right)
+          return :error if res == :error
+
+          tokens.slice!(index - 1, 3)
+          tokens.insert(index - 1, res)
+          index -= 1
+        end
+        index += 1
+      end
+      tokens.size == 1 ? tokens.first : :error
+    end
+
+    def evaluate_comparison(left, op, right)
+      if op == '<=>'
+        return (left.nil? == right.nil?) ? 1 : 0
+      end
+      return 0 if left.nil? || right.nil?
+
+      res = case op
+            when '=' then left == right
+            when '!=', '<>' then left != right
+            when '>' then left > right
+            when '<' then left < right
+            when '>=' then left >= right
+            when '<=' then left <= right
+            else return :error
+            end
+      res ? 1 : 0
+    rescue StandardError
+      :error
     end
   end
 end
