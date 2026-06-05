@@ -67,7 +67,7 @@ module RubyPureMysql
       result = process_math_tokens(col)
       return result if result == :error || result.nil?
 
-      result
+      result.first
     end
 
     def process_math_tokens(col)
