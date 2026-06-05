@@ -6,7 +6,7 @@ require 'ruby_pure_mysql'
 
 RSpec.configure do |config|
   config.color = true
-  # config.formatter = :documentation
+  config.formatter = :documentation
 
   # テスト開始前に 3307 ポートで自作サーバーを起動
   config.before(:suite) do

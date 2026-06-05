@@ -28,6 +28,8 @@ module RubyPureMysql
           handle_client(client)
         rescue Errno::EPIPE
           # クライアントが切断された場合は無視
+        rescue StandardError => e
+          RubyPureMysql.logger.error "Unhandled exception in client thread: #{e.message}\n#{e.backtrace.join("\n")}"
         ensure
           client.close
         end
@@ -38,7 +40,9 @@ module RubyPureMysql
 
     def handle_client(client)
       send_handshake(client)
-      read_packet(client)
+      packet = read_packet(client)
+      return unless packet
+
       # 認証応答に対するOKパケットのシーケンス番号は2
       send_ok_packet(client, 2)
 
