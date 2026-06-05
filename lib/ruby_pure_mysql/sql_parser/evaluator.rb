@@ -8,7 +8,6 @@ module RubyPureMysql
 
     def evaluate_expression(col)
       col = col.strip
-      return nil if col.casecmp?('NULL')
 
       # 外側の括弧が式全体を囲んでいる場合は剥離して再帰的に評価する
       col = col[1...-1].strip while fully_parenthesized?(col)
@@ -68,7 +67,8 @@ module RubyPureMysql
       result = process_math_tokens(col)
       return result if result == :error || result.nil?
 
-      result.is_a?(Array) && result.size == 1 ? result.first : result
+      val = result.is_a?(Array) && result.size == 1 ? result.first : result
+      val == :nil ? nil : val
     end
 
     def process_math_tokens(col)
@@ -87,7 +87,7 @@ module RubyPureMysql
       return :error if tokens == :error
 
       res = apply_string_concatenation(tokens)
-      res || tokens
+      res.nil? ? tokens : res
     end
 
     private
