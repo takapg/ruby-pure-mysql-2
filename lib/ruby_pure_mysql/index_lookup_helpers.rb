@@ -28,6 +28,7 @@ module RubyPureMysql
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
       else
+        return true if operator == '<=>' && val.nil? && target.nil?
         return false if val.nil? || target.nil?
 
         matches_operator?(val, operator, target)

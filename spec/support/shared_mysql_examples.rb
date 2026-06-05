@@ -79,6 +79,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'can evaluate NULL-safe equal operator (SELECT NULL <=> NULL;)' do
+      results = client.query('SELECT NULL <=> NULL;')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'can evaluate NULL-safe equal operator with non-NULL (SELECT 1 <=> NULL;)' do
+      results = client.query('SELECT 1 <=> NULL;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'can evaluate NULL-safe equal operator with matching values (SELECT 1 <=> 1;)' do
+      results = client.query('SELECT 1 <=> 1;')
+      expect(results.first.values.first).to eq(1)
+    end
+
     it 'returns NULL for arithmetic with NULL (SELECT 1 + NULL;)' do
       results = client.query('SELECT 1 + NULL;')
       expect(results.first.values.first).to be_nil
@@ -166,6 +181,17 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect do
         client.query('SELECT 1 + * 2;')
       end.to raise_error(Mysql2::Error)
+    end
+
+    it 'filters rows using NULL-safe equal operator (WHERE val <=> NULL)' do
+      client.query('DROP TABLE IF EXISTS ns_test;')
+      client.query('CREATE TABLE ns_test (val INT);')
+      client.query('INSERT INTO ns_test VALUES (1);')
+      client.query('INSERT INTO ns_test VALUES (NULL);')
+
+      results = client.query('SELECT * FROM ns_test WHERE val <=> NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first.values.first).to be_nil
     end
 
     it 'can return a simple negative integer (SELECT -1;)' do
