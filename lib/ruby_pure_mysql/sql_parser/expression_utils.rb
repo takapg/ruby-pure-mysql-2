@@ -105,7 +105,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
-      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
+      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]|<=>})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
 
@@ -123,7 +123,7 @@ module RubyPureMysql
     end
 
     def scan_op_token(scanner, tokens)
-      scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
+      scan_operator_with_char(scanner, tokens, scanner.matched)
     end
 
     def scan_str_token(scanner)
@@ -131,8 +131,8 @@ module RubyPureMysql
       scan_string(scanner)
     end
 
-    def scan_operator_with_char(scanner, tokens, char)
-      return char unless unary_operator?(char, tokens)
+    def scan_operator_with_char(scanner, tokens, op)
+      return op unless unary_operator?(op[0], tokens)
 
       scan_unary_operator_body(scanner)
     end
