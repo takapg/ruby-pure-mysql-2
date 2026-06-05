@@ -212,7 +212,7 @@ module RubyPureMysql
         '(?:\s+(?:AS\s+)?(?!(?:JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|OFFSET)\b)(?<alias1>\w+))?',
         '(?:\s+(?<join_type>INNER|LEFT)\s+JOIN\s+(?<table2>`[^`]+`|\w+)' \
         '(?:\s+(?:AS\s+)?(?<alias2>\w+))?\s+ON\s+(?<on_condition>.+?))?',
-        '(?:\s+WHERE\s+(?<where>.+?))?',
+        '(?:\s+WHERE\s+(?<where>.+?)(?=\s+GROUP\s+BY|\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s+OFFSET|;?\s*\z))?',
         '(?:\s+GROUP\s+BY\s+(?<group_by>.+?))?',
         '(?:\s+HAVING\s+(?<having>.+?))?',
         '(?:\s+ORDER\s+BY\s+(?<order_clause>.+?))?',

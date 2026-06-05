@@ -105,6 +105,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
+      return scanner.matched if scanner.scan(/<=>|<=|>=|!=|<>|<|>|=/)
       return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
@@ -135,6 +136,53 @@ module RubyPureMysql
       return char unless unary_operator?(char, tokens)
 
       scan_unary_operator_body(scanner)
+    end
+
+    def apply_comparisons(tokens)
+      return nil if tokens.nil?
+      return :error if tokens == :error
+      return tokens if tokens.size < 3
+
+      index = 1
+      while index < tokens.size
+        if tokens[index].match?(/<=>|<=|>=|!=|<>|<|>|=/)
+          left = tokens[index - 1]
+          op = tokens[index]
+          right = tokens[index + 1]
+          return :error if right.nil?
+
+          res = evaluate_comparison(left, op, right)
+          return :error if res == :error
+
+          tokens[index - 1, 3] = [res]
+          index = 1
+        else
+          index += 1
+        end
+      end
+      tokens
+    end
+
+    def evaluate_comparison(left, op, right)
+      if op == '<=>'
+        return true if left.nil? && right.nil?
+        return false if left.nil? || right.nil?
+      else
+        return nil if left.nil? || right.nil?
+      end
+
+      case op
+      when '=' then left == right
+      when '!=', '<>' then left != right
+      when '>' then left > right
+      when '<' then left < right
+      when '>=' then left >= right
+      when '<=' then left <= right
+      when '<=>' then left == right
+      else :error
+      end
+    rescue StandardError
+      :error
     end
 
     # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
@@ -202,7 +250,7 @@ module RubyPureMysql
     end
 
     def process_math_token(token)
-      return token if operator?(token)
+      return token if operator?(token) || token.match?(/<=>|<=|>=|!=|<>|<|>|=/)
       return nil if token.casecmp?('NULL')
 
       token_s = token.strip
