@@ -94,6 +94,64 @@ module RubyPureMysql
       :ok
     end
 
+    def apply_comparisons(tokens)
+      index = 1
+      while index < tokens.size
+        res = process_comparison_if_operator(tokens, index)
+        return :error if res == :error
+
+        index += 1 if res == :ok
+      end
+      tokens
+    end
+
+    def process_comparison_if_operator(tokens, index)
+      op = tokens[index]
+      if %w[= <=> != < > <= >=].include?(op)
+        res = process_comparison_op!(tokens, index)
+        return res == :ok ? :performed : res
+      end
+      :ok
+    end
+
+    def process_comparison_op!(tokens, index)
+      left, operator, right = resolve_operands(tokens, index)
+      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return :error if left == :error || right == :error
+
+      update_tokens_with_result!(tokens, index, calculate_comparison(left, right, operator))
+      :ok
+    end
+
+    def calculate_comparison(left, right, operator)
+      case operator
+      when '<=>'
+        return 1 if left.nil? && right.nil?
+        return 0 if left.nil? || right.nil?
+        left == right ? 1 : 0
+      when '='
+        return nil if left.nil? || right.nil?
+        left == right ? 1 : 0
+      when '!='
+        return nil if left.nil? || right.nil?
+        left != right ? 1 : 0
+      when '<'
+        return nil if left.nil? || right.nil?
+        left < right ? 1 : 0
+      when '>'
+        return nil if left.nil? || right.nil?
+        left > right ? 1 : 0
+      when '<='
+        return nil if left.nil? || right.nil?
+        left <= right ? 1 : 0
+      when '>='
+        return nil if left.nil? || right.nil?
+        left >= right ? 1 : 0
+      else
+        0
+      end
+    end
+
     def apply_addition_subtraction(tokens)
       index = 1
       while index < tokens.size
