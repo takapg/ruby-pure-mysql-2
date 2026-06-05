@@ -81,8 +81,7 @@ module RubyPureMysql
       return 0 if str.empty?
       return 0 unless str.match?(/\A[-+]?(\d|\.)/)
 
-      f_val = str.to_f
-      f_val == f_val.to_i ? f_val.to_i : f_val
+      str.include?('.') ? str.to_f : str.to_i
     end
 
     def string_operator?(val)
