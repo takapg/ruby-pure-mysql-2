@@ -29,7 +29,7 @@ module RubyPureMysql
       when 'IS NOT NULL' then !val.nil?
       when '<=>' then null_safe_equal_compare?(val, target)
       else
-        compare_with_null_guard(val, operator, target)
+        compare_with_null_guard?(val, operator, target)
       end
     rescue StandardError
       false
@@ -54,7 +54,7 @@ module RubyPureMysql
       matches_operator?(val, '<=>', target)
     end
 
-    def compare_with_null_guard(val, operator, target)
+    def compare_with_null_guard?(val, operator, target)
       return false if val.nil? || target.nil?
 
       matches_operator?(val, operator, target)
