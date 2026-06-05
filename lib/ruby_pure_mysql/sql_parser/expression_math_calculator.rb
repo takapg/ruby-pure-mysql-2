@@ -45,7 +45,8 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return nil if val.nil? || val == :nil
+      return :nil if val == :nil
+      return nil if val.nil?
       return val if val.is_a?(Numeric) || val == :error
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
@@ -126,26 +127,26 @@ module RubyPureMysql
     def calculate_comparison(left, right, operator)
       case operator
       when '<=>'
-        return 1 if left.nil? && right.nil?
-        return 0 if left.nil? || right.nil?
+        return 1 if left == :nil && right == :nil
+        return 0 if left == :nil || right == :nil
         left == right ? 1 : 0
       when '='
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left == right ? 1 : 0
       when '!=', '<>'
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left != right ? 1 : 0
       when '<'
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left < right ? 1 : 0
       when '>'
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left > right ? 1 : 0
       when '<='
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left <= right ? 1 : 0
       when '>='
-        return nil if left.nil? || right.nil?
+        return nil if left == :nil || right == :nil
         left >= right ? 1 : 0
       else
         0
