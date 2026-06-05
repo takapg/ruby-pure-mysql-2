@@ -27,21 +27,21 @@ module RubyPureMysql
       case operator
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
-      when '<=>' then handle_null_safe_compare(val, target, operator)
-      else handle_standard_safe_compare(val, target, operator)
+      when '<=>' then compare_null_safe?(val, target, operator)
+      else compare_standard_safe?(val, target, operator)
       end
     rescue StandardError
       false
     end
 
-    def handle_null_safe_compare(val, target, operator)
+    def compare_null_safe?(val, target, operator)
       return true if val.nil? && target.nil?
       return false if val.nil? || target.nil?
 
       matches_operator?(val, operator, target)
     end
 
-    def handle_standard_safe_compare(val, target, operator)
+    def compare_standard_safe?(val, target, operator)
       return false if val.nil? || target.nil?
 
       matches_operator?(val, operator, target)

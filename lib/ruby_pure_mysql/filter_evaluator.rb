@@ -4,7 +4,7 @@ module RubyPureMysql
   # フィルタリング条件の評価ロジックを提供するモジュール
   module FilterEvaluator
     def apply_filter(val, operator, target_value, regex = nil)
-      return handle_null_guards(val, operator) if null_operator?(operator)
+      return evaluate_null_guards(val, operator) if null_operator?(operator)
       return false if val.nil? && operator != '<=>'
       return regex.match?(val.to_s) if regex.is_a?(Regexp)
 
@@ -15,10 +15,10 @@ module RubyPureMysql
     end
 
     def null_operator?(operator)
-      %w[IS\ NULL IS\ NOT\ NULL].include?(operator)
+      ['IS NULL', 'IS NOT NULL'].include?(operator)
     end
 
-    def handle_null_guards(val, operator)
+    def evaluate_null_guards(val, operator)
       operator == 'IS NULL' ? val.nil? : !val.nil?
     end
 

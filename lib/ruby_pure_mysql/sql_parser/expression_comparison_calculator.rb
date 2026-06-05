@@ -5,6 +5,16 @@ module RubyPureMysql
   module ExpressionComparisonCalculator
     include ExpressionCommon
 
+    COMPARISON_OPS = {
+      '='  => ->(l, r) { l == r ? 1 : 0 },
+      '!=' => ->(l, r) { l == r ? 0 : 1 },
+      '<>' => ->(l, r) { l == r ? 0 : 1 },
+      '<'  => ->(l, r) { l < r ? 1 : 0 },
+      '>'  => ->(l, r) { l > r ? 1 : 0 },
+      '<=' => ->(l, r) { l <= r ? 1 : 0 },
+      '>=' => ->(l, r) { l >= r ? 1 : 0 }
+    }.freeze
+
     def apply_comparisons(tokens)
       index = 1
       while index < tokens.size
@@ -60,15 +70,8 @@ module RubyPureMysql
     end
 
     def calculate_standard_comparison(left, right, operator)
-      case operator
-      when '=' then left == right ? 1 : 0
-      when '!=', '<>' then left == right ? 0 : 1
-      when '<' then left < right ? 1 : 0
-      when '>' then left > right ? 1 : 0
-      when '<=' then left <= right ? 1 : 0
-      when '>=' then left >= right ? 1 : 0
-      else 0
-      end
+      op = COMPARISON_OPS[operator.to_s]
+      op ? op.call(left, right) : 0
     end
 
   end
