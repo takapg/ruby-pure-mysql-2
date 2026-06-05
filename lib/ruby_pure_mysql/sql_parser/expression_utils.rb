@@ -138,10 +138,10 @@ module RubyPureMysql
     end
 
     def scan_token_by_type(scanner, tokens)
-      return scan_paren_token(scanner) if scanner.scan('(')
+      return scan_paren_token(scanner) if scanner.scan(/\(/)
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
-      return '||' if scanner.scan('||')
-      return '<=>' if scanner.scan('<=>')
+      return '||' if scanner.scan(/\|\|/)
+      return '<=>' if scanner.scan(/<=>/)
       return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
@@ -177,7 +177,7 @@ module RubyPureMysql
     # tokenize_char 内で直接 scan(/\|\|/) を行うように変更したため、
     # このメソッドは不要になりますが、互換性のために残すか削除します。
     def handle_pipe_operator(scanner)
-      scanner.scan('||') ? '||' : :error
+      scanner.scan(/\|\|/) ? '||' : :error
     end
 
     def process_tokens(tokens)
