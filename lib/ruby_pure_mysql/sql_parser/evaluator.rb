@@ -4,6 +4,7 @@ module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
     include ExpressionUtils
+    include ExpressionMathCalculator
 
     def evaluate_expression(col)
       col = col.strip
