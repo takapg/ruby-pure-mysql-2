@@ -74,7 +74,11 @@ module RubyPureMysql
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
-      # 優先順位: 乗除算 -> 加減算 -> 文字列結合 -> 比較演算
+      # 優先順位: 単項演算子 -> 乗除算 -> 加減算 -> 文字列結合 -> 比較演算
+      tokens = apply_unary_operators(tokens)
+      return :error if tokens == :error
+      return nil if tokens.nil?
+
       tokens = apply_multiplication_division(tokens)
       return :error if tokens == :error
       return nil if tokens.nil?

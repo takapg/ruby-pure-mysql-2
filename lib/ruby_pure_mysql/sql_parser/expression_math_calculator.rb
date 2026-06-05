@@ -7,6 +7,26 @@ module RubyPureMysql
 
     MD_OPERATORS = %w[* / %].freeze
 
+    def apply_unary_operators(tokens)
+      (tokens.size - 1).downto(0) do |i|
+        if tokens[i] == '-' && (i == 0 || ['+', '-', '*', '/', '%', '('].include?(tokens[i - 1]))
+          next_val = resolve_numeric_value(tokens[i + 1])
+          if next_val.is_a?(Numeric)
+            tokens[i] = -next_val
+            tokens.slice!(i + 1)
+          elsif next_val == :error
+            return :error
+          elsif next_val.nil?
+            tokens[i] = nil
+            tokens.slice!(i + 1)
+          end
+        elsif tokens[i] == '+' && (i == 0 || ['+', '-', '*', '/', '%', '('].include?(tokens[i - 1]))
+          tokens.slice!(i)
+        end
+      end
+      tokens
+    end
+
     def apply_multiplication_division(tokens)
       index = 1
       while index < tokens.size
@@ -47,10 +67,14 @@ module RubyPureMysql
     def resolve_numeric_value(val)
       return nil if val.nil? || val == :nil
       return val if val.is_a?(Numeric) || val == :error
+
+      val_s = val.to_s.strip
+      return nil if val_s.casecmp?('NULL')
+
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
-      parse_string_to_numeric(val.to_s.strip)
+      parse_string_to_numeric(val_s)
     end
 
     def parse_string_to_numeric(str)
