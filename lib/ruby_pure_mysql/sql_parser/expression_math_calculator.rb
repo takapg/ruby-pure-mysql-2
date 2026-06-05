@@ -117,6 +117,11 @@ module RubyPureMysql
     def process_comparison_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
       return handle_missing_operand(tokens, index) if operator.nil?
+
+      if operator.to_s != '<=>' && (left.nil? || right.nil?)
+        return handle_missing_operand(tokens, index)
+      end
+
       return :error if left == :error || right == :error
 
       update_tokens_with_result!(tokens, index, calculate_comparison(left, right, operator))
