@@ -86,7 +86,8 @@ module RubyPureMysql
       tokens = apply_comparisons(tokens)
       return :error if tokens == :error
 
-      apply_string_concatenation(tokens)
+      res = apply_string_concatenation(tokens)
+      res.nil? ? tokens : res
     end
 
     private
