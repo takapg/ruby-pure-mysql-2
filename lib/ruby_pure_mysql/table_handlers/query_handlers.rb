@@ -7,6 +7,7 @@ require_relative '../aggregate_handler_utils'
 module RubyPureMysql
   # クエリ操作に関連するハンドラメソッド
   module QueryHandlers
+    include TableHandlerUtils
     include GroupByHandlers
     include GroupUtils
     include AggregateHandlerUtils
