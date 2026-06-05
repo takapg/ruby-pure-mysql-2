@@ -6,13 +6,13 @@ module RubyPureMysql
     include ExpressionCommon
 
     COMPARISON_OPS = {
-      '='   => ->(l, r) { l == r ? 1 : 0 },
-      '!='  => ->(l, r) { l == r ? 0 : 1 },
-      '<>'  => ->(l, r) { l == r ? 0 : 1 },
-      '<'   => ->(l, r) { l < r ? 1 : 0 },
-      '>'   => ->(l, r) { l > r ? 1 : 0 },
-      '<='  => ->(l, r) { l <= r ? 1 : 0 },
-      '>='  => ->(l, r) { l >= r ? 1 : 0 }
+      '='  => ->(l, r) { l == r ? 1 : 0 },
+      '!=' => ->(l, r) { l == r ? 0 : 1 },
+      '<>' => ->(l, r) { l == r ? 0 : 1 },
+      '<'  => ->(l, r) { l < r ? 1 : 0 },
+      '>'  => ->(l, r) { l > r ? 1 : 0 },
+      '<=' => ->(l, r) { l <= r ? 1 : 0 },
+      '>=' => ->(l, r) { l >= r ? 1 : 0 }
     }.freeze
 
     def apply_comparisons(tokens)
