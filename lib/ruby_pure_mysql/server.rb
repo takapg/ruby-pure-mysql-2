@@ -28,8 +28,10 @@ module RubyPureMysql
           handle_client(client)
         rescue Errno::EPIPE
           # クライアントが切断された場合は無視
-        rescue StandardError => e
-          RubyPureMysql.logger.error "Unhandled exception in client thread: #{e.message}\n#{e.backtrace.join("\n")}"
+        rescue Exception => e
+          error_msg = "[FATAL] Server Thread Crash: #{e.class} - #{e.message}\n#{e.backtrace.join("\n")}"
+          RubyPureMysql.logger.error error_msg
+          $stderr.puts error_msg
         ensure
           client.close
         end

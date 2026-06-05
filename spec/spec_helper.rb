@@ -23,8 +23,10 @@ RSpec.configure do |config|
 
     until connected || (Time.now - start_time) > timeout
       begin
-        TCPSocket.new('localhost', 3307).close
-        connected = true
+        socket = TCPSocket.new('localhost', 3307)
+        # サーバーからハンドシェイクパケットの最初の1バイトが届くか確認
+        connected = true if socket.read(1)
+        socket.close
       rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
         sleep 0.1
       end
