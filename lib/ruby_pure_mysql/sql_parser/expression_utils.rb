@@ -165,22 +165,24 @@ module RubyPureMysql
 
     def evaluate_comparison(left, op, right)
       if op == '<=>'
-        return true if left.nil? && right.nil?
-        return false if left.nil? || right.nil?
-      else
-        return nil if left.nil? || right.nil?
+        return 1 if left.nil? && right.nil?
+        return 0 if left.nil? || right.nil?
       end
 
-      case op
-      when '=' then left == right
-      when '!=', '<>' then left != right
-      when '>' then left > right
-      when '<' then left < right
-      when '>=' then left >= right
-      when '<=' then left <= right
-      when '<=>' then left == right
-      else :error
-      end
+      return nil if left.nil? || right.nil?
+
+      res = case op
+            when '=' then left == right
+            when '!=', '<>' then left != right
+            when '>' then left > right
+            when '<' then left < right
+            when '>=' then left >= right
+            when '<=' then left <= right
+            when '<=>' then left == right
+            else return :error
+            end
+
+      res ? 1 : 0
     rescue StandardError
       :error
     end
