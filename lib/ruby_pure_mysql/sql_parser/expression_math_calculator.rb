@@ -11,7 +11,6 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         res = process_md_if_operator(tokens, index)
-        return nil if res == :div_by_zero
         return :error if res == :error
 
         index += 1 if res == :ok
@@ -32,9 +31,10 @@ module RubyPureMysql
       return handle_missing_operand(tokens, index) if operator.nil?
 
       status = check_md_status(left, right, operator)
-      return status unless status == :ok
+      return status if status == :error
 
-      update_tokens_with_result!(tokens, index, calculate_md(left, right, operator))
+      result = status == :div_by_zero ? nil : calculate_md(left, right, operator)
+      update_tokens_with_result!(tokens, index, result)
     end
 
     def check_md_status(left, right, operator)
