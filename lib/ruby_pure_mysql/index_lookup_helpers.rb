@@ -27,14 +27,9 @@ module RubyPureMysql
       case operator
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
-      when '<=>'
-        return true if val.nil? && target.nil?
-        return false if val.nil? || target.nil?
-        matches_operator?(val, operator, target)
+      when '<=>' then null_safe_equal_compare?(val, target)
       else
-        return false if val.nil? || target.nil?
-
-        matches_operator?(val, operator, target)
+        compare_with_null_guard(val, operator, target)
       end
     rescue StandardError
       false
@@ -52,13 +47,26 @@ module RubyPureMysql
 
     private
 
+    def null_safe_equal_compare?(val, target)
+      return true if val.nil? && target.nil?
+      return false if val.nil? || target.nil?
+
+      matches_operator?(val, '<=>', target)
+    end
+
+    def compare_with_null_guard(val, operator, target)
+      return false if val.nil? || target.nil?
+
+      matches_operator?(val, operator, target)
+    end
+
     def bsearch_index_or_size(sorted_keys, ...)
       sorted_keys.bsearch_index(...) || sorted_keys.size
     end
 
     def matches_operator?(val, operator, target)
       case operator
-      when '=', '<=>'  then val == target
+      when '=', '<=>' then val == target
       when '>'  then val > target
       when '<'  then val < target
       when '>=' then val >= target
