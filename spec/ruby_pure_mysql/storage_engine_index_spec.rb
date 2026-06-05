@@ -724,6 +724,19 @@ RSpec.describe RubyPureMysql::StorageEngine do
       where_is_null = [{ column: 'val', operator: 'IS NULL', value: nil }]
       indices = engine.find_matching_indices(nil, rows, cols, where_is_null)
       expect(indices).to contain_exactly(0) # row 0 is [1, nil]
+
+      # NULL安全等価演算子 (<=>) の検証
+      # NULL <=> NULL -> マッチ
+      where_null_safe_null = [{ column: 'val', operator: '<=>', value: nil }]
+      expect(engine.find_matching_indices(nil, rows, cols, where_null_safe_null)).to contain_exactly(0)
+
+      # 非NULL <=> NULL -> マッチしない
+      where_val_safe_null = [{ column: 'val', operator: '<=>', value: 10 }]
+      expect(engine.find_matching_indices(nil, rows, cols, where_val_safe_null)).to contain_exactly(1)
+
+      # 非NULL <=> 非NULL -> 正しくマッチ
+      where_val_safe_val = [{ column: 'val', operator: '<=>', value: 20 }]
+      expect(engine.find_matching_indices(nil, rows, cols, where_val_safe_val)).to contain_exactly(2)
     end
   end
 end
