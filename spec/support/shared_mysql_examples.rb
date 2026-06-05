@@ -476,6 +476,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     end
   end
 
+  describe 'NULL-safe equal operator (<=>)' do
+    it 'returns 1 for SELECT NULL <=> NULL;' do
+      results = client.query('SELECT NULL <=> NULL;')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns 0 for SELECT 1 <=> NULL;' do
+      results = client.query('SELECT 1 <=> NULL;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'returns 1 for SELECT 1 <=> 1;' do
+      results = client.query('SELECT 1 <=> 1;')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'filters rows correctly using <=> in WHERE clause' do
+      client.query('DROP TABLE IF EXISTS null_safe_test;')
+      client.query('CREATE TABLE null_safe_test (id INT, val INT);')
+      client.query("INSERT INTO null_safe_test VALUES (1, NULL);")
+      client.query("INSERT INTO null_safe_test VALUES (2, 10);")
+      client.query("INSERT INTO null_safe_test VALUES (3, 20);")
+
+      # val <=> NULL -> should return id 1
+      results = client.query('SELECT id FROM null_safe_test WHERE val <=> NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(1)
+
+      # val <=> 10 -> should return id 2
+      results = client.query('SELECT id FROM null_safe_test WHERE val <=> 10;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(2)
+    end
+  end
+
   describe 'Schema Management (Storage Engine)' do
     it 'executes CREATE TABLE and returns an OK packet' do
       expect do
