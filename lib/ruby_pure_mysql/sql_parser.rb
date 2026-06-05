@@ -362,7 +362,7 @@ module RubyPureMysql
       if (m = col.match(IMPLICIT_ALIAS_REGEX))
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
-        return { original: col, alias: nil } if original.match?(%r{[+\-*/%|]\z})
+        return { original: col, alias: nil } if original.match?(%r{[+\-*/%|=<>!]\z})
 
         return { original: original, alias: strip_backticks(m[2]) }
       end
@@ -541,7 +541,7 @@ module RubyPureMysql
       res = parse_between_condition(condition, column_pattern)
       return res if res
 
-      where_match = condition.match(/\A(#{column_pattern})\s*(=|!=|<>|>=|<=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      where_match = condition.match(/\A(#{column_pattern})\s*(<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       build_standard_condition(where_match)

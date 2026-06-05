@@ -11,7 +11,6 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         res = process_md_if_operator(tokens, index)
-        return nil if res == :div_by_zero
         return :error if res == :error
 
         index += 1 if res == :ok
@@ -29,12 +28,13 @@ module RubyPureMysql
 
     def process_md_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return handle_missing_operand(tokens, index) if operator.nil?
 
       status = check_md_status(left, right, operator)
-      return status unless status == :ok
+      return status if status == :error
 
-      update_tokens_with_result!(tokens, index, calculate_md(left, right, operator))
+      result = status == :div_by_zero ? nil : calculate_md(left, right, operator)
+      update_tokens_with_result!(tokens, index, result)
     end
 
     def check_md_status(left, right, operator)
@@ -45,12 +45,20 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return nil if val.nil? || val == :nil
-      return val if val.is_a?(Numeric) || val == :error
+      return nil if null_value?(val)
+      return val if numeric_or_error?(val)
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
       parse_string_to_numeric(val.to_s.strip)
+    end
+
+    def null_value?(val)
+      val.nil? || val == :nil || (val.is_a?(String) && val.casecmp?('NULL'))
+    end
+
+    def numeric_or_error?(val)
+      val.is_a?(Numeric) || val == :error
     end
 
     def parse_string_to_numeric(str)
@@ -108,7 +116,7 @@ module RubyPureMysql
 
     def process_add_sub_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return handle_missing_operand(tokens, index) if operator.nil?
       return :error if left == :error || right == :error
 
       update_tokens_with_result!(tokens, index, calculate_sum_diff(left, operator, right))
@@ -117,9 +125,10 @@ module RubyPureMysql
     private
 
     def resolve_operands(tokens, index)
+      return [nil, nil, nil] if index <= 0 || index >= tokens.size - 1
+
       left_raw = tokens[index - 1]
       right_raw = tokens[index + 1]
-      return [nil, nil, nil] if left_raw.nil? || right_raw.nil?
 
       [resolve_numeric_value(left_raw), tokens[index], resolve_numeric_value(right_raw)]
     end

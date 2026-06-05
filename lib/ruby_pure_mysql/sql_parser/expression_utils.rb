@@ -4,6 +4,7 @@ require 'strscan'
 require_relative 'expression_common'
 require_relative 'expression_scanner_utils'
 require_relative 'expression_math_calculator'
+require_relative 'expression_comparison_calculator'
 require_relative 'expression_string_calculator'
 require_relative 'expression_arg_splitter'
 
@@ -105,7 +106,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
-      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
+      return scan_op_token(scanner, tokens) if scanner.scan(%r{<=>|<=|>=|!=|<>|[=<>+\-*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
 
@@ -123,7 +124,7 @@ module RubyPureMysql
     end
 
     def scan_op_token(scanner, tokens)
-      scan_operator_with_char(scanner, tokens, scanner.string[scanner.pos - 1])
+      scan_operator_with_char(scanner, tokens, scanner.matched)
     end
 
     def scan_str_token(scanner)
@@ -131,8 +132,8 @@ module RubyPureMysql
       scan_string(scanner)
     end
 
-    def scan_operator_with_char(scanner, tokens, char)
-      return char unless unary_operator?(char, tokens)
+    def scan_operator_with_char(scanner, tokens, operator)
+      return operator unless unary_operator?(operator[0], tokens)
 
       scan_unary_operator_body(scanner)
     end
@@ -159,6 +160,7 @@ module RubyPureMysql
   module ExpressionEvaluator
     include ExpressionCommon
     include ExpressionMathCalculator
+    include ExpressionComparisonCalculator
     include ExpressionStringCalculator
     include ExpressionArgSplitter
 
@@ -203,7 +205,7 @@ module RubyPureMysql
 
     def process_math_token(token)
       return token if operator?(token)
-      return nil if token.casecmp?('NULL')
+      return :nil if token.casecmp?('NULL')
 
       token_s = token.strip
       return handle_unary_token(token_s) if token_s.start_with?('-', '+') && token_s.length > 1

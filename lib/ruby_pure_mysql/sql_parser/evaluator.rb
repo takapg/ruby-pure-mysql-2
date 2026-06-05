@@ -4,10 +4,10 @@ module RubyPureMysql
   # SQLクエリの式を評価するモジュール
   module Evaluator
     include ExpressionUtils
+    include ExpressionMathCalculator
 
     def evaluate_expression(col)
       col = col.strip
-      return nil if col.casecmp?('NULL')
 
       # 外側の括弧が式全体を囲んでいる場合は剥離して再帰的に評価する
       col = col[1...-1].strip while fully_parenthesized?(col)
@@ -67,22 +67,30 @@ module RubyPureMysql
       result = process_math_tokens(col)
       return result if result == :error || result.nil?
 
-      result
+      val = result.is_a?(Array) && result.size == 1 ? result.first : result
+      val == :nil ? nil : val
     end
 
     def process_math_tokens(col)
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
-      # 優先順位: 乗除算 -> 加減算 -> 文字列結合
+      tokens = apply_arithmetic_ops(tokens)
+      return :error if tokens == :error || tokens.nil?
+
+      tokens = apply_comparisons(tokens)
+      return :error if tokens == :error
+
+      res = apply_string_concatenation(tokens)
+      res.nil? ? tokens : res
+    end
+
+    def apply_arithmetic_ops(tokens)
       tokens = apply_multiplication_division(tokens)
       return :error if tokens == :error
       return nil if tokens.nil?
 
-      tokens = apply_addition_subtraction(tokens)
-      return :error if tokens == :error
-
-      apply_string_concatenation(tokens)
+      apply_addition_subtraction(tokens)
     end
 
     private

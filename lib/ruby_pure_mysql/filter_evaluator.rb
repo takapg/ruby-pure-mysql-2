@@ -4,15 +4,22 @@ module RubyPureMysql
   # フィルタリング条件の評価ロジックを提供するモジュール
   module FilterEvaluator
     def apply_filter(val, operator, target_value, regex = nil)
-      return val.nil? if operator == 'IS NULL'
-      return !val.nil? if operator == 'IS NOT NULL'
-      return false if val.nil? && operator != 'IS NULL'
-
+      return evaluate_null_guards?(val, operator) if null_operator?(operator)
+      return false if val.nil? && operator != '<=>'
       return regex.match?(val.to_s) if regex.is_a?(Regexp)
 
-      compare_value(val, operator, target_value)
+      res = compare_value(val, operator, target_value)
+      [true, 1].include?(res)
     rescue StandardError
       false
+    end
+
+    def null_operator?(operator)
+      ['IS NULL', 'IS NOT NULL'].include?(operator)
+    end
+
+    def evaluate_null_guards?(val, operator)
+      operator == 'IS NULL' ? val.nil? : !val.nil?
     end
 
     def compare_value(val, operator, target_value)
@@ -20,6 +27,7 @@ module RubyPureMysql
       when 'LIKE' then match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
       when 'IN' then handle_in_operator(val, target_value)
+      when '<=>' then handle_null_safe_equal(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
       else compare_generic_operator(val, operator, target_value)
@@ -100,6 +108,13 @@ module RubyPureMysql
       return nil if val.nil?
 
       val.to_s.to_f
+    end
+
+    def handle_null_safe_equal(val, target)
+      return 1 if val.nil? && target.nil?
+      return 0 if val.nil? || target.nil?
+
+      compare_equality?(val, '=', target) ? 1 : 0
     end
   end
 end
