@@ -142,8 +142,15 @@ module RubyPureMysql
 
     def evaluate_comparison(left, op, right)
       if op == '<=>'
-        return left == right ? 1 : 0
+        if left.nil? && right.nil?
+          return 1
+        elsif left.nil? || right.nil?
+          return 0
+        else
+          return left == right ? 1 : 0
+        end
       end
+
       return 0 if left.nil? || right.nil?
 
       res = case op
