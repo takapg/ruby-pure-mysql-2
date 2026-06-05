@@ -188,7 +188,8 @@ module RubyPureMysql
 
         processed << res
       end
-      apply_comparisons(processed)
+      res = apply_comparisons(processed)
+      res.is_a?(Array) && res.size == 1 ? res.first : res
     end
   end
 
