@@ -79,9 +79,10 @@ module RubyPureMysql
       index = 1
       while index < tokens.size
         if tokens[index] == '<=>'
+          return :error if index - 1 < 0 || index + 1 >= tokens.size
+
           left = tokens[index - 1]
           right = tokens[index + 1]
-          return :error if right.nil?
 
           res = evaluate_null_safe_equal(left, right)
           return :error if res == :error
