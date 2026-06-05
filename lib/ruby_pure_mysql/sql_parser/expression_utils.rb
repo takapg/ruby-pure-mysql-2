@@ -239,7 +239,7 @@ module RubyPureMysql
     end
 
     def process_math_token(token)
-      return token if operator?(token)
+      return token if operator?(token) || %w[|| <=>].include?(token)
       return nil if token.casecmp?('NULL')
 
       token_s = token.strip
