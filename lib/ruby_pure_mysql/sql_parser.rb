@@ -397,22 +397,8 @@ module RubyPureMysql
     end
   end
 
-  # WHERE句のパースを支援するモジュール
-  module SqlParserWhereUtils
-    def parse_where_clause(clause, allow_aggregates: false)
-      or_parts = split_by_operator(clause, 'OR')
-
-      or_parts.map do |or_part|
-        and_parts = split_by_operator(or_part, 'AND')
-        and_parts.map do |cond_str|
-          res = parse_single_where_condition(cond_str, allow_aggregates: allow_aggregates)
-          return res if res.is_a?(Hash) && res[:error]
-
-          res
-        end
-      end
-    end
-
+  # WHERE句の分割ロジックを支援するモジュール
+  module SqlParserWhereSplitter
     def split_by_operator(clause, operator)
       parts = []
       buffer = { current: +'', in_quote: nil, index: 0, in_between: false }
@@ -428,14 +414,16 @@ module RubyPureMysql
       return if quote_escaped?(clause, buffer, char)
       return if quote_toggled?(clause, buffer, char)
 
-      unless buffer[:in_quote]
-        return if operator_handled?(clause, buffer, operator, parts)
-
-        update_between_state(clause, buffer, operator)
-      end
+      handle_unquoted_char(clause, buffer, operator, parts) unless buffer[:in_quote]
 
       buffer[:current] << char
       buffer[:index] += 1
+    end
+
+    def handle_unquoted_char(clause, buffer, operator, parts)
+      return if operator_handled?(clause, buffer, operator, parts)
+
+      update_between_state(clause, buffer, operator)
     end
 
     def quote_escaped?(clause, buffer, char)
@@ -485,6 +473,23 @@ module RubyPureMysql
     def update_between_state(clause, buffer, operator)
       buffer[:in_between] = true if operator == 'AND' && clause[buffer[:index]..].match?(/\A\s+BETWEEN\s+/i)
     end
+  end
+
+  # WHERE句のパースを支援するモジュール
+  module SqlParserWhereUtils
+    def parse_where_clause(clause, allow_aggregates: false)
+      or_parts = split_by_operator(clause, 'OR')
+
+      or_parts.map do |or_part|
+        and_parts = split_by_operator(or_part, 'AND')
+        and_parts.map do |cond_str|
+          res = parse_single_where_condition(cond_str, allow_aggregates: allow_aggregates)
+          return res if res.is_a?(Hash) && res[:error]
+
+          res
+        end
+      end
+    end
 
     def parse_single_where_condition(condition, allow_aggregates: false)
       column_pattern = allow_aggregates ? '.+?' : '[\w.]+'
@@ -522,13 +527,53 @@ module RubyPureMysql
     end
   end
 
-  # ユーティリティメソッドをまとめたモジュール
-  module SqlParserUtils
+  # 値の変換とデコードを支援するモジュール
+  module SqlParserValueConverter
     ESCAPE_MAP = {
       '0' => "\0", 'n' => "\n", 'r' => "\r", 't' => "\t",
       'Z' => "\x1a", '\\' => '\\', "'" => "'", '"' => '"'
     }.freeze
 
+    def parse_in_value(value_str)
+      return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
+
+      list_str = value_str[1...-1]
+      return { error: 'Invalid IN clause syntax' } if list_str.strip.empty?
+
+      extract_in_values(list_str)
+    end
+
+    def extract_in_values(list_str)
+      values = split_insert_values(list_str).map { |v| convert_value(v) }
+      return { error: 'Unsupported IN value' } if values.any? { |v| v.is_a?(Hash) && v[:error] }
+
+      values
+    end
+
+    def convert_value(val)
+      if (m = val.match(/\A(['"])(.*)\1\z/m))
+        content = m[2]
+        content = content.gsub("''", "'") if m[1] == "'"
+        return decode_mysql_string(content)
+      end
+
+      return nil if val.casecmp?('NULL')
+      return val.to_i if val.match?(/\A-?\d+\z/)
+
+      { error: "Invalid INSERT value: #{val}" }
+    end
+
+    def decode_mysql_string(str)
+      str.gsub(/\\(.)/) { |m| decode_escaped_char(m[1]) }
+    end
+
+    def decode_escaped_char(char)
+      ESCAPE_MAP.fetch(char, char)
+    end
+  end
+
+  # ユーティリティメソッドをまとめたモジュール
+  module SqlParserUtils
     def parse_is_null_condition(condition, column_pattern)
       m = condition.match(/\A(#{column_pattern})\s+IS\s+(NOT\s+)?NULL\z/i)
       return nil unless m
@@ -567,22 +612,6 @@ module RubyPureMysql
       str.delete_prefix('`').delete_suffix('`')
     end
 
-    def parse_in_value(value_str)
-      return { error: 'Invalid IN clause syntax' } unless value_str.start_with?('(') && value_str.end_with?(')')
-
-      list_str = value_str[1...-1]
-      return { error: 'Invalid IN clause syntax' } if list_str.strip.empty?
-
-      extract_in_values(list_str)
-    end
-
-    def extract_in_values(list_str)
-      values = split_insert_values(list_str).map { |v| convert_value(v) }
-      return { error: 'Unsupported IN value' } if values.any? { |v| v.is_a?(Hash) && v[:error] }
-
-      values
-    end
-
     def split_columns(definition)
       cols = []
       buf = +''
@@ -596,27 +625,6 @@ module RubyPureMysql
       # MySQLのダブルクォートエスケープ ('') を考慮した正規表現に変更
       values_str.scan(/(?:'(?:''|[^'])*'|"(?:""|[^"])*"|[^,])+/).map(&:strip)
     end
-
-    def convert_value(val)
-      if (m = val.match(/\A(['"])(.*)\1\z/m))
-        content = m[2]
-        content = content.gsub("''", "'") if m[1] == "'"
-        return decode_mysql_string(content)
-      end
-
-      return nil if val.casecmp?('NULL')
-      return val.to_i if val.match?(/\A-?\d+\z/)
-
-      { error: "Invalid INSERT value: #{val}" }
-    end
-
-    def decode_mysql_string(str)
-      str.gsub(/\\(.)/) { |m| decode_escaped_char(m[1]) }
-    end
-
-    def decode_escaped_char(char)
-      ESCAPE_MAP.fetch(char, char)
-    end
   end
 
   # SqlParserは、SQLクエリを解析し、簡易的な計算を実行するクラスです。
@@ -627,7 +635,9 @@ module RubyPureMysql
     extend SqlParserQueryParsers
     extend SqlParserResultBuilder
     extend SqlParserWhereUtils
+    extend SqlParserWhereSplitter
     extend SqlParserUtils
+    extend SqlParserValueConverter
 
     PARSERS = {
       /\ACREATE\s+TABLE/i => :parse_create_table,
