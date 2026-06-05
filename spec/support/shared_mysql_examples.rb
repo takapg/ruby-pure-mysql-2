@@ -79,6 +79,21 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to be_nil
     end
 
+    it 'returns 1 for NULL <=> NULL' do
+      results = client.query('SELECT NULL <=> NULL;')
+      expect(results.first.values.first).to eq(1)
+    end
+
+    it 'returns 0 for 1 <=> NULL' do
+      results = client.query('SELECT 1 <=> NULL;')
+      expect(results.first.values.first).to eq(0)
+    end
+
+    it 'returns 1 for 1 <=> 1' do
+      results = client.query('SELECT 1 <=> 1;')
+      expect(results.first.values.first).to eq(1)
+    end
+
     it 'returns NULL for arithmetic with NULL (SELECT 1 + NULL;)' do
       results = client.query('SELECT 1 + NULL;')
       expect(results.first.values.first).to be_nil
@@ -529,6 +544,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       rows = results.to_a
       expect(rows[0].values).to eq([1, 'alice'])
       expect(rows[1].values).to eq([2, 'bob'])
+    end
+  end
+
+  describe 'NULL-safe equal operator (<=>) in WHERE clause' do
+    before do
+      client.query('DROP TABLE IF EXISTS ns_test;')
+      client.query('CREATE TABLE ns_test (id INT, val INT);')
+      client.query('INSERT INTO ns_test VALUES (1, NULL);')
+      client.query('INSERT INTO ns_test VALUES (2, 10);')
+    end
+
+    it 'filters rows where val <=> NULL' do
+      results = client.query('SELECT id FROM ns_test WHERE val <=> NULL;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(1)
+    end
+
+    it 'filters rows where val <=> 10' do
+      results = client.query('SELECT id FROM ns_test WHERE val <=> 10;')
+      expect(results.count).to eq(1)
+      expect(results.first['id']).to eq(2)
     end
   end
 
