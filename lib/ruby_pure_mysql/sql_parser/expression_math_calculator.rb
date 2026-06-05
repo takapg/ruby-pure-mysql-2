@@ -134,7 +134,9 @@ module RubyPureMysql
 
     def calculate_comparison(left, right, operator)
       op_str = operator.to_s
-      # <=> (NULL-safe equal) は NULL 同士の比較を許容するため、nil チェックより前に評価する
+
+      # <=> (NULL-safe equal) は NULL 同士の比較を許容するため、
+      # 他の比較演算子よりも先に評価し、nil チェックを回避する
       if op_str == '<=>'
         return 1 if left.nil? && right.nil?
         return 0 if left.nil? || right.nil?
