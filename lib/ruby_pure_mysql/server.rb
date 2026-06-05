@@ -51,13 +51,15 @@ module RubyPureMysql
 
     def process_client_packets(client)
       loop do
-        packet = read_packet(client)
-        break unless packet
+        begin
+          packet = read_packet(client)
+          break unless packet
 
-        handle_client_packet(client, packet)
-      rescue StandardError => e
-        RubyPureMysql.logger.error "Error handling client: #{e.message}\n#{e.backtrace.join("\n")}"
-        send_err_packet(client, 1, "Internal server error: #{e.message}", 1105)
+          handle_client_packet(client, packet)
+        rescue StandardError => e
+          RubyPureMysql.logger.error "Error handling client: #{e.message}\n#{e.backtrace.join("\n")}"
+          send_err_packet(client, 1, "Internal server error: #{e.message}", 1105)
+        end
       end
     end
 
