@@ -125,8 +125,8 @@ module RubyPureMysql
         if tokens[index] =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/
           left = tokens[index - 1]
           op = tokens[index]
+          return :error if index + 1 >= tokens.size
           right = tokens[index + 1]
-          return :error if right.nil?
 
           res = evaluate_comparison(left, op, right)
           return :error if res == :error
