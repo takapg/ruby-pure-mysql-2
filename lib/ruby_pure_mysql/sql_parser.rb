@@ -362,7 +362,7 @@ module RubyPureMysql
       if (m = col.match(IMPLICIT_ALIAS_REGEX))
         original = m[1].strip
         # "1 + " のように演算子で終わる場合は、後続の文字列をエイリアスと見なさない
-        return { original: col, alias: nil } if original.match?(%r{[+\-*/%|]\z})
+        return { original: col, alias: nil } if original.match?(%r{[+\-*/%|=<>!]\z})
 
         return { original: original, alias: strip_backticks(m[2]) }
       end

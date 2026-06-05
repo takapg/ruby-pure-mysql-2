@@ -40,7 +40,7 @@ module RubyPureMysql
     end
 
     def operator?(token)
-      (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||' || token == '<=>'
+      (token.match?(%r{[+*/%-]}) && token.length == 1) || token == '||' || %w[= <=> != <> < > <= >=].include?(token)
     end
 
     def evaluate_system_variable(col)
