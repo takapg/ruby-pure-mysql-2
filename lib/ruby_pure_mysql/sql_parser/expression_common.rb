@@ -87,7 +87,7 @@ module RubyPureMysql
       return :error unless args.size == 3
 
       expr1 = args[0]
-      is_true = !expr1.nil? && expr1 != 0 && expr1 != '0' && expr1 != false
+      is_true = ![nil, false, 0, '0'].include?(expr1)
 
       is_true ? args[1] : args[2]
     end
