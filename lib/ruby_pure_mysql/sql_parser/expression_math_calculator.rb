@@ -107,7 +107,7 @@ module RubyPureMysql
 
     def process_comparison_if_operator(tokens, index)
       op = tokens[index]
-      if %w[= <=> != < > <= >=].include?(op)
+      if %w[= <=> != <> < > <= >=].include?(op)
         res = process_comparison_op!(tokens, index)
         return res == :ok ? :performed : res
       end
@@ -132,7 +132,7 @@ module RubyPureMysql
       when '='
         return nil if left.nil? || right.nil?
         left == right ? 1 : 0
-      when '!='
+      when '!=', '<>'
         return nil if left.nil? || right.nil?
         left != right ? 1 : 0
       when '<'

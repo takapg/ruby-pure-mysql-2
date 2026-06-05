@@ -105,7 +105,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
-      return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]|<=>})
+      return scan_op_token(scanner, tokens) if scanner.scan(%r{<=>|<=|>=|!=|<>|[=<>+\-*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
 
