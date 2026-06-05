@@ -10,7 +10,8 @@ module RubyPureMysql
 
       return regex.match?(val.to_s) if regex.is_a?(Regexp)
 
-      compare_value(val, operator, target_value)
+      res = compare_value(val, operator, target_value)
+      res == true || res == 1
     rescue StandardError
       false
     end
@@ -104,10 +105,10 @@ module RubyPureMysql
     end
 
     def handle_null_safe_equal(val, target)
-      return true if val.nil? && target.nil?
-      return false if val.nil? || target.nil?
+      return 1 if val.nil? && target.nil?
+      return 0 if val.nil? || target.nil?
 
-      compare_equality?(val, '=', target)
+      compare_equality?(val, '=', target) ? 1 : 0
     end
   end
 end
