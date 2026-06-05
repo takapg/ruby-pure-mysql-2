@@ -126,13 +126,9 @@ module RubyPureMysql
     def calculate_comparison(left, right, operator)
       case operator
       when '<=>'
-        if left.nil? && right.nil?
-          1
-        elsif left.nil? || right.nil?
-          0
-        else
-          left == right ? 1 : 0
-        end
+        return 1 if left.nil? && right.nil?
+        return 0 if left.nil? || right.nil?
+        left == right ? 1 : 0
       when '='
         return nil if left.nil? || right.nil?
         left == right ? 1 : 0
