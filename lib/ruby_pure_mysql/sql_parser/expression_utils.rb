@@ -68,6 +68,41 @@ module RubyPureMysql
     end
   end
 
+  # 比較演算の計算ロジックを提供するモジュール
+  module ExpressionComparisonCalculator
+    include ExpressionCommon
+
+    def apply_comparisons(tokens)
+      return nil if tokens.nil?
+      return [] if tokens.empty?
+
+      index = 1
+      while index < tokens.size
+        if tokens[index] == '<=>'
+          left = tokens[index - 1]
+          right = tokens[index + 1]
+          return :error if right.nil?
+
+          res = evaluate_null_safe_equal(left, right)
+          return :error if res == :error
+
+          tokens[index - 1, 3] = [res]
+          index -= 1
+        else
+          index += 1
+        end
+      end
+      tokens
+    end
+
+    def evaluate_null_safe_equal(left, right)
+      return 1 if left.nil? && right.nil?
+      return 0 if left.nil? || right.nil?
+
+      left == right ? 1 : 0
+    end
+  end
+
   # 式のトークナイズ処理を提供するモジュール
   module ExpressionTokenizer
     include ExpressionCommon
@@ -105,6 +140,7 @@ module RubyPureMysql
       return scan_paren_token(scanner) if scanner.scan('(')
       return scan_id_token(scanner) if scanner.scan(/[a-zA-Z_]/)
       return '||' if scanner.scan('||')
+      return '<=>' if scanner.scan('<=>')
       return scan_op_token(scanner, tokens) if scanner.scan(%r{[-+*/%]})
       return scanner.matched if scanner.scan(/(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/)
       return scan_str_token(scanner) if scanner.scan(/['"]/)
@@ -272,6 +308,7 @@ module RubyPureMysql
     include ExpressionScannerUtils
     include ExpressionTokenizer
     include ExpressionMathCalculator
+    include ExpressionComparisonCalculator
     include ExpressionStringCalculator
     include ExpressionArgSplitter
     include ExpressionEvaluator

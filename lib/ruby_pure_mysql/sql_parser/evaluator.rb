@@ -82,6 +82,9 @@ module RubyPureMysql
       tokens = apply_addition_subtraction(tokens)
       return :error if tokens == :error
 
+      tokens = apply_comparisons(tokens)
+      return :error if tokens == :error
+
       apply_string_concatenation(tokens)
     end
 
