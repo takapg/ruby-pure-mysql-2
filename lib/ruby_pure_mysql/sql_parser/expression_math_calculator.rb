@@ -118,13 +118,15 @@ module RubyPureMysql
       left, operator, right = resolve_operands(tokens, index)
       return handle_missing_operand(tokens, index) if operator.nil?
 
+      # <=> 演算子の場合は、オペランドが nil であっても calculate_comparison で評価する
       if operator.to_s != '<=>' && (left.nil? || right.nil?)
         return handle_missing_operand(tokens, index)
       end
 
       return :error if left == :error || right == :error
 
-      update_tokens_with_result!(tokens, index, calculate_comparison(left, right, operator))
+      result = calculate_comparison(left, right, operator)
+      update_tokens_with_result!(tokens, index, result)
       :ok
     end
 
@@ -133,7 +135,7 @@ module RubyPureMysql
       if op_str == '<=>'
         return 1 if left.nil? && right.nil?
         return 0 if left.nil? || right.nil?
-        return left == right ? 1 : 0
+        return (left == right) ? 1 : 0
       end
 
       return nil if left.nil? || right.nil?
