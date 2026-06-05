@@ -188,7 +188,7 @@ module RubyPureMysql
 
         processed << res
       end
-      processed
+      apply_comparisons(processed)
     end
   end
 
