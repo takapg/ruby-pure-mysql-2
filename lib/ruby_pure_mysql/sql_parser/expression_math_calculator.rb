@@ -131,6 +131,8 @@ module RubyPureMysql
       op_str = operator.to_s
       # <=> (NULL-safe equal) は NULL 同士の比較を許容するため、nil チェックより前に評価する
       if op_str == '<=>'
+        return 1 if left.nil? && right.nil?
+        return 0 if left.nil? || right.nil?
         return (left == right) ? 1 : 0
       end
 
