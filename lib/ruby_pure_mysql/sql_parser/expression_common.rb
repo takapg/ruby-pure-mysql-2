@@ -107,7 +107,7 @@ module RubyPureMysql
       return nil if val.nil?
 
       str = val.to_s
-      name == 'length' ? str.bytesize : str.length
+      name == 'length' ? str.bytesize : str.force_encoding('UTF-8').length
     end
 
     def execute_substring(str, pos, len)
