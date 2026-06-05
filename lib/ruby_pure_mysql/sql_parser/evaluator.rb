@@ -120,24 +120,23 @@ module RubyPureMysql
       return tokens unless tokens.is_a?(Array)
       return tokens.first if tokens.size == 1
 
-      index = 1
-      while index < tokens.size
-        op = tokens[index].to_s.strip
-        if op =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/
-          left = tokens[index - 1]
-          return :error if index + 1 >= tokens.size
-          right = tokens[index + 1]
+      # 比較演算子を検索
+      op_idx = tokens.find_index { |t| t.to_s.strip =~ /^(<=>|=|!=|<>|>=|<=|>|<)$/ }
+      return tokens.size == 1 ? tokens.first : :error unless op_idx
 
-          res = evaluate_comparison(left, op, right)
-          return :error if res == :error
+      # 左右のオペランドが存在するか確認
+      return :error if op_idx == 0 || op_idx == tokens.size - 1
 
-          tokens.slice!(index - 1, 3)
-          tokens.insert(index - 1, res)
-          index -= 1
-        end
-        index += 1
-      end
-      tokens.size == 1 ? tokens.first : :error
+      left = tokens[op_idx - 1]
+      op = tokens[op_idx].to_s.strip
+      right = tokens[op_idx + 1]
+
+      res = evaluate_comparison(left, op, right)
+      return :error if res == :error
+
+      # 3つのトークンを評価結果で置き換え、再帰的に処理
+      new_tokens = tokens[0...op_idx - 1] + [res] + tokens[op_idx + 2..-1]
+      apply_comparisons(new_tokens)
     end
 
     def evaluate_comparison(left, op, right)
