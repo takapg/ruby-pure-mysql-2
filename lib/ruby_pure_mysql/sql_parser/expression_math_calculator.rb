@@ -29,7 +29,7 @@ module RubyPureMysql
 
     def process_md_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return handle_missing_operand(tokens, index) if operator.nil?
 
       status = check_md_status(left, right, operator)
       return status unless status == :ok
@@ -116,7 +116,7 @@ module RubyPureMysql
 
     def process_comparison_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return handle_missing_operand(tokens, index) if operator.nil?
       return :error if left == :error || right == :error
 
       update_tokens_with_result!(tokens, index, calculate_comparison(left, right, operator))
@@ -166,7 +166,7 @@ module RubyPureMysql
 
     def process_add_sub_op!(tokens, index)
       left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if left.nil? || right.nil?
+      return handle_missing_operand(tokens, index) if operator.nil?
       return :error if left == :error || right == :error
 
       update_tokens_with_result!(tokens, index, calculate_sum_diff(left, operator, right))
@@ -175,9 +175,10 @@ module RubyPureMysql
     private
 
     def resolve_operands(tokens, index)
+      return [nil, nil, nil] if index <= 0 || index >= tokens.size - 1
+
       left_raw = tokens[index - 1]
       right_raw = tokens[index + 1]
-      return [nil, nil, nil] if left_raw.nil? || right_raw.nil?
 
       [resolve_numeric_value(left_raw), tokens[index], resolve_numeric_value(right_raw)]
     end
