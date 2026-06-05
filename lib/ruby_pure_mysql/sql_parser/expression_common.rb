@@ -55,7 +55,9 @@ module RubyPureMysql
       when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
-      when 'concat' then args.join
+      when 'concat'
+        return nil if args.any?(&:nil?)
+        args.join
       else
         handle_complex_builtin(name, args)
       end

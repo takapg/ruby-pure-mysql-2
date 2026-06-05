@@ -79,7 +79,7 @@ module RubyPureMysql
 
     def parse_string_to_numeric(str)
       return 0 if str.empty?
-      return str.to_i if str.match?(/\A-?\d+\z/)
+      return 0 unless str.match?(/\A[-+]?(\d|\.)/)
 
       f_val = str.to_f
       f_val == f_val.to_i ? f_val.to_i : f_val
