@@ -27,17 +27,24 @@ module RubyPureMysql
       case operator
       when 'IS NULL' then val.nil?
       when 'IS NOT NULL' then !val.nil?
-      when '<=>'
-        return true if val.nil? && target.nil?
-        return false if val.nil? || target.nil?
-        matches_operator?(val, operator, target)
-      else
-        return false if val.nil? || target.nil?
-
-        matches_operator?(val, operator, target)
+      when '<=>' then handle_null_safe_compare(val, target, operator)
+      else handle_standard_safe_compare(val, target, operator)
       end
     rescue StandardError
       false
+    end
+
+    def handle_null_safe_compare(val, target, operator)
+      return true if val.nil? && target.nil?
+      return false if val.nil? || target.nil?
+
+      matches_operator?(val, operator, target)
+    end
+
+    def handle_standard_safe_compare(val, target, operator)
+      return false if val.nil? || target.nil?
+
+      matches_operator?(val, operator, target)
     end
 
     # MySQL 8.0 のソート順に準拠し、NULL を最小値として扱う

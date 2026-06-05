@@ -4,6 +4,7 @@ require 'strscan'
 require_relative 'expression_common'
 require_relative 'expression_scanner_utils'
 require_relative 'expression_math_calculator'
+require_relative 'expression_comparison_calculator'
 require_relative 'expression_string_calculator'
 require_relative 'expression_arg_splitter'
 
@@ -131,8 +132,8 @@ module RubyPureMysql
       scan_string(scanner)
     end
 
-    def scan_operator_with_char(scanner, tokens, op)
-      return op unless unary_operator?(op[0], tokens)
+    def scan_operator_with_char(scanner, tokens, operator)
+      return operator unless unary_operator?(operator[0], tokens)
 
       scan_unary_operator_body(scanner)
     end
@@ -159,6 +160,7 @@ module RubyPureMysql
   module ExpressionEvaluator
     include ExpressionCommon
     include ExpressionMathCalculator
+    include ExpressionComparisonCalculator
     include ExpressionStringCalculator
     include ExpressionArgSplitter
 

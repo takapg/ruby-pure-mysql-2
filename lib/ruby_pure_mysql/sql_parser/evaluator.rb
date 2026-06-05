@@ -75,19 +75,22 @@ module RubyPureMysql
       tokens = tokenize_math(col)
       return :error if tokens == :error
 
-      # 優先順位: 乗除算 -> 加減算 -> 比較 -> 文字列結合
-      tokens = apply_multiplication_division(tokens)
-      return :error if tokens == :error
-      return nil if tokens.nil?
-
-      tokens = apply_addition_subtraction(tokens)
-      return :error if tokens == :error
+      tokens = apply_arithmetic_ops(tokens)
+      return :error if tokens == :error || tokens.nil?
 
       tokens = apply_comparisons(tokens)
       return :error if tokens == :error
 
       res = apply_string_concatenation(tokens)
       res.nil? ? tokens : res
+    end
+
+    def apply_arithmetic_ops(tokens)
+      tokens = apply_multiplication_division(tokens)
+      return :error if tokens == :error
+      return nil if tokens.nil?
+
+      apply_addition_subtraction(tokens)
     end
 
     private

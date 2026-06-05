@@ -45,12 +45,20 @@ module RubyPureMysql
     end
 
     def resolve_numeric_value(val)
-      return nil if val.nil? || val == :nil || (val.is_a?(String) && val.casecmp?('NULL'))
-      return val if val.is_a?(Numeric) || val == :error
+      return nil if null_value?(val)
+      return val if numeric_or_error?(val)
       return :error if string_operator?(val)
       return evaluate_parenthesized_numeric(val) if parenthesized_string?(val)
 
       parse_string_to_numeric(val.to_s.strip)
+    end
+
+    def null_value?(val)
+      val.nil? || val == :nil || (val.is_a?(String) && val.casecmp?('NULL'))
+    end
+
+    def numeric_or_error?(val)
+      val.is_a?(Numeric) || val == :error
     end
 
     def parse_string_to_numeric(str)
@@ -94,75 +102,6 @@ module RubyPureMysql
       :ok
     end
 
-    def apply_comparisons(tokens)
-      index = 1
-      while index < tokens.size
-        res = process_comparison_if_operator(tokens, index)
-        return :error if res == :error
-
-        index += 1 if res == :ok
-      end
-      tokens
-    end
-
-    def process_comparison_if_operator(tokens, index)
-      op = tokens[index]
-      if %w[= <=> != <> < > <= >=].include?(op.to_s)
-        res = process_comparison_op!(tokens, index)
-        return res == :ok ? :performed : res
-      end
-      :ok
-    end
-
-    def process_comparison_op!(tokens, index)
-      left, operator, right = resolve_operands(tokens, index)
-      return handle_missing_operand(tokens, index) if operator.nil?
-
-      return :error if left == :error || right == :error
-
-      result = calculate_comparison(left, right, operator)
-
-      # <=> 演算子の場合は結果が必ず 0 または 1 になるべきであり、nil になってはいけない
-      if operator.to_s == '<=>' && result.nil?
-        # 予期せぬ nil の場合は 0 (false) として扱うか、エラーにする
-        result = 0
-      end
-
-      update_tokens_with_result!(tokens, index, result)
-      :ok
-    end
-
-    def calculate_comparison(left, right, operator)
-      op_str = operator.to_s
-
-      # <=> (NULL-safe equal) は NULL 同士の比較を許容するため、
-      # 他の比較演算子よりも先に評価し、nil チェックを回避する
-      if op_str == '<=>'
-        return 1 if left.nil? && right.nil?
-        return 0 if left.nil? || right.nil?
-        return (left == right) ? 1 : 0
-      end
-
-      # MySQLの仕様: <=> 以外の比較演算子で片方が NULL の場合は結果も NULL (nil)
-      return nil if left.nil? || right.nil?
-
-      case operator
-      when '='
-        left == right ? 1 : 0
-      when '!=', '<>'
-        left != right ? 1 : 0
-      when '<'
-        left < right ? 1 : 0
-      when '>'
-        left > right ? 1 : 0
-      when '<='
-        left <= right ? 1 : 0
-      when '>='
-        left >= right ? 1 : 0
-      else
-        0
-      end
-    end
 
     def apply_addition_subtraction(tokens)
       index = 1
