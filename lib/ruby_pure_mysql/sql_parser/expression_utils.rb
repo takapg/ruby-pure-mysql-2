@@ -97,10 +97,13 @@ module RubyPureMysql
     end
 
     def evaluate_null_safe_equal(left, right)
-      return 1 if left.nil? && right.nil?
-      return 0 if left.nil? || right.nil?
+      l_val = left.is_a?(String) && left.casecmp?('NULL') ? nil : left
+      r_val = right.is_a?(String) && right.casecmp?('NULL') ? nil : right
 
-      left == right ? 1 : 0
+      return 1 if l_val.nil? && r_val.nil?
+      return 0 if l_val.nil? || r_val.nil?
+
+      l_val == r_val ? 1 : 0
     end
   end
 
@@ -240,7 +243,7 @@ module RubyPureMysql
 
     def process_math_token(token)
       return token if operator?(token) || %w[|| <=>].include?(token)
-      return nil if token.casecmp?('NULL')
+      return token if token.casecmp?('NULL')
 
       token_s = token.strip
       return handle_unary_token(token_s) if token_s.start_with?('-', '+') && token_s.length > 1
