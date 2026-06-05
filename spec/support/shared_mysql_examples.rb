@@ -481,6 +481,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'IF() function support' do
+      it 'returns the second argument when the first is true (SELECT IF(1, "true_val", "false_val");)' do
+        results = client.query('SELECT IF(1, "true_val", "false_val");')
+        expect(results.first.values.first).to eq('true_val')
+      end
+
+      it 'returns the third argument when the first is false (SELECT IF(0, "true_val", "false_val");)' do
+        results = client.query('SELECT IF(0, "true_val", "false_val");')
+        expect(results.first.values.first).to eq('false_val')
+      end
+
+      it 'returns the third argument when the first is NULL (SELECT IF(NULL, "true_val", "false_val");)' do
+        results = client.query('SELECT IF(NULL, "true_val", "false_val");')
+        expect(results.first.values.first).to eq('false_val')
+      end
+
+      it 'returns the third argument when the first is "0" (SELECT IF("0", "true_val", "false_val");)' do
+        results = client.query('SELECT IF("0", "true_val", "false_val");')
+        expect(results.first.values.first).to eq('false_val')
+      end
+
+      it 'returns the second argument when the first is a non-zero string (SELECT IF("1", "true_val", "false_val");)' do
+        results = client.query('SELECT IF("1", "true_val", "false_val");')
+        expect(results.first.values.first).to eq('true_val')
+      end
+
+      it 'returns an error when the number of arguments is not 3 (SELECT IF(1, 2);)' do
+        expect { client.query('SELECT IF(1, 2);') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error when the number of arguments is not 3 (SELECT IF(1, 2, 3, 4);)' do
+        expect { client.query('SELECT IF(1, 2, 3, 4);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
