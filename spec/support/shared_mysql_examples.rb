@@ -241,6 +241,23 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    it 'filters rows using NULL-safe equal operator (<=>)' do
+      client.query('DROP TABLE IF EXISTS null_safe_test;')
+      client.query('CREATE TABLE null_safe_test (val INT);')
+      client.query('INSERT INTO null_safe_test VALUES (10);')
+      client.query('INSERT INTO null_safe_test VALUES (NULL);')
+
+      # WHERE val <=> NULL -> NULLの行が返る
+      res_nil = client.query('SELECT * FROM null_safe_test WHERE val <=> NULL;')
+      expect(res_nil.count).to eq(1)
+      expect(res_nil.first.values.first).to be_nil
+
+      # WHERE val <=> 10 -> 10の行が返る
+      res_val = client.query('SELECT * FROM null_safe_test WHERE val <=> 10;')
+      expect(res_val.count).to eq(1)
+      expect(res_val.first.values.first).to eq(10)
+    end
+
     it 'returns an error when inserting a duplicate primary key' do
       client.query('DROP TABLE IF EXISTS pk_test;')
       client.query('CREATE TABLE pk_test (id INT PRIMARY KEY, name VARCHAR(255));')
@@ -473,6 +490,13 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect do
         client.query('SELECT NOW(;')
       end.to raise_error(Mysql2::Error)
+    end
+
+    it 'supports NULL-safe equal operator (<=>)' do
+      expect(client.query('SELECT NULL <=> NULL;').first.values.first).to eq(1)
+      expect(client.query('SELECT 1 <=> NULL;').first.values.first).to eq(0)
+      expect(client.query('SELECT NULL <=> 1;').first.values.first).to eq(0)
+      expect(client.query('SELECT 1 <=> 1;').first.values.first).to eq(1)
     end
   end
 
