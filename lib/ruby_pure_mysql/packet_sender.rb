@@ -6,12 +6,10 @@ module RubyPureMysql
   # カラム定義パケットの構築を支援するユーティリティ
   module PacketDefinitionUtils
     def determine_column_type(val)
-      if val.is_a?(Integer)
-        Constants::MYSQL_TYPE_LONGLONG
-      elsif val.is_a?(Float)
-        Constants::MYSQL_TYPE_DOUBLE
-      else
-        Constants::MYSQL_TYPE_VAR_STRING
+      case val
+      when Integer then Constants::MYSQL_TYPE_LONGLONG
+      when Float then Constants::MYSQL_TYPE_DOUBLE
+      else Constants::MYSQL_TYPE_VAR_STRING
       end
     end
 
@@ -63,6 +61,7 @@ module RubyPureMysql
     end
 
     def send_result_set(client, rows, columns = nil, original_columns = nil)
+      rows ||= []
       cols = resolve_columns(rows, columns)
       return unless valid_row_width?(client, rows, cols)
 
