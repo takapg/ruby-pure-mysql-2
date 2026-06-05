@@ -474,6 +474,33 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         client.query('SELECT NOW(;')
       end.to raise_error(Mysql2::Error)
     end
+
+    describe 'NULL-safe equal operator (<=>)' do
+      it 'returns 1 for NULL <=> NULL' do
+        results = client.query('SELECT NULL <=> NULL;')
+        expect(results.first.values.first).to eq(1)
+      end
+
+      it 'returns 0 for 1 <=> NULL' do
+        results = client.query('SELECT 1 <=> NULL;')
+        expect(results.first.values.first).to eq(0)
+      end
+
+      it 'returns 1 for 1 <=> 1' do
+        results = client.query('SELECT 1 <=> 1;')
+        expect(results.first.values.first).to eq(1)
+      end
+
+      it 'filters rows correctly using WHERE val <=> NULL' do
+        client.query('DROP TABLE IF EXISTS null_safe_test;')
+        client.query('CREATE TABLE null_safe_test (val INT);')
+        client.query('INSERT INTO null_safe_test VALUES (NULL);')
+        client.query('INSERT INTO null_safe_test VALUES (10);')
+        results = client.query('SELECT * FROM null_safe_test WHERE val <=> NULL;')
+        expect(results.count).to eq(1)
+        expect(results.first.values.first).to be_nil
+      end
+    end
   end
 
   describe 'Schema Management (Storage Engine)' do
