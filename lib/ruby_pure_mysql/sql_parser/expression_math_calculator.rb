@@ -134,6 +134,7 @@ module RubyPureMysql
         return (left == right) ? 1 : 0
       end
 
+      # MySQLの仕様: <=> 以外の比較演算子で片方が NULL の場合は結果も NULL (nil)
       return nil if left.nil? || right.nil?
 
       case operator
