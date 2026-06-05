@@ -48,10 +48,10 @@ module RubyPureMysql
 
     def evaluate_comparison?(val, operator, target)
       if operator == '<=>'
-        return val.nil? == target.nil? if val.nil? || target.nil?
-      elsif val.nil? || target.nil?
-        return false
+        return val == target
       end
+
+      return false if val.nil? || target.nil?
 
       matches_operator?(val, operator, target)
     end
