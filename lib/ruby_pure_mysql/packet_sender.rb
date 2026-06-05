@@ -72,10 +72,7 @@ module RubyPureMysql
       # 2. Column Definition (seq 2...)
       seq = send_column_definitions(client, 2, cols, rows, original_columns)
 
-      # 3. EOF (seq N)
-      send_eof(client, seq & 0xFF)
-
-      # 4. Row Data / 終端
+      # 3. Row Data / 終端
       send_result_set_data(client, seq + 1, rows)
     end
 
@@ -88,11 +85,12 @@ module RubyPureMysql
     end
 
     def send_result_set_data(client, start_seq, rows)
-      if rows.empty?
-        send_eof(client, start_seq & 0xFF)
-      else
-        send_rows(client, start_seq & 0xFF, rows)
+      current_seq = start_seq
+      rows.each do |row|
+        send_row_data(client, current_seq & 0xFF, row)
+        current_seq += 1
       end
+      send_eof(client, current_seq & 0xFF)
     end
 
     def resolve_columns(rows, columns)
@@ -114,14 +112,6 @@ module RubyPureMysql
       cols.each_with_index.map { |_, i| (i + 1).to_s }
     end
 
-    def send_rows(client, start_seq, rows)
-      current_seq = start_seq
-      rows.each do |row|
-        send_row_data(client, current_seq & 0xFF, row)
-        current_seq += 1
-      end
-      send_eof(client, current_seq & 0xFF)
-    end
 
     def send_column_definitions(client, start_seq, column_names, rows, original_names = nil)
       seq = start_seq
