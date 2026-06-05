@@ -5,7 +5,7 @@ module RubyPureMysql
   module AggregateHandlerUtils
     def handle_aggregate(client, columns, result)
       rows = fetch_and_filter_rows(client, columns, result.merge(limit: nil, offset: nil, order: nil))
-      return if rows.nil?
+      rows ||= []
 
       res_row = build_aggregate_row(rows, columns, result)
       return send_err_packet(client, 1, 'Error executing aggregate query', 1105) if res_row == :error
@@ -24,7 +24,7 @@ module RubyPureMysql
 
           val
         else
-          resolve_aggregate_non_col(rows, columns, col)
+          rows.empty? ? nil : resolve_aggregate_non_col(rows, columns, col)
         end
       end
     end
