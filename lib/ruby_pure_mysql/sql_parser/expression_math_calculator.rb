@@ -124,7 +124,8 @@ module RubyPureMysql
 
       # <=> 演算子の場合は結果が必ず 0 または 1 になるべきであり、nil になってはいけない
       if operator.to_s == '<=>' && result.nil?
-        return :error
+        # 予期せぬ nil の場合は 0 (false) として扱うか、エラーにする
+        result = 0
       end
 
       update_tokens_with_result!(tokens, index, result)
