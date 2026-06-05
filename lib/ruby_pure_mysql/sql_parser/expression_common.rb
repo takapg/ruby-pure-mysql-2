@@ -67,6 +67,7 @@ module RubyPureMysql
       when 'ifnull' then handle_ifnull(args)
       when 'if' then handle_if(args)
       when 'substring', 'substr' then handle_substring(args)
+      when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       else :error
       end
     end
@@ -97,6 +98,16 @@ module RubyPureMysql
       return nil if args.any?(&:nil?)
 
       execute_substring(args[0].to_s, args[1].to_i, args[2]&.to_i)
+    end
+
+    def handle_length_functions(name, args)
+      return :error unless args.size == 1
+
+      val = args[0]
+      return nil if val.nil?
+
+      str = val.to_s
+      name == 'length' ? str.bytesize : str.length
     end
 
     def execute_substring(str, pos, len)

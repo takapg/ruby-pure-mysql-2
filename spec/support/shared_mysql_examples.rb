@@ -481,6 +481,38 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'String Length functions support' do
+      it 'returns byte length for LENGTH()' do
+        expect(client.query('SELECT LENGTH("日本語");').first.values.first).to eq(9)
+        expect(client.query('SELECT LENGTH("abc");').first.values.first).to eq(3)
+      end
+
+      it 'returns character length for CHAR_LENGTH()' do
+        expect(client.query('SELECT CHAR_LENGTH("日本語");').first.values.first).to eq(3)
+        expect(client.query('SELECT CHAR_LENGTH("abc");').first.values.first).to eq(3)
+      end
+
+      it 'returns character length for CHARACTER_LENGTH()' do
+        expect(client.query('SELECT CHARACTER_LENGTH("日本語");').first.values.first).to eq(3)
+        expect(client.query('SELECT CHARACTER_LENGTH("abc");').first.values.first).to eq(3)
+      end
+
+      it 'returns NULL when argument is NULL' do
+        expect(client.query('SELECT LENGTH(NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT CHAR_LENGTH(NULL);').first.values.first).to be_nil
+      end
+
+      it 'casts numeric arguments to string' do
+        expect(client.query('SELECT LENGTH(123);').first.values.first).to eq(3)
+        expect(client.query('SELECT CHAR_LENGTH(123);').first.values.first).to eq(3)
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT LENGTH();') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT LENGTH(1, 2);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'IF() function support' do
       it 'returns the second argument when the first is true (SELECT IF(1, "true_val", "false_val");)' do
         results = client.query('SELECT IF(1, "true_val", "false_val");')
