@@ -50,7 +50,7 @@ module RubyPureMysql
       str, len = prepared
       return '' if len <= 0
 
-      len > str.length ? str : str[-len..]
+      str[-len..]
     end
 
     def handle_trim(args)
