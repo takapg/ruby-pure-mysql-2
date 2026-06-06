@@ -228,6 +228,8 @@ module RubyPureMysql
 
     def evaluate_inner_token(token)
       return nil if token.casecmp?('NULL')
+      return true if token.casecmp?('TRUE')
+      return false if token.casecmp?('FALSE')
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
       return evaluate_string_literal(token) if string_literal?(token)
