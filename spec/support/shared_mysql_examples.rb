@@ -559,6 +559,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'TRIM / LTRIM / RTRIM support' do
+      it 'removes both leading and trailing spaces using TRIM()' do
+        expect(client.query('SELECT TRIM("  hello  ");').first.values.first).to eq('hello')
+      end
+
+      it 'removes only leading spaces using LTRIM()' do
+        expect(client.query('SELECT LTRIM("  hello  ");').first.values.first).to eq('hello  ')
+      end
+
+      it 'removes only trailing spaces using RTRIM()' do
+        expect(client.query('SELECT RTRIM("  hello  ");').first.values.first).to eq('  hello')
+      end
+
+      it 'returns NULL when argument is NULL' do
+        expect(client.query('SELECT TRIM(NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for TRIM() with too many arguments' do
+        expect { client.query('SELECT TRIM("a", "b");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'NULLIF() function support' do
       it 'returns NULL when arguments are equal (SELECT NULLIF(1, 1);)' do
         results = client.query('SELECT NULLIF(1, 1);')

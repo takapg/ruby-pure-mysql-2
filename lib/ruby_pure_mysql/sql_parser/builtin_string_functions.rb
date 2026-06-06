@@ -21,5 +21,29 @@ module RubyPureMysql
 
       args[1..].compact.join(separator.to_s)
     end
+
+    def handle_trim(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_s.strip
+    end
+
+    def handle_ltrim(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_s.lstrip
+    end
+
+    def handle_rtrim(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_s.rstrip
+    end
   end
 end
