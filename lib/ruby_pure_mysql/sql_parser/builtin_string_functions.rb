@@ -78,11 +78,10 @@ module RubyPureMysql
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
-      result = str
-      while result.length < len
-        result = pad + result
-      end
-      result[-len..-1]
+      # パディング文字列を繰り返して十分な長さを確保し、右側から len 文字を切り出す
+      padding_needed = len - str.length
+      full_pad = (pad * (padding_needed.to_f / pad.length).ceil)
+      (full_pad + str)[-len..-1]
     end
 
     def handle_rpad(args)
@@ -97,11 +96,10 @@ module RubyPureMysql
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
-      result = str
-      while result.length < len
-        result = result + pad
-      end
-      result[0, len]
+      # パディング文字列を繰り返して十分な長さを確保し、左側から len 文字を切り出す
+      padding_needed = len - str.length
+      full_pad = (pad * (padding_needed.to_f / pad.length).ceil)
+      (str + full_pad)[0, len]
     end
 
     def handle_trim(args)
