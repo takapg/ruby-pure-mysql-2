@@ -785,6 +785,23 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect { client.query('SELECT ABS(1, 2);') }.to raise_error(Mysql2::Error)
         expect { client.query('SELECT FLOOR();') }.to raise_error(Mysql2::Error)
       end
+
+      it 'truncates numbers using TRUNCATE()' do
+        expect(client.query('SELECT TRUNCATE(1.999, 1);').first.values.first).to eq(1.9)
+        expect(client.query('SELECT TRUNCATE(-1.999, 1);').first.values.first).to eq(-1.9)
+        expect(client.query('SELECT TRUNCATE(122, -2);').first.values.first).to eq(100.0)
+        expect(client.query('SELECT TRUNCATE(10.28, 0);').first.values.first).to eq(10.0)
+      end
+
+      it 'returns NULL when any argument to TRUNCATE() is NULL' do
+        expect(client.query('SELECT TRUNCATE(NULL, 1);').first.values.first).to be_nil
+        expect(client.query('SELECT TRUNCATE(1.999, NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for TRUNCATE() with wrong number of arguments' do
+        expect { client.query('SELECT TRUNCATE(1.999);') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT TRUNCATE(1.999, 1, 2);') }.to raise_error(Mysql2::Error)
+      end
     end
 
     it 'supports NULL-safe equal operator (<=>)' do
