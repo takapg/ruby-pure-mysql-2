@@ -75,7 +75,6 @@ module RubyPureMysql
       pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return '' if len == 0
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
@@ -93,7 +92,6 @@ module RubyPureMysql
       pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return '' if len == 0
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
