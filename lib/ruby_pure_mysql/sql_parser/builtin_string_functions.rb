@@ -53,7 +53,7 @@ module RubyPureMysql
       return '' if len <= 0
 
       start_pos = [0, str.length - len].max
-      str[start_pos..-1] || ''
+      str[start_pos..] || ''
     end
 
     def handle_trim(args)
