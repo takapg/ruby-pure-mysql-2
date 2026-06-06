@@ -22,6 +22,21 @@ module RubyPureMysql
       args[1..].compact.join(separator.to_s)
     end
 
+    def handle_locate(args)
+      return :error unless [2, 3].include?(args.size)
+      return nil if args.any?(&:nil?)
+
+      substr, str = args[0].to_s, args[1].to_s
+      pos = args[2] ? args[2].to_i : 1
+
+      return 0 if pos < 1
+
+      # Rubyのindexは0ベース、MySQLのLOCATEは1ベース
+      # posも1ベースのため、Rubyのindexには pos - 1 を渡す
+      idx = str.index(substr, pos - 1)
+      idx ? idx + 1 : 0
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end

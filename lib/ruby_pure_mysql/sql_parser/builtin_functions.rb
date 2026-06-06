@@ -32,6 +32,7 @@ module RubyPureMysql
       case name
       when 'replace' then handle_replace(args)
       when 'concat_ws' then handle_concat_ws(args)
+      when 'locate' then handle_locate(args)
       else handle_math_builtin(name, args)
       end
     end

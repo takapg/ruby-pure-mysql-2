@@ -681,6 +681,40 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'LOCATE() function support' do
+      it 'returns the first occurrence position (SELECT LOCATE("bar", "foobarbar");)' do
+        expect(client.query('SELECT LOCATE("bar", "foobarbar");').first.values.first).to eq(4)
+      end
+
+      it 'returns the occurrence position starting from pos (SELECT LOCATE("bar", "foobarbar", 5);)' do
+        expect(client.query('SELECT LOCATE("bar", "foobarbar", 5);').first.values.first).to eq(7)
+      end
+
+      it 'returns 0 when not found (SELECT LOCATE("xbar", "foobarbar");)' do
+        expect(client.query('SELECT LOCATE("xbar", "foobarbar");').first.values.first).to eq(0)
+      end
+
+      it 'returns 0 when pos is less than 1 (SELECT LOCATE("bar", "foobarbar", 0);)' do
+        expect(client.query('SELECT LOCATE("bar", "foobarbar", 0);').first.values.first).to eq(0)
+      end
+
+      it 'returns NULL if any argument is NULL (SELECT LOCATE(NULL, "foobarbar");)' do
+        expect(client.query('SELECT LOCATE(NULL, "foobarbar");').first.values.first).to be_nil
+      end
+
+      it 'supports multi-byte characters (SELECT LOCATE("日本語", "これは日本語です");)' do
+        expect(client.query('SELECT LOCATE("日本語", "これは日本語です");').first.values.first).to eq(4)
+      end
+
+      it 'returns an error for invalid number of arguments (SELECT LOCATE("a");)' do
+        expect { client.query('SELECT LOCATE("a");') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error for too many arguments (SELECT LOCATE("a", "b", 1, 2);)' do
+        expect { client.query('SELECT LOCATE("a", "b", 1, 2);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'REPLACE() function support' do
       it 'replaces occurrences of a string with another string' do
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
