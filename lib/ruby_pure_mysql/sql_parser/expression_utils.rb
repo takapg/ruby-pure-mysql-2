@@ -239,6 +239,7 @@ module RubyPureMysql
       return nil if token.casecmp?('NULL')
       return true if token.casecmp?('TRUE')
       return false if token.casecmp?('FALSE')
+
       nil
     end
 
