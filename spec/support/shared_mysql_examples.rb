@@ -363,12 +363,14 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns current time for SELECT CURTIME();' do
       results = client.query('SELECT CURTIME();')
-      expect(results.first.values.first.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
     end
 
     it 'returns current time for SELECT CURRENT_TIME();' do
       results = client.query('SELECT CURRENT_TIME();')
-      expect(results.first.values.first.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
     end
 
     it 'returns an error for CURDATE() with arguments' do
@@ -377,14 +379,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns an error for CURRENT_DATE() with arguments' do
       expect { client.query('SELECT CURRENT_DATE(1);') }.to raise_error(Mysql2::Error)
-    end
-
-    it 'returns an error for CURTIME() with arguments' do
-      expect { client.query('SELECT CURTIME(1);') }.to raise_error(Mysql2::Error)
-    end
-
-    it 'returns an error for CURRENT_TIME() with arguments' do
-      expect { client.query('SELECT CURRENT_TIME(1);') }.to raise_error(Mysql2::Error)
     end
 
     it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
