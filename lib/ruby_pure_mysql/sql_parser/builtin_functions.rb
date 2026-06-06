@@ -36,6 +36,8 @@ module RubyPureMysql
       when 'locate' then handle_locate(args)
       when 'left' then handle_left(args)
       when 'right' then handle_right(args)
+      when 'lpad' then handle_lpad(args)
+      when 'rpad' then handle_rpad(args)
       else handle_math_builtin(name, args)
       end
     end

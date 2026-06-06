@@ -807,6 +807,46 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'LPAD / RPAD function support' do
+      it 'pads string to the left (LPAD)' do
+        expect(client.query('SELECT LPAD("hi", 4, "??");').first.values.first).to eq('??hi')
+        expect(client.query('SELECT LPAD("hi", 5, "??");').first.values.first).to eq('???hi')
+        expect(client.query('SELECT LPAD("日本語", 5, "あ");').first.values.first).to eq('ああ日本語')
+      end
+
+      it 'pads string to the right (RPAD)' do
+        expect(client.query('SELECT RPAD("hi", 4, "??");').first.values.first).to eq('hi??')
+        expect(client.query('SELECT RPAD("hi", 5, "??");').first.values.first).to eq('hi???')
+        expect(client.query('SELECT RPAD("日本語", 5, "あ");').first.values.first).to eq('日本語ああ')
+      end
+
+      it 'truncates string if length is less than current length' do
+        expect(client.query('SELECT LPAD("hello", 3, " ");').first.values.first).to eq('hel')
+        expect(client.query('SELECT RPAD("hello", 3, " ");').first.values.first).to eq('hel')
+      end
+
+      it 'returns NULL if length is negative' do
+        expect(client.query('SELECT LPAD("hi", -1, "?");').first.values.first).to be_nil
+        expect(client.query('SELECT RPAD("hi", -1, "?");').first.values.first).to be_nil
+      end
+
+      it 'returns NULL if padstr is empty and padding is needed' do
+        expect(client.query('SELECT LPAD("hi", 5, "");').first.values.first).to be_nil
+        expect(client.query('SELECT RPAD("hi", 5, "");').first.values.first).to be_nil
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT LPAD(NULL, 5, "?");').first.values.first).to be_nil
+        expect(client.query('SELECT LPAD("hi", NULL, "?");').first.values.first).to be_nil
+        expect(client.query('SELECT LPAD("hi", 5, NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT LPAD("hi", 5);') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT RPAD("hi", 5, "?", "extra");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'REPLACE() function support' do
       it 'replaces occurrences of a string with another string' do
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
