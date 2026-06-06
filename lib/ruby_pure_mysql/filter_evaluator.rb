@@ -6,6 +6,7 @@ module RubyPureMysql
   # フィルタリング条件の評価ロジックを提供するモジュール
   module FilterEvaluator
     include FilterComparisonUtils
+
     def apply_filter(val, operator, target_value, regex = nil)
       return evaluate_null_guards?(val, operator) if null_operator?(operator)
       return false if val.nil? && operator != '<=>'
@@ -89,6 +90,5 @@ module RubyPureMysql
         false
       end
     end
-
   end
 end
