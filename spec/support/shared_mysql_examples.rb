@@ -351,6 +351,46 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to match(/8\.0/)
     end
 
+    it 'returns current date for SELECT CURDATE();' do
+      results = client.query('SELECT CURDATE();')
+      expect(results.first.values.first.to_s).to match(/\A\d{4}-\d{2}-\d{2}\z/)
+    end
+
+    it 'returns current date for SELECT CURRENT_DATE();' do
+      results = client.query('SELECT CURRENT_DATE();')
+      expect(results.first.values.first.to_s).to match(/\A\d{4}-\d{2}-\d{2}\z/)
+    end
+
+    it 'returns current time for SELECT CURTIME();' do
+      results = client.query('SELECT CURTIME();')
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+    end
+
+    it 'returns current time for SELECT CURRENT_TIME();' do
+      results = client.query('SELECT CURRENT_TIME();')
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+    end
+
+    it 'returns an error for CURDATE() with arguments' do
+      expect { client.query('SELECT CURDATE(1);') }.to raise_error(Mysql2::Error)
+    end
+
+    it 'allows one argument for CURTIME() (fractional seconds precision)' do
+      results = client.query('SELECT CURTIME(1);')
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+    end
+
+    it 'returns an error for CURTIME() with too many arguments' do
+      expect { client.query('SELECT CURTIME(1, 2);') }.to raise_error(Mysql2::Error)
+    end
+
+    it 'returns an error for CURRENT_DATE() with arguments' do
+      expect { client.query('SELECT CURRENT_DATE(1);') }.to raise_error(Mysql2::Error)
+    end
+
     it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
       # NOW() returns a string, which to_f converts to a number (e.g. 2026.0)
       # 1 + 2026.0 = 2027.0

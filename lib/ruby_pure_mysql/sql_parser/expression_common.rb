@@ -7,6 +7,18 @@ module RubyPureMysql
   module ExpressionCommon
     include BuiltinFunctions
 
+    # シンプルな組み込み関数のハンドラ
+    SIMPLE_BUILTINS = {
+      'user' => ->(_args) { 'root@localhost' },
+      'version' => ->(_args) { 'Hi-MySQL-8.0' },
+      'now' => ->(_args) { Time.now.strftime('%Y-%m-%d %H:%M:%S') },
+      'concat' => ->(args) { args.any?(&:nil?) ? nil : args.join },
+      'curdate' => ->(args) { args.empty? ? Time.now.strftime('%Y-%m-%d') : :error },
+      'current_date' => ->(args) { args.empty? ? Time.now.strftime('%Y-%m-%d') : :error },
+      'curtime' => ->(args) { args.size <= 1 ? Time.now.strftime('%H:%M:%S') : :error },
+      'current_time' => ->(args) { args.size <= 1 ? Time.now.strftime('%H:%M:%S') : :error }
+    }.freeze
+
     def format_for_concat(val)
       return '' if val.nil?
 
@@ -55,11 +67,8 @@ module RubyPureMysql
     end
 
     def call_builtin_function(name, args)
-      case name
-      when 'now' then Time.now.strftime('%Y-%m-%d %H:%M:%S')
-      when 'user' then 'root@localhost'
-      when 'version' then 'Hi-MySQL-8.0'
-      when 'concat' then args.any?(&:nil?) ? nil : args.join
+      if (handler = SIMPLE_BUILTINS[name])
+        handler.call(args)
       else
         handle_complex_builtin(name, args)
       end
