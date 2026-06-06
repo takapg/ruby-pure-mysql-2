@@ -33,6 +33,26 @@ module RubyPureMysql
       calculate_locate_index(str, substr, pos)
     end
 
+    def handle_left(args)
+      prepared = prepare_string_args(args)
+      return prepared if prepared == :error || prepared.nil?
+
+      str, len = prepared
+      return '' if len <= 0
+
+      str[0, len]
+    end
+
+    def handle_right(args)
+      prepared = prepare_string_args(args)
+      return prepared if prepared == :error || prepared.nil?
+
+      str, len = prepared
+      return '' if len <= 0
+
+      str[-len..] || str
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end
@@ -61,6 +81,13 @@ module RubyPureMysql
       return nil if val.nil?
 
       val.to_s.public_send(method)
+    end
+
+    def prepare_string_args(args)
+      return :error unless args.size == 2
+      return nil if args.any?(&:nil?)
+
+      [args[0].to_s.force_encoding('UTF-8'), args[1].to_i]
     end
   end
 end

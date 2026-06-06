@@ -788,6 +788,52 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'LEFT() and RIGHT() function support' do
+      it 'extracts characters from the left (SELECT LEFT("foobar", 3);)' do
+        expect(client.query('SELECT LEFT("foobar", 3);').first.values.first).to eq('foo')
+      end
+
+      it 'extracts characters from the right (SELECT RIGHT("foobar", 3);)' do
+        expect(client.query('SELECT RIGHT("foobar", 3);').first.values.first).to eq('bar')
+      end
+
+      it 'supports multi-byte characters (SELECT LEFT("日本語", 2);)' do
+        expect(client.query('SELECT LEFT("日本語", 2);').first.values.first).to eq('日本')
+      end
+
+      it 'supports multi-byte characters (SELECT RIGHT("日本語", 1);)' do
+        expect(client.query('SELECT RIGHT("日本語", 1);').first.values.first).to eq('語')
+      end
+
+      it 'returns empty string for len <= 0 (SELECT LEFT("abc", 0);)' do
+        expect(client.query('SELECT LEFT("abc", 0);').first.values.first).to eq('')
+      end
+
+      it 'returns empty string for negative len (SELECT LEFT("abc", -1);)' do
+        expect(client.query('SELECT LEFT("abc", -1);').first.values.first).to eq('')
+      end
+
+      it 'returns the whole string if len exceeds length (SELECT LEFT("abc", 10);)' do
+        expect(client.query('SELECT LEFT("abc", 10);').first.values.first).to eq('abc')
+      end
+
+      it 'returns the whole string if len exceeds length (SELECT RIGHT("abc", 10);)' do
+        expect(client.query('SELECT RIGHT("abc", 10);').first.values.first).to eq('abc')
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT LEFT(NULL, 3);').first.values.first).to be_nil
+        expect(client.query('SELECT LEFT("abc", NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT RIGHT(NULL, 3);').first.values.first).to be_nil
+        expect(client.query('SELECT RIGHT("abc", NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT LEFT("abc");') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT RIGHT("abc", 1, 2);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'CONCAT_WS() function support' do
       it 'concatenates strings with a separator (SELECT CONCAT_WS(", ", "A", "B", "C");)' do
         results = client.query('SELECT CONCAT_WS(", ", "A", "B", "C");')
