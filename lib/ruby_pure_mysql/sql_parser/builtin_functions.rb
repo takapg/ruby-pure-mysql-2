@@ -30,6 +30,7 @@ module RubyPureMysql
       when 'ifnull' then handle_ifnull(args)
       when 'if' then handle_if(args)
       when 'nullif' then handle_nullif(args)
+      when 'isnull' then handle_isnull(args)
       end
     end
 
@@ -58,6 +59,12 @@ module RubyPureMysql
       return :error unless args.size == 2
 
       args[0] == args[1] ? nil : args[0]
+    end
+
+    def handle_isnull(args)
+      return :error unless args.size == 1
+
+      args[0].nil? ? 1 : 0
     end
 
     def handle_substring(args)
