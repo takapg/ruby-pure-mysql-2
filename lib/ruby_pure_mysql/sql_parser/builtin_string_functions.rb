@@ -70,34 +70,34 @@ module RubyPureMysql
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
 
-      str_val = args[0].to_s.force_encoding('UTF-8')
+      str = args[0].to_s.force_encoding('UTF-8')
       len = args[1].to_i
-      pad_val = args[2].to_s.force_encoding('UTF-8')
+      pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return str_val[0, len] if str_val.length >= len
-      return nil if pad_val.empty?
+      return str[0, len] if str.length >= len
+      return nil if pad.empty?
 
-      padding_len = len - str_val.length
-      padding = (pad_val * (padding_len.to_f / pad_val.length).ceil)[0, padding_len]
-      padding + str_val
+      padding_len = len - str.length
+      padding = (pad * (padding_len.to_f / pad.length).ceil)[0, padding_len]
+      padding + str
     end
 
     def handle_rpad(args)
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
 
-      str_val = args[0].to_s.force_encoding('UTF-8')
+      str = args[0].to_s.force_encoding('UTF-8')
       len = args[1].to_i
-      pad_val = args[2].to_s.force_encoding('UTF-8')
+      pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return str_val[0, len] if str_val.length >= len
-      return nil if pad_val.empty?
+      return str[0, len] if str.length >= len
+      return nil if pad.empty?
 
-      padding_len = len - str_val.length
-      padding = (pad_val * (padding_len.to_f / pad_val.length).ceil)[0, padding_len]
-      str_val + padding
+      padding_len = len - str.length
+      padding = (pad * (padding_len.to_f / pad.length).ceil)[0, padding_len]
+      str + padding
     end
 
     def handle_trim(args)
