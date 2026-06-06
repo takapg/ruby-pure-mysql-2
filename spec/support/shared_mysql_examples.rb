@@ -638,6 +638,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'CONCAT_WS() function support' do
+      it 'concatenates strings with a separator (SELECT CONCAT_WS(", ", "A", "B", "C");)' do
+        results = client.query('SELECT CONCAT_WS(", ", "A", "B", "C");')
+        expect(results.first.values.first).to eq('A, B, C')
+      end
+
+      it 'skips NULL values (SELECT CONCAT_WS("-", "A", NULL, "B", NULL, "C");)' do
+        results = client.query('SELECT CONCAT_WS("-", "A", NULL, "B", NULL, "C");')
+        expect(results.first.values.first).to eq('A-B-C')
+      end
+
+      it 'returns NULL if the separator is NULL (SELECT CONCAT_WS(NULL, "A", "B");)' do
+        results = client.query('SELECT CONCAT_WS(NULL, "A", "B");')
+        expect(results.first.values.first).to be_nil
+      end
+
+      it 'returns an error if there are fewer than 2 arguments (SELECT CONCAT_WS(",");)' do
+        expect { client.query('SELECT CONCAT_WS(",");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'ROUND() function support' do
       it 'rounds to 0 decimal places (SELECT ROUND(1.23);)' do
         expect(client.query('SELECT ROUND(1.23);').first.values.first).to eq(1)
