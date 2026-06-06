@@ -10,6 +10,7 @@ module RubyPureMysql
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
       when 'replace' then handle_replace(args)
+      when 'round' then handle_round(args)
       else :error
       end
     end
@@ -92,6 +93,15 @@ module RubyPureMysql
       return str if from.empty?
 
       str.gsub(from, to)
+    end
+
+    def handle_round(args)
+      return :error unless [1, 2].include?(args.size)
+      return nil if args.any?(&:nil?)
+
+      val = args[0].to_f
+      precision = args[1] ? args[1].to_i : 0
+      val.round(precision)
     end
   end
 end
