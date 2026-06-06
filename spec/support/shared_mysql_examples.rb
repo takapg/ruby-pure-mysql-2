@@ -547,6 +547,41 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'NULLIF() function support' do
+      it 'returns NULL when arguments are equal (SELECT NULLIF(1, 1);)' do
+        results = client.query('SELECT NULLIF(1, 1);')
+        expect(results.first.values.first).to be_nil
+      end
+
+      it 'returns the first argument when arguments are different (SELECT NULLIF(1, 2);)' do
+        results = client.query('SELECT NULLIF(1, 2);')
+        expect(results.first.values.first).to eq(1)
+      end
+
+      it 'returns NULL when string arguments are equal (SELECT NULLIF("abc", "abc");)' do
+        results = client.query('SELECT NULLIF("abc", "abc");')
+        expect(results.first.values.first).to be_nil
+      end
+
+      it 'returns the first argument when string arguments are different (SELECT NULLIF("abc", "def");)' do
+        results = client.query('SELECT NULLIF("abc", "def");')
+        expect(results.first.values.first).to eq('abc')
+      end
+
+      it 'returns NULL when the first argument is NULL (SELECT NULLIF(NULL, 1);)' do
+        results = client.query('SELECT NULLIF(NULL, 1);')
+        expect(results.first.values.first).to be_nil
+      end
+
+      it 'returns an error when the number of arguments is not 2 (SELECT NULLIF(1);)' do
+        expect { client.query('SELECT NULLIF(1);') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error when the number of arguments is not 2 (SELECT NULLIF(1, 2, 3);)' do
+        expect { client.query('SELECT NULLIF(1, 2, 3);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'IF() function support' do
       it 'returns the second argument when the first is true (SELECT IF(1, "true_val", "false_val");)' do
         results = client.query('SELECT IF(1, "true_val", "false_val");')

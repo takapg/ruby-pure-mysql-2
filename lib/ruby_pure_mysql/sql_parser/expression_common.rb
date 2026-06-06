@@ -66,6 +66,7 @@ module RubyPureMysql
       when 'coalesce' then handle_coalesce(args)
       when 'ifnull' then handle_ifnull(args)
       when 'if' then handle_if(args)
+      when 'nullif' then handle_nullif(args)
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
@@ -92,6 +93,12 @@ module RubyPureMysql
       is_true = ![nil, false, 0, '0'].include?(expr1)
 
       is_true ? args[1] : args[2]
+    end
+
+    def handle_nullif(args)
+      return :error unless args.size == 2
+
+      args[0] == args[1] ? nil : args[0]
     end
 
     def handle_substring(args)
