@@ -82,5 +82,13 @@ module RubyPureMysql
       str = val.to_s
       %w[lower lcase].include?(name) ? str.downcase : str.upcase
     end
+
+    def handle_replace(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str, from, to = args.map(&:to_s)
+      str.gsub(from, to)
+    end
   end
 end
