@@ -23,30 +23,26 @@ module RubyPureMysql
     end
 
     def handle_trim(args)
-      return :error unless args.size == 1
-
-      val = args[0]
-      return nil if val.nil?
-
-      val.to_s.strip
+      execute_trim_operation(args, :strip)
     end
 
     def handle_ltrim(args)
-      return :error unless args.size == 1
-
-      val = args[0]
-      return nil if val.nil?
-
-      val.to_s.lstrip
+      execute_trim_operation(args, :lstrip)
     end
 
     def handle_rtrim(args)
+      execute_trim_operation(args, :rstrip)
+    end
+
+    private
+
+    def execute_trim_operation(args, method)
       return :error unless args.size == 1
 
       val = args[0]
       return nil if val.nil?
 
-      val.to_s.rstrip
+      val.to_s.public_send(method)
     end
   end
 end

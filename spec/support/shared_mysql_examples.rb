@@ -576,6 +576,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT TRIM(NULL);').first.values.first).to be_nil
       end
 
+      it 'returns an error for TRIM() with no arguments' do
+        expect { client.query('SELECT TRIM();') }.to raise_error(Mysql2::Error)
+      end
+
       it 'returns an error for TRIM() with too many arguments' do
         expect { client.query('SELECT TRIM("a", "b");') }.to raise_error(Mysql2::Error)
       end
