@@ -377,6 +377,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect { client.query('SELECT CURDATE(1);') }.to raise_error(Mysql2::Error)
     end
 
+    it 'returns an error for CURTIME() with arguments' do
+      expect { client.query('SELECT CURTIME(1);') }.to raise_error(Mysql2::Error)
+    end
+
     it 'returns an error for CURRENT_DATE() with arguments' do
       expect { client.query('SELECT CURRENT_DATE(1);') }.to raise_error(Mysql2::Error)
     end
