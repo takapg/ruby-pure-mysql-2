@@ -3,6 +3,17 @@
 module RubyPureMysql
   # 文字列操作に関する組み込み関数の評価ロジックを提供するモジュール
   module BuiltinStringFunctions
+    def handle_substring_index(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str, delim, count = args[0].to_s, args[1].to_s, args[2].to_i
+      return '' if count == 0 || delim.empty?
+
+      parts = str.split(delim, -1)
+      count.positive? ? parts.first(count).join(delim) : parts.last(count.abs).join(delim)
+    end
+
     def handle_replace(args)
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
