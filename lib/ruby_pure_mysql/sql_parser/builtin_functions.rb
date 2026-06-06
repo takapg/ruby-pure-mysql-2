@@ -9,6 +9,12 @@ module RubyPureMysql
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
+      else handle_other_builtin(name, args)
+      end
+    end
+
+    def handle_other_builtin(name, args)
+      case name
       when 'replace' then handle_replace(args)
       when 'round' then handle_round(args)
       when 'greatest' then handle_greatest(args)
@@ -110,14 +116,14 @@ module RubyPureMysql
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
-      args.all? { |a| a.is_a?(Numeric) } ? args.max : args.map(&:to_s).max
+      args.all?(Numeric) ? args.max : args.map(&:to_s).max
     end
 
     def handle_least(args)
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
-      args.all? { |a| a.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
+      args.all?(Numeric) ? args.min : args.map(&:to_s).min
     end
   end
 end
