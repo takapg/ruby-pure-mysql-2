@@ -14,12 +14,12 @@ module RubyPureMysql
 
     # Length Encoded Integer Constants
     LENENC_INT_LIMIT_1 = 251
-    LENENC_INT_2_BYTES = 0xFC
+    LENENC_INT_2_BYTES = 0xFB
     LENENC_INT_LIMIT_2 = 0xFFFF
-    LENENC_INT_3_BYTES = 0xFD
+    LENENC_INT_3_BYTES = 0xFC
     LENENC_INT_LIMIT_3 = 0xFFFFFF
     LENENC_INT_8_BYTES = 0xFE
-    NULL_COLUMN_VALUE = 0xFB
+    NULL_COLUMN_VALUE = 0xFF
 
     # MySQL Type Codes
     MYSQL_TYPE_DOUBLE = 0x05
