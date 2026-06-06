@@ -76,7 +76,7 @@ module RubyPureMysql
 
       return nil if len < 0
       return str[0, len] if str.length >= len
-      return nil if padstr == ''
+      return nil if padstr == '' && str.length < len
 
       padding_len = len - str.length
       padding = (padstr * (padding_len / padstr.length + 1))[0, padding_len]
@@ -93,7 +93,7 @@ module RubyPureMysql
 
       return nil if len < 0
       return str[0, len] if str.length >= len
-      return nil if padstr == ''
+      return nil if padstr == '' && str.length < len
 
       padding_len = len - str.length
       padding = (padstr * (padding_len / padstr.length + 1))[0, padding_len]
