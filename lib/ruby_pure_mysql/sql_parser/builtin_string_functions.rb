@@ -75,11 +75,11 @@ module RubyPureMysql
       pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return nil if str.length < len && pad.empty?
       return str[0, len] if str.length >= len
+      return nil if pad.empty?
 
       padding_len = len - str.length
-      padding = (pad * (padding_len / pad.length.to_f).ceil)[0, padding_len]
+      padding = (pad * padding_len)[0, padding_len]
       "#{padding}#{str}"
     end
 
@@ -92,11 +92,11 @@ module RubyPureMysql
       pad = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return nil if str.length < len && pad.empty?
       return str[0, len] if str.length >= len
+      return nil if pad.empty?
 
       padding_len = len - str.length
-      padding = (pad * (padding_len / pad.length.to_f).ceil)[0, padding_len]
+      padding = (pad * padding_len)[0, padding_len]
       "#{str}#{padding}"
     end
 
