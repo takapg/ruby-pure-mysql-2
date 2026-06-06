@@ -34,26 +34,23 @@ module RubyPureMysql
     end
 
     def handle_left(args)
-      return :error unless args.size == 2
-      return nil if args.any?(&:nil?)
+      prepared = prepare_string_args(args)
+      return prepared if prepared == :error || prepared.nil?
 
-      str = args[0].to_s.force_encoding('UTF-8')
-      len = args[1].to_i
+      str, len = prepared
       return '' if len <= 0
 
       str[0, len]
     end
 
     def handle_right(args)
-      return :error unless args.size == 2
-      return nil if args.any?(&:nil?)
+      prepared = prepare_string_args(args)
+      return prepared if prepared == :error || prepared.nil?
 
-      str = args[0].to_s.force_encoding('UTF-8')
-      len = args[1].to_i
+      str, len = prepared
       return '' if len <= 0
 
-      start_pos = [0, str.length - len].max
-      str[start_pos..] || ''
+      str[-len..] || ''
     end
 
     def handle_trim(args)
@@ -84,6 +81,13 @@ module RubyPureMysql
       return nil if val.nil?
 
       val.to_s.public_send(method)
+    end
+
+    def prepare_string_args(args)
+      return :error unless args.size == 2
+      return nil if args.any?(&:nil?)
+
+      [args[0].to_s.force_encoding('UTF-8'), args[1].to_i]
     end
   end
 end
