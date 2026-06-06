@@ -524,7 +524,7 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
-    WHERE_OPERATORS = 'NOT\s+LIKE|NOT\s+IN|NOT\s+REGEXP|NOT\s+RLIKE|<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE'.freeze
+    WHERE_OPERATORS = 'NOT\s+LIKE|NOT\s+IN|NOT\s+REGEXP|NOT\s+RLIKE|<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE'
 
     ESCAPE_MAP = {
       '0' => "\0", 'n' => "\n", 'r' => "\r", 't' => "\t",
