@@ -377,8 +377,13 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect { client.query('SELECT CURDATE(1);') }.to raise_error(Mysql2::Error)
     end
 
-    it 'returns an error for CURTIME() with arguments' do
-      expect { client.query('SELECT CURTIME(1);') }.to raise_error(Mysql2::Error)
+    it 'allows one argument for CURTIME() (fractional seconds precision)' do
+      results = client.query('SELECT CURTIME(1);')
+      expect(results.first.values.first.to_s).to match(/\A\d{2}:\d{2}:\d{2}/)
+    end
+
+    it 'returns an error for CURTIME() with too many arguments' do
+      expect { client.query('SELECT CURTIME(1, 2);') }.to raise_error(Mysql2::Error)
     end
 
     it 'returns an error for CURRENT_DATE() with arguments' do

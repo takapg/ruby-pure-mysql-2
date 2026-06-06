@@ -15,8 +15,8 @@ module RubyPureMysql
       'concat' => ->(args) { args.any?(&:nil?) ? nil : args.join },
       'curdate' => ->(args) { args.empty? ? Time.now.strftime('%Y-%m-%d') : :error },
       'current_date' => ->(args) { args.empty? ? Time.now.strftime('%Y-%m-%d') : :error },
-      'curtime' => ->(args) { args.empty? ? Time.now.strftime('%H:%M:%S') : :error },
-      'current_time' => ->(args) { args.empty? ? Time.now.strftime('%H:%M:%S') : :error }
+      'curtime' => ->(args) { args.size <= 1 ? Time.now.strftime('%H:%M:%S') : :error },
+      'current_time' => ->(args) { args.size <= 1 ? Time.now.strftime('%H:%M:%S') : :error }
     }.freeze
 
     def format_for_concat(val)
