@@ -6,6 +6,7 @@ module RubyPureMysql
     def apply_filter(val, operator, target_value, regex = nil)
       return evaluate_null_guards?(val, operator) if null_operator?(operator)
       return false if val.nil? && operator != '<=>'
+
       if regex.is_a?(Regexp)
         res = regex.match?(val.to_s)
         return operator.start_with?('NOT ') ? !res : res
@@ -27,12 +28,9 @@ module RubyPureMysql
 
     def compare_value(val, operator, target_value)
       case operator
-      when 'LIKE' then match_pattern?(val, target_value, :like)
-      when 'NOT LIKE' then !match_pattern?(val, target_value, :like)
-      when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
-      when 'NOT REGEXP', 'NOT RLIKE' then !match_pattern?(val, target_value, :regexp)
-      when 'IN' then handle_in_operator(val, target_value)
-      when 'NOT IN' then !handle_in_operator(val, target_value)
+      when 'LIKE', 'NOT LIKE' then handle_like_operator(val, target_value, operator)
+      when 'REGEXP', 'RLIKE', 'NOT REGEXP', 'NOT RLIKE' then handle_regexp_operator(val, target_value, operator)
+      when 'IN', 'NOT IN' then handle_in_operator_with_negation(val, target_value, operator)
       when '<=>' then handle_null_safe_equal(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
@@ -59,6 +57,21 @@ module RubyPureMysql
     end
 
     private
+
+    def handle_like_operator(val, target, operator)
+      res = match_pattern?(val, target, :like)
+      operator == 'LIKE' ? res : !res
+    end
+
+    def handle_regexp_operator(val, target, operator)
+      res = match_pattern?(val, target, :regexp)
+      operator.start_with?('NOT') ? !res : res
+    end
+
+    def handle_in_operator_with_negation(val, target, operator)
+      res = handle_in_operator(val, target)
+      operator == 'IN' ? res : !res
+    end
 
     def compare_equality?(val, operator, target_value)
       v1, v2 = normalize_for_comparison(val, target_value)
