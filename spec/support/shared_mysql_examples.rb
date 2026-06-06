@@ -746,6 +746,35 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end.to raise_error(Mysql2::Error)
     end
 
+    describe 'Arithmetic Built-in Functions support' do
+      it 'returns absolute value using ABS()' do
+        expect(client.query('SELECT ABS(-10);').first.values.first).to eq(10)
+        expect(client.query('SELECT ABS(10);').first.values.first).to eq(10)
+        expect(client.query('SELECT ABS(-10.5);').first.values.first).to eq(10.5)
+      end
+
+      it 'returns floor value using FLOOR()' do
+        expect(client.query('SELECT FLOOR(1.9);').first.values.first).to eq(1)
+        expect(client.query('SELECT FLOOR(-1.1);').first.values.first).to eq(-2)
+      end
+
+      it 'returns ceil value using CEIL() and CEILING()' do
+        expect(client.query('SELECT CEIL(1.1);').first.values.first).to eq(2)
+        expect(client.query('SELECT CEILING(-1.1);').first.values.first).to eq(-1)
+      end
+
+      it 'returns NULL when argument is NULL' do
+        expect(client.query('SELECT ABS(NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT FLOOR(NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT CEIL(NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT ABS(1, 2);') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT FLOOR();') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'supports NULL-safe equal operator (<=>)' do
       expect(client.query('SELECT NULL <=> NULL;').first.values.first).to eq(1)
       expect(client.query('SELECT 1 <=> NULL;').first.values.first).to eq(0)

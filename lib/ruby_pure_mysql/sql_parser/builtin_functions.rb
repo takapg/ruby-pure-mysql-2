@@ -24,6 +24,9 @@ module RubyPureMysql
       when 'greatest' then handle_greatest(args)
       when 'least' then handle_least(args)
       when 'concat_ws' then handle_concat_ws(args)
+      when 'abs' then handle_abs(args)
+      when 'floor' then handle_floor(args)
+      when 'ceil', 'ceiling' then handle_ceil(args)
       else :error
       end
     end
@@ -130,6 +133,31 @@ module RubyPureMysql
       # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
       args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
       # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
+    end
+
+    def handle_abs(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      num = val.is_a?(Numeric) ? val : val.to_f
+      num.abs
+    end
+
+    def handle_floor(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_f.floor
+    end
+
+    def handle_ceil(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_f.ceil
     end
   end
 end
