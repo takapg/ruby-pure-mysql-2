@@ -638,6 +638,34 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'ROUND() function support' do
+      it 'rounds to 0 decimal places (SELECT ROUND(1.23);)' do
+        expect(client.query('SELECT ROUND(1.23);').first.values.first).to eq(1)
+      end
+
+      it 'rounds half up (SELECT ROUND(1.58);)' do
+        expect(client.query('SELECT ROUND(1.58);').first.values.first).to eq(2)
+      end
+
+      it 'rounds to specified decimal places (SELECT ROUND(1.298, 1);)' do
+        expect(client.query('SELECT ROUND(1.298, 1);').first.values.first).to eq(1.3)
+      end
+
+      it 'rounds to negative decimal places (SELECT ROUND(23.298, -1);)' do
+        expect(client.query('SELECT ROUND(23.298, -1);').first.values.first).to eq(20)
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT ROUND(NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT ROUND(1.23, NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT ROUND();') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT ROUND(1, 2, 3);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
