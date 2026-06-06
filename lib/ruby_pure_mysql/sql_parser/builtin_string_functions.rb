@@ -26,15 +26,11 @@ module RubyPureMysql
       return :error unless [2, 3].include?(args.size)
       return nil if args.any?(&:nil?)
 
-      substr, str = args[0].to_s.force_encoding('UTF-8'), args[1].to_s.force_encoding('UTF-8')
+      substr = args[0].to_s.force_encoding('UTF-8')
+      str = args[1].to_s.force_encoding('UTF-8')
       pos = args[2] ? args[2].to_i : 1
 
-      return 0 if pos < 1
-
-      # Rubyのindexは0ベース、MySQLのLOCATEは1ベース
-      # posも1ベースのため、Rubyのindexには pos - 1 を渡す
-      idx = str.index(substr, pos - 1)
-      idx ? idx + 1 : 0
+      calculate_locate_index(str, substr, pos)
     end
 
     def handle_trim(args)
@@ -50,6 +46,13 @@ module RubyPureMysql
     end
 
     private
+
+    def calculate_locate_index(str, substr, pos)
+      return 0 if pos < 1
+
+      idx = str.index(substr, pos - 1)
+      idx ? idx + 1 : 0
+    end
 
     def execute_trim_operation(args, method)
       return :error unless args.size == 1
