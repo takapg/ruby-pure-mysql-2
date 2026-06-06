@@ -22,6 +22,17 @@ module RubyPureMysql
       args[1..].compact.join(separator.to_s)
     end
 
+    def handle_locate(args)
+      return :error unless [2, 3].include?(args.size)
+      return nil if args.any?(&:nil?)
+
+      substr = args[0].to_s.force_encoding('UTF-8')
+      str = args[1].to_s.force_encoding('UTF-8')
+      pos = args[2] ? args[2].to_i : 1
+
+      calculate_locate_index(str, substr, pos)
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end
@@ -35,6 +46,13 @@ module RubyPureMysql
     end
 
     private
+
+    def calculate_locate_index(str, substr, pos)
+      return 0 if pos < 1
+
+      idx = str.index(substr, pos - 1)
+      idx ? idx + 1 : 0
+    end
 
     def execute_trim_operation(args, method)
       return :error unless args.size == 1
