@@ -1126,6 +1126,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values).to eq([1, 'alice'])
     end
 
+    it 'filters rows by NOT LIKE operator' do
+      results = client.query("SELECT * FROM users WHERE name NOT LIKE 'a%';")
+      expect(results.count).to eq(2)
+      names = results.map { |r| r['name'] }
+      expect(names).to contain_exactly('bob', 'cory')
+    end
+
+    it 'filters rows by NOT IN operator' do
+      results = client.query('SELECT * FROM users WHERE id NOT IN (1, 2);')
+      expect(results.count).to eq(1)
+      expect(results.first.values).to eq([3, 'cory'])
+    end
+
+    it 'filters rows by NOT REGEXP operator' do
+      results = client.query("SELECT * FROM users WHERE name NOT REGEXP '^a';")
+      expect(results.count).to eq(2)
+      names = results.map { |r| r['name'] }
+      expect(names).to contain_exactly('bob', 'cory')
+    end
+
     it 'returns empty result set when REGEXP does not match' do
       results = client.query("SELECT * FROM users WHERE name REGEXP '^z';")
       expect(results.count).to eq(0)
