@@ -89,6 +89,8 @@ module RubyPureMysql
       return nil if args.any?(&:nil?)
 
       str, from, to = args.map(&:to_s)
+      return str if from.empty?
+
       str.gsub(from, to)
     end
   end

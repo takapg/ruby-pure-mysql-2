@@ -622,6 +622,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
       end
 
+      it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
+        expect(client.query('SELECT REPLACE("abc", "", "X");').first.values.first).to eq('abc')
+      end
+
       it 'returns NULL if any argument is NULL' do
         expect(client.query('SELECT REPLACE("abc", "b", NULL);').first.values.first).to be_nil
         expect(client.query('SELECT REPLACE(NULL, "b", "x");').first.values.first).to be_nil
