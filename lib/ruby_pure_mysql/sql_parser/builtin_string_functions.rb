@@ -77,7 +77,7 @@ module RubyPureMysql
       return nil if len < 0
       return str[0, len] if str.length >= len
 
-      # MySQL 8.0: padstr が空でパディングが必要な場合は NULL
+      # パディングが必要な時に padstr が空なら NULL (MySQL 8.0 互換)
       return nil if pad == ''
 
       padding_len = len - str.length
@@ -96,7 +96,7 @@ module RubyPureMysql
       return nil if len < 0
       return str[0, len] if str.length >= len
 
-      # MySQL 8.0: padstr が空でパディングが必要な場合は NULL
+      # パディングが必要な時に padstr が空なら NULL (MySQL 8.0 互換)
       return nil if pad == ''
 
       padding_len = len - str.length
