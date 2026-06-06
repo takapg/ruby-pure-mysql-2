@@ -511,7 +511,7 @@ module RubyPureMysql
 
     def build_standard_condition(match)
       column = match[1]
-      operator = match[2].upcase
+      operator = match[2].upcase.gsub(/\s+/, ' ')
       operator = '!=' if operator == '<>'
       value_str = match[3].strip.delete_suffix(';')
 
@@ -541,7 +541,7 @@ module RubyPureMysql
       res = parse_between_condition(condition, column_pattern)
       return res if res
 
-      where_match = condition.match(/\A(#{column_pattern})\s*(<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      where_match = condition.match(/\A(#{column_pattern})\s*(NOT\s+LIKE|NOT\s+IN|NOT\s+REGEXP|NOT\s+RLIKE|<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       build_standard_condition(where_match)

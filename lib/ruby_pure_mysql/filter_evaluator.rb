@@ -25,8 +25,11 @@ module RubyPureMysql
     def compare_value(val, operator, target_value)
       case operator
       when 'LIKE' then match_pattern?(val, target_value, :like)
+      when 'NOT LIKE' then !match_pattern?(val, target_value, :like)
       when 'REGEXP', 'RLIKE' then match_pattern?(val, target_value, :regexp)
+      when 'NOT REGEXP', 'NOT RLIKE' then !match_pattern?(val, target_value, :regexp)
       when 'IN' then handle_in_operator(val, target_value)
+      when 'NOT IN' then !handle_in_operator(val, target_value)
       when '<=>' then handle_null_safe_equal(val, target_value)
       when 'BETWEEN', 'NOT BETWEEN' then handle_between_operator?(val, operator, target_value)
       when '=', '!=', '<>' then compare_equality?(val, operator, target_value)
