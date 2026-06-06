@@ -617,6 +617,27 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'REPLACE() function support' do
+      it 'replaces occurrences of a string with another string' do
+        expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
+      end
+
+      it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
+        expect(client.query('SELECT REPLACE("abc", "", "X");').first.values.first).to eq('abc')
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT REPLACE("abc", "b", NULL);').first.values.first).to be_nil
+        expect(client.query('SELECT REPLACE(NULL, "b", "x");').first.values.first).to be_nil
+        expect(client.query('SELECT REPLACE("abc", NULL, "x");').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments' do
+        expect { client.query('SELECT REPLACE("abc", "b");') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT REPLACE("abc", "b", "x", "y");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)

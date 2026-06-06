@@ -9,6 +9,7 @@ module RubyPureMysql
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
+      when 'replace' then handle_replace(args)
       else :error
       end
     end
@@ -81,6 +82,16 @@ module RubyPureMysql
 
       str = val.to_s
       %w[lower lcase].include?(name) ? str.downcase : str.upcase
+    end
+
+    def handle_replace(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str, from, to = args.map(&:to_s)
+      return str if from.empty?
+
+      str.gsub(from, to)
     end
   end
 end
