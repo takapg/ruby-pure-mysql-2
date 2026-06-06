@@ -387,6 +387,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq('Result: 2')
     end
 
+    it 'returns NULL if any argument to CONCAT is NULL (SELECT CONCAT("a", NULL);)' do
+      expect(client.query('SELECT CONCAT("a", NULL);').first.values.first).to be_nil
+    end
+
+    it 'returns NULL if any argument to CONCAT is NULL (SELECT CONCAT(NULL, "b");)' do
+      expect(client.query('SELECT CONCAT(NULL, "b");').first.values.first).to be_nil
+    end
+
+    it 'returns NULL if any argument to CONCAT is NULL (SELECT CONCAT("a", "b", NULL, "c");)' do
+      expect(client.query('SELECT CONCAT("a", "b", NULL, "c");').first.values.first).to be_nil
+    end
+
     it 'returns the first non-NULL value using COALESCE (SELECT COALESCE(NULL, 1, 2);)' do
       results = client.query('SELECT COALESCE(NULL, 1, 2);')
       expect(results.first.values.first).to eq(1)
