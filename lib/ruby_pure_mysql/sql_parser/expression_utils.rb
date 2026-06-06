@@ -227,11 +227,22 @@ module RubyPureMysql
     end
 
     def evaluate_inner_token(token)
+      val = evaluate_constant_token(token)
+      return val unless val.nil? && !token.casecmp?('NULL')
+
+      return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
+
+      evaluate_literal_token(token)
+    end
+
+    def evaluate_constant_token(token)
       return nil if token.casecmp?('NULL')
       return true if token.casecmp?('TRUE')
       return false if token.casecmp?('FALSE')
-      return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
+      nil
+    end
 
+    def evaluate_literal_token(token)
       return evaluate_string_literal(token) if string_literal?(token)
 
       evaluate_numeric_token(token) || :error
