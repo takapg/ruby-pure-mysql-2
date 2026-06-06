@@ -3,6 +3,19 @@
 module RubyPureMysql
   # 文字列操作に関する組み込み関数の評価ロジックを提供するモジュール
   module BuiltinStringFunctions
+    def handle_substring_index(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s
+      delim = args[1].to_s
+      count = args[2].to_i
+
+      return '' if count.zero? || delim.empty?
+
+      calculate_substring_index(str, delim, count)
+    end
+
     def handle_replace(args)
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
@@ -66,6 +79,11 @@ module RubyPureMysql
     end
 
     private
+
+    def calculate_substring_index(str, delim, count)
+      parts = str.split(delim, -1)
+      count.positive? ? parts.first(count).join(delim) : parts.last(count.abs).join(delim)
+    end
 
     def calculate_locate_index(str, substr, pos)
       return 0 if pos < 1

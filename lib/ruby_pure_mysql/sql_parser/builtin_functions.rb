@@ -13,6 +13,7 @@ module RubyPureMysql
       case name
       when 'coalesce', 'ifnull', 'if', 'nullif', 'isnull' then handle_basic_builtin(name, args)
       when 'substring', 'substr' then handle_substring(args)
+      when 'substring_index' then handle_substring_index(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
       when 'trim', 'ltrim', 'rtrim' then handle_trim_functions(name, args)

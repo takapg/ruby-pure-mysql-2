@@ -874,6 +874,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'SUBSTRING_INDEX() function support' do
+      it 'extracts substring to the left of the nth delimiter' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", 2);').first.values.first).to eq('www.mysql')
+      end
+
+      it 'extracts substring to the right of the nth delimiter (negative count)' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", -2);').first.values.first).to eq('mysql.com')
+      end
+
+      it 'returns empty string when count is 0' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", 0);').first.values.first).to eq('')
+      end
+
+      it 'returns empty string when delimiter is empty' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", "", 1);').first.values.first).to eq('')
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns the whole string if count exceeds the number of delimiters' do
+        expect(client.query('SELECT SUBSTRING_INDEX("a.b.c", ".", 5);').first.values.first).to eq('a.b.c')
+      end
+
+      it 'returns the whole string if delimiter is not found' do
+        expect(client.query('SELECT SUBSTRING_INDEX("a.b.c", "x", 1);').first.values.first).to eq('a.b.c')
+      end
+    end
+
     describe 'CONCAT_WS() function support' do
       it 'concatenates strings with a separator (SELECT CONCAT_WS(", ", "A", "B", "C");)' do
         results = client.query('SELECT CONCAT_WS(", ", "A", "B", "C");')
