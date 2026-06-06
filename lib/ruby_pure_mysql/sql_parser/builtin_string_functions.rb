@@ -26,7 +26,7 @@ module RubyPureMysql
       return :error unless [2, 3].include?(args.size)
       return nil if args.any?(&:nil?)
 
-      substr, str = args[0].to_s, args[1].to_s
+      substr, str = args[0].to_s.force_encoding('UTF-8'), args[1].to_s.force_encoding('UTF-8')
       pos = args[2] ? args[2].to_i : 1
 
       return 0 if pos < 1
