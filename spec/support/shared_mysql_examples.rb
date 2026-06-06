@@ -646,7 +646,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(results.first.values.first).to eq('true_val')
       end
 
-      it 'returns the second argument when the first is a string that casts to non-zero (SELECT IF("12abc", "yes", "no");)' do
+      it 'returns the second argument when the first is a non-zero casting string (SELECT IF("12abc", "yes", "no");)' do
         results = client.query('SELECT IF("12abc", "yes", "no");')
         expect(results.first.values.first).to eq('yes')
       end
