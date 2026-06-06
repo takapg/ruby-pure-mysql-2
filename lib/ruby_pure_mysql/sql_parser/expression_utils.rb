@@ -227,15 +227,32 @@ module RubyPureMysql
     end
 
     def evaluate_inner_token(token)
-      return nil if token.casecmp?('NULL')
+      val = evaluate_constant_token(token)
+      return val unless val.nil? && !token.casecmp?('NULL')
+
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
-      return evaluate_string_literal(token) if string_literal?(token)
-      if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
-        return token.match?(/\A[-+]?\d+\z/) ? token.to_i : token.to_f
-      end
+      evaluate_literal_token(token)
+    end
 
-      :error
+    def evaluate_constant_token(token)
+      return nil if token.casecmp?('NULL')
+      return true if token.casecmp?('TRUE')
+      return false if token.casecmp?('FALSE')
+
+      nil
+    end
+
+    def evaluate_literal_token(token)
+      return evaluate_string_literal(token) if string_literal?(token)
+
+      evaluate_numeric_token(token) || :error
+    end
+
+    def evaluate_numeric_token(token)
+      return nil unless token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
+
+      token.match?(/\A[-+]?\d+\z/) ? token.to_i : token.to_f
     end
 
     def evaluate_complex_token(token)

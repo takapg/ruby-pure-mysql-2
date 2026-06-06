@@ -646,6 +646,46 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(results.first.values.first).to eq('true_val')
       end
 
+      it 'returns the second argument when the first is a non-zero casting string (SELECT IF("12abc", "yes", "no");)' do
+        results = client.query('SELECT IF("12abc", "yes", "no");')
+        expect(results.first.values.first).to eq('yes')
+      end
+
+      it 'returns the third argument when the first is a string that casts to zero (SELECT IF("abc", "yes", "no");)' do
+        results = client.query('SELECT IF("abc", "yes", "no");')
+        expect(results.first.values.first).to eq('no')
+      end
+
+      it 'returns the third argument when the first is "0.0" (SELECT IF("0.0", "yes", "no");)' do
+        results = client.query('SELECT IF("0.0", "yes", "no");')
+        expect(results.first.values.first).to eq('no')
+      end
+
+      it 'returns the third argument when the first is a float zero (SELECT IF(0.0, "yes", "no");)' do
+        results = client.query('SELECT IF(0.0, "yes", "no");')
+        expect(results.first.values.first).to eq('no')
+      end
+
+      it 'returns the second argument when the first is a float non-zero (SELECT IF(1.1, "yes", "no");)' do
+        results = client.query('SELECT IF(1.1, "yes", "no");')
+        expect(results.first.values.first).to eq('yes')
+      end
+
+      it 'returns the second argument when the first is a negative number (SELECT IF(-1, "yes", "no");)' do
+        results = client.query('SELECT IF(-1, "yes", "no");')
+        expect(results.first.values.first).to eq('yes')
+      end
+
+      it 'returns the second argument when the first is TRUE (SELECT IF(TRUE, "yes", "no");)' do
+        results = client.query('SELECT IF(TRUE, "yes", "no");')
+        expect(results.first.values.first).to eq('yes')
+      end
+
+      it 'returns the third argument when the first is FALSE (SELECT IF(FALSE, "yes", "no");)' do
+        results = client.query('SELECT IF(FALSE, "yes", "no");')
+        expect(results.first.values.first).to eq('no')
+      end
+
       it 'returns an error when the number of arguments is not 3 (SELECT IF(1, 2);)' do
         expect { client.query('SELECT IF(1, 2);') }.to raise_error(Mysql2::Error)
       end

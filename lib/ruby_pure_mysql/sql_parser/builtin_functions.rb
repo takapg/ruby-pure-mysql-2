@@ -62,10 +62,15 @@ module RubyPureMysql
     def handle_if(args)
       return :error unless args.size == 3
 
-      expr1 = args[0]
-      is_true = ![nil, false, 0, '0'].include?(expr1)
+      mysql_truthy?(args[0]) ? args[1] : args[2]
+    end
 
-      is_true ? args[1] : args[2]
+    def mysql_truthy?(val)
+      return false if val.nil?
+      return val if val.is_a?(TrueClass) || val.is_a?(FalseClass)
+
+      numeric_val = val.is_a?(Numeric) ? val : val.to_s.to_f
+      numeric_val != 0
     end
 
     def handle_nullif(args)
