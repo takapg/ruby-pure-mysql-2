@@ -739,4 +739,37 @@ RSpec.describe RubyPureMysql::StorageEngine do
       expect(engine.find_matching_indices(nil, rows, cols, where_null_safe_none)).to be_empty
     end
   end
+
+  describe '否定演算子の検証' do
+    let(:neg_table) { 'neg_table' }
+    let(:neg_cols) { %w[id name] }
+    let(:neg_indexes) { { 'name_idx' => [1] } }
+
+    before do
+      engine.create_table(neg_table, neg_cols, neg_indexes)
+      [
+        [1, 'Alice'],
+        [2, 'Bob'],
+        [3, 'Charlie']
+      ].each { |row| engine.insert(neg_table, row) }
+    end
+
+    it 'NOT LIKE で正しくフィルタリングできること' do
+      where = [{ column: 'name', operator: 'NOT LIKE', value: 'A%' }]
+      indices = engine.find_matching_indices(nil, engine.select(neg_table), engine.get_columns(neg_table), where)
+      expect(indices).to contain_exactly(1, 2)
+    end
+
+    it 'NOT IN で正しくフィルタリングできること' do
+      where = [{ column: 'id', operator: 'NOT IN', value: [1, 2] }]
+      indices = engine.find_matching_indices(nil, engine.select(neg_table), engine.get_columns(neg_table), where)
+      expect(indices).to contain_exactly(2)
+    end
+
+    it 'NOT REGEXP で正しくフィルタリングできること' do
+      where = [{ column: 'name', operator: 'NOT REGEXP', value: '^A' }]
+      indices = engine.find_matching_indices(nil, engine.select(neg_table), engine.get_columns(neg_table), where)
+      expect(indices).to contain_exactly(1, 2)
+    end
+  end
 end

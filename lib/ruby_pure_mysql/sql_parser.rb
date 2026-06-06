@@ -511,11 +511,11 @@ module RubyPureMysql
 
     def build_standard_condition(match)
       column = match[1]
-      operator = match[2].upcase
+      operator = match[2].upcase.gsub(/\s+/, ' ')
       operator = '!=' if operator == '<>'
       value_str = match[3].strip.delete_suffix(';')
 
-      value = operator == 'IN' ? parse_in_value(value_str) : convert_value(value_str)
+      value = ['IN', 'NOT IN'].include?(operator) ? parse_in_value(value_str) : convert_value(value_str)
       return value if value.is_a?(Hash) && value[:error]
 
       { column: column, operator: operator, value: value }
@@ -524,6 +524,8 @@ module RubyPureMysql
 
   # ユーティリティメソッドをまとめたモジュール
   module SqlParserUtils
+    WHERE_OPERATORS = 'NOT\s+LIKE|NOT\s+IN|NOT\s+REGEXP|NOT\s+RLIKE|<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE'
+
     ESCAPE_MAP = {
       '0' => "\0", 'n' => "\n", 'r' => "\r", 't' => "\t",
       'Z' => "\x1a", '\\' => '\\', "'" => "'", '"' => '"'
@@ -541,7 +543,8 @@ module RubyPureMysql
       res = parse_between_condition(condition, column_pattern)
       return res if res
 
-      where_match = condition.match(/\A(#{column_pattern})\s*(<=>|!=|<>|>=|<=|=|>|<|LIKE|IN|REGEXP|RLIKE)\s*(.+)\z/i)
+      regex = /\A(#{column_pattern})\s*(#{WHERE_OPERATORS})\s*(.+)\z/i
+      where_match = condition.match(regex)
       return { error: 'Invalid WHERE clause' } unless where_match
 
       build_standard_condition(where_match)

@@ -26,8 +26,8 @@ module RubyPureMysql
 
     def compile_regex(operator, value)
       case operator
-      when 'LIKE' then build_like_regex(value)
-      when 'REGEXP', 'RLIKE' then Regexp.new(value.to_s, Regexp::IGNORECASE)
+      when 'LIKE', 'NOT LIKE' then build_like_regex(value)
+      when 'REGEXP', 'RLIKE', 'NOT REGEXP', 'NOT RLIKE' then Regexp.new(value.to_s, Regexp::IGNORECASE)
       end
     end
 
