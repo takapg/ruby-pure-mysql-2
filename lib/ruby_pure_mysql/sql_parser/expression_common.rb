@@ -64,6 +64,5 @@ module RubyPureMysql
         handle_complex_builtin(name, args)
       end
     end
-
   end
 end
