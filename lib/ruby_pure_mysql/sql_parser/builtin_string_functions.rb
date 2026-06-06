@@ -76,7 +76,7 @@ module RubyPureMysql
 
       return nil if len < 0
       return str[0, len] if str.length >= len
-      return nil if pad == ''
+      return nil if pad.empty?
 
       if pad.length == 1
         return str.rjust(len, pad)
@@ -97,7 +97,7 @@ module RubyPureMysql
 
       return nil if len < 0
       return str[0, len] if str.length >= len
-      return nil if pad == ''
+      return nil if pad.empty?
 
       if pad.length == 1
         return str.ljust(len, pad)
