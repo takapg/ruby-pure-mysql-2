@@ -60,6 +60,8 @@ module RubyPureMysql
       when 'user' then 'root@localhost'
       when 'version' then 'Hi-MySQL-8.0'
       when 'concat' then args.any?(&:nil?) ? nil : args.join
+      when 'curdate', 'current_date' then args.empty? ? Time.now.strftime('%Y-%m-%d') : :error
+      when 'curtime', 'current_time' then args.empty? ? Time.now.strftime('%H:%M:%S') : :error
       else
         handle_complex_builtin(name, args)
       end
