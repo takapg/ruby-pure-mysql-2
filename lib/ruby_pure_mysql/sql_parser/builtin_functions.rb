@@ -11,6 +11,8 @@ module RubyPureMysql
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
       when 'replace' then handle_replace(args)
       when 'round' then handle_round(args)
+      when 'greatest' then handle_greatest(args)
+      when 'least' then handle_least(args)
       else :error
       end
     end
@@ -102,6 +104,20 @@ module RubyPureMysql
       val = args[0].to_f
       precision = args[1] ? args[1].to_i : 0
       val.round(precision)
+    end
+
+    def handle_greatest(args)
+      return :error if args.size < 2
+      return nil if args.any?(&:nil?)
+
+      args.all? { |a| a.is_a?(Numeric) } ? args.max : args.map(&:to_s).max
+    end
+
+    def handle_least(args)
+      return :error if args.size < 2
+      return nil if args.any?(&:nil?)
+
+      args.all? { |a| a.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
     end
   end
 end
