@@ -15,7 +15,16 @@ module RubyPureMysql
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
+      when 'trim', 'ltrim', 'rtrim' then handle_trim_functions(name, args)
       else handle_other_builtin(name, args)
+      end
+    end
+
+    def handle_trim_functions(name, args)
+      case name
+      when 'trim' then handle_trim(args)
+      when 'ltrim' then handle_ltrim(args)
+      when 'rtrim' then handle_rtrim(args)
       end
     end
 
