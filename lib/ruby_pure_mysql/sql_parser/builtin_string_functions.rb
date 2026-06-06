@@ -66,6 +66,36 @@ module RubyPureMysql
       str[-len..] || str
     end
 
+    def handle_lpad(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      len = args[1].to_i
+      padstr = args[2].to_s.force_encoding('UTF-8')
+
+      return nil if len < 0
+      return str[0, len] if str.length >= len
+      return nil if padstr.empty?
+
+      str.rjust(len, padstr)
+    end
+
+    def handle_rpad(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      len = args[1].to_i
+      padstr = args[2].to_s.force_encoding('UTF-8')
+
+      return nil if len < 0
+      return str[0, len] if str.length >= len
+      return nil if padstr.empty?
+
+      str.ljust(len, padstr)
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end

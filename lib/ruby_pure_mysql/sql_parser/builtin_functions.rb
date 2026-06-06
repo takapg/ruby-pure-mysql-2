@@ -17,6 +17,8 @@ module RubyPureMysql
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
       when 'trim', 'ltrim', 'rtrim' then handle_trim_functions(name, args)
+      when 'lpad' then handle_lpad(args)
+      when 'rpad' then handle_rpad(args)
       else handle_other_builtin(name, args)
       end
     end
