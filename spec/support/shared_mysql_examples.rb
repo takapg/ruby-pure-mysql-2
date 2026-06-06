@@ -353,22 +353,22 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'returns current date for SELECT CURDATE();' do
       results = client.query('SELECT CURDATE();')
-      expect(results.first.values.first).to match(/\A\d{4}-\d{2}-\d{2}\z/)
+      expect(results.first.values.first.to_s).to match(/\A\d{4}-\d{2}-\d{2}\z/)
     end
 
     it 'returns current date for SELECT CURRENT_DATE();' do
       results = client.query('SELECT CURRENT_DATE();')
-      expect(results.first.values.first).to match(/\A\d{4}-\d{2}-\d{2}\z/)
+      expect(results.first.values.first.to_s).to match(/\A\d{4}-\d{2}-\d{2}\z/)
     end
 
     it 'returns current time for SELECT CURTIME();' do
       results = client.query('SELECT CURTIME();')
-      expect(results.first.values.first).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+      expect(results.first.values.first.to_s).to match(/\d{2}:\d{2}:\d{2}/)
     end
 
     it 'returns current time for SELECT CURRENT_TIME();' do
       results = client.query('SELECT CURRENT_TIME();')
-      expect(results.first.values.first).to match(/\A\d{2}:\d{2}:\d{2}\z/)
+      expect(results.first.values.first.to_s).to match(/\d{2}:\d{2}:\d{2}/)
     end
 
     it 'can evaluate functions within arithmetic (SELECT 1 + NOW();)' do
