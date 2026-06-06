@@ -116,14 +116,18 @@ module RubyPureMysql
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
+      # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
       args.all? { |arg| arg.is_a?(Numeric) } ? args.max : args.map(&:to_s).max
+      # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
     end
 
     def handle_least(args)
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
+      # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
       args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
+      # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
     end
   end
 end
