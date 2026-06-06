@@ -33,6 +33,28 @@ module RubyPureMysql
       calculate_locate_index(str, substr, pos)
     end
 
+    def handle_left(args)
+      return :error unless args.size == 2
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      len = args[1].to_i
+      return '' if len <= 0
+
+      str[0, len]
+    end
+
+    def handle_right(args)
+      return :error unless args.size == 2
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      len = args[1].to_i
+      return '' if len <= 0
+
+      str.slice(-len, len) || ''
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end
