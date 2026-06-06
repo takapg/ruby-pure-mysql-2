@@ -74,11 +74,9 @@ module RubyPureMysql
       len = args[1].to_i
       pad = args[2].to_s.force_encoding('UTF-8')
 
+      return nil if pad.empty?
       return nil if len < 0
       return str[0, len] if str.length >= len
-
-      # パディングが必要な場合に pad が空なら NULL を返す
-      return nil if pad.empty?
 
       padding_len = len - str.length
       padding = (pad * padding_len)[0, padding_len]
@@ -93,11 +91,9 @@ module RubyPureMysql
       len = args[1].to_i
       pad = args[2].to_s.force_encoding('UTF-8')
 
+      return nil if pad.empty?
       return nil if len < 0
       return str[0, len] if str.length >= len
-
-      # パディングが必要な場合に pad が空なら NULL を返す
-      return nil if pad.empty?
 
       padding_len = len - str.length
       padding = (pad * padding_len)[0, padding_len]
