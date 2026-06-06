@@ -513,6 +513,40 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'Case Conversion functions support' do
+      it 'converts to lowercase using LOWER() (SELECT LOWER("MySQL");)' do
+        expect(client.query('SELECT LOWER("MySQL");').first.values.first).to eq('mysql')
+      end
+
+      it 'converts to lowercase using LCASE() (SELECT LCASE("MySQL");)' do
+        expect(client.query('SELECT LCASE("MySQL");').first.values.first).to eq('mysql')
+      end
+
+      it 'converts to uppercase using UPPER() (SELECT UPPER("MySQL");)' do
+        expect(client.query('SELECT UPPER("MySQL");').first.values.first).to eq('MYSQL')
+      end
+
+      it 'converts to uppercase using UCASE() (SELECT UCASE("MySQL");)' do
+        expect(client.query('SELECT UCASE("MySQL");').first.values.first).to eq('MYSQL')
+      end
+
+      it 'returns nil when argument is NULL (SELECT LOWER(NULL);)' do
+        expect(client.query('SELECT LOWER(NULL);').first.values.first).to be_nil
+      end
+
+      it 'casts numeric arguments to string and converts (SELECT LOWER(123);)' do
+        expect(client.query('SELECT LOWER(123);').first.values.first).to eq('123')
+      end
+
+      it 'returns an error for LOWER() with no arguments' do
+        expect { client.query('SELECT LOWER();') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error for LOWER() with too many arguments' do
+        expect { client.query('SELECT LOWER("a", "b");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'IF() function support' do
       it 'returns the second argument when the first is true (SELECT IF(1, "true_val", "false_val");)' do
         results = client.query('SELECT IF(1, "true_val", "false_val");')

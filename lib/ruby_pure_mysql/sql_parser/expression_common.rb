@@ -68,6 +68,7 @@ module RubyPureMysql
       when 'if' then handle_if(args)
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
+      when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
       else :error
       end
     end
@@ -115,6 +116,16 @@ module RubyPureMysql
 
       start = pos.positive? ? pos - 1 : pos
       (len ? str[start, len] : str[start..]) || ''
+    end
+
+    def handle_case_conversion(name, args)
+      return :error unless args.size == 1
+
+      val = args[0]
+      return nil if val.nil?
+
+      str = val.to_s
+      %w[lower lcase].include?(name) ? str.downcase : str.upcase
     end
   end
 end
