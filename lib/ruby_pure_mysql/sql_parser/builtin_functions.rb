@@ -19,6 +19,7 @@ module RubyPureMysql
       when 'round' then handle_round(args)
       when 'greatest' then handle_greatest(args)
       when 'least' then handle_least(args)
+      when 'concat_ws' then handle_concat_ws(args)
       else :error
       end
     end
@@ -128,6 +129,15 @@ module RubyPureMysql
       # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
       args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
       # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
+    end
+
+    def handle_concat_ws(args)
+      return :error if args.size < 2
+
+      separator = args[0]
+      return nil if separator.nil?
+
+      args[1..].compact.join(separator.to_s)
     end
   end
 end
