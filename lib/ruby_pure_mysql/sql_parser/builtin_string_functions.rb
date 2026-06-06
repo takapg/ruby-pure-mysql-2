@@ -52,7 +52,8 @@ module RubyPureMysql
       len = args[1].to_i
       return '' if len <= 0
 
-      str.slice(-len, len) || ''
+      start_pos = [0, str.length - len].max
+      str[start_pos..-1] || ''
     end
 
     def handle_trim(args)
