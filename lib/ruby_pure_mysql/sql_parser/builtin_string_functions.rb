@@ -24,6 +24,7 @@ module RubyPureMysql
 
     def handle_trim(args)
       return :error unless args.size == 1
+
       val = args[0]
       return nil if val.nil?
 
@@ -32,6 +33,7 @@ module RubyPureMysql
 
     def handle_ltrim(args)
       return :error unless args.size == 1
+
       val = args[0]
       return nil if val.nil?
 
@@ -40,6 +42,7 @@ module RubyPureMysql
 
     def handle_rtrim(args)
       return :error unless args.size == 1
+
       val = args[0]
       return nil if val.nil?
 
