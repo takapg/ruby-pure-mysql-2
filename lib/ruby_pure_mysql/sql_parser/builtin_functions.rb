@@ -9,8 +9,16 @@ module RubyPureMysql
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
+      else handle_other_builtin(name, args)
+      end
+    end
+
+    def handle_other_builtin(name, args)
+      case name
       when 'replace' then handle_replace(args)
       when 'round' then handle_round(args)
+      when 'greatest' then handle_greatest(args)
+      when 'least' then handle_least(args)
       else :error
       end
     end
@@ -102,6 +110,24 @@ module RubyPureMysql
       val = args[0].to_f
       precision = args[1] ? args[1].to_i : 0
       val.round(precision)
+    end
+
+    def handle_greatest(args)
+      return :error if args.size < 2
+      return nil if args.any?(&:nil?)
+
+      # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
+      args.all? { |arg| arg.is_a?(Numeric) } ? args.max : args.map(&:to_s).max
+      # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
+    end
+
+    def handle_least(args)
+      return :error if args.size < 2
+      return nil if args.any?(&:nil?)
+
+      # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
+      args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
+      # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
     end
   end
 end

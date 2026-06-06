@@ -666,6 +666,28 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'GREATEST() and LEAST() function support' do
+      it 'returns the maximum value using GREATEST()' do
+        expect(client.query('SELECT GREATEST(2, 5, 3);').first.values.first).to eq(5)
+        expect(client.query('SELECT GREATEST("a", "z", "b");').first.values.first).to eq('z')
+      end
+
+      it 'returns the minimum value using LEAST()' do
+        expect(client.query('SELECT LEAST(2.0, 5.5, 1.2);').first.values.first).to eq(1.2)
+        expect(client.query('SELECT LEAST("a", "z", "b");').first.values.first).to eq('a')
+      end
+
+      it 'returns NULL if any argument is NULL' do
+        expect(client.query('SELECT GREATEST(1, NULL, 3);').first.values.first).to be_nil
+        expect(client.query('SELECT LEAST(1, NULL, 3);').first.values.first).to be_nil
+      end
+
+      it 'returns an error if there are fewer than 2 arguments' do
+        expect { client.query('SELECT GREATEST(1);') }.to raise_error(Mysql2::Error)
+        expect { client.query('SELECT LEAST(1);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     it 'can calculate nested arithmetic (SELECT (1 + 2) * 3;)' do
       results = client.query('SELECT (1 + 2) * 3;')
       expect(results.first.values.first).to eq(9)
