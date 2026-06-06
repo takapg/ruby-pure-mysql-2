@@ -103,6 +103,5 @@ module RubyPureMysql
       str = val.to_s
       %w[lower lcase].include?(name) ? str.downcase : str.upcase
     end
-
   end
 end
