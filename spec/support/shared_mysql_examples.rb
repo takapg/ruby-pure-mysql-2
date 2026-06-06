@@ -686,6 +686,18 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT LOCATE("bar", "foobarbar");').first.values.first).to eq(4)
       end
 
+      it 'returns 1 when substr is an empty string (SELECT LOCATE("", "abc");)' do
+        expect(client.query('SELECT LOCATE("", "abc");').first.values.first).to eq(1)
+      end
+
+      it 'returns 0 when str is an empty string and substr is not (SELECT LOCATE("abc", "");)' do
+        expect(client.query('SELECT LOCATE("abc", "");').first.values.first).to eq(0)
+      end
+
+      it 'returns 1 when both are empty strings (SELECT LOCATE("", "");)' do
+        expect(client.query('SELECT LOCATE("", "");').first.values.first).to eq(1)
+      end
+
       it 'returns the occurrence position starting from pos (SELECT LOCATE("bar", "foobarbar", 5);)' do
         expect(client.query('SELECT LOCATE("bar", "foobarbar", 5);').first.values.first).to eq(7)
       end
