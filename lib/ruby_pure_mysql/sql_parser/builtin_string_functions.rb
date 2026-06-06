@@ -75,10 +75,14 @@ module RubyPureMysql
       padstr = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return str[0, len] if str.length >= len
-      return nil if padstr.empty?
 
-      str.rjust(len, padstr)
+      if str.length >= len
+        str[0, len]
+      elsif padstr.empty?
+        nil
+      else
+        str.rjust(len, padstr)
+      end
     end
 
     def handle_rpad(args)
@@ -90,10 +94,14 @@ module RubyPureMysql
       padstr = args[2].to_s.force_encoding('UTF-8')
 
       return nil if len < 0
-      return str[0, len] if str.length >= len
-      return nil if padstr.empty?
 
-      str.ljust(len, padstr)
+      if str.length >= len
+        str[0, len]
+      elsif padstr.empty?
+        nil
+      else
+        str.ljust(len, padstr)
+      end
     end
 
     def handle_trim(args)
