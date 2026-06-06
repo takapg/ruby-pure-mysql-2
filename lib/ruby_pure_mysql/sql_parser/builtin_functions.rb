@@ -137,7 +137,7 @@ module RubyPureMysql
       separator = args[0]
       return nil if separator.nil?
 
-      args[1..].reject(&:nil?).map(&:to_s).join(separator.to_s)
+      args[1..].compact.join(separator.to_s)
     end
   end
 end
