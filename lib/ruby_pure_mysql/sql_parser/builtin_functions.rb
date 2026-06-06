@@ -6,6 +6,7 @@ module RubyPureMysql
   # 組み込み関数の評価ロジックを提供するモジュール
   module BuiltinFunctions
     include BuiltinStringFunctions
+
     def handle_complex_builtin(name, args)
       case name
       when 'coalesce', 'ifnull', 'if', 'nullif', 'isnull' then handle_basic_builtin(name, args)
@@ -104,7 +105,6 @@ module RubyPureMysql
       %w[lower lcase].include?(name) ? str.downcase : str.upcase
     end
 
-
     def handle_round(args)
       return :error unless [1, 2].include?(args.size)
       return nil if args.any?(&:nil?)
@@ -131,6 +131,5 @@ module RubyPureMysql
       args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
       # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
     end
-
   end
 end
