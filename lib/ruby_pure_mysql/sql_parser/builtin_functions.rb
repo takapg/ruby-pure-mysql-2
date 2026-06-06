@@ -116,14 +116,14 @@ module RubyPureMysql
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
-      args.all?(Numeric) ? args.max : args.map(&:to_s).max
+      args.all? { |arg| arg.is_a?(Numeric) } ? args.max : args.map(&:to_s).max
     end
 
     def handle_least(args)
       return :error if args.size < 2
       return nil if args.any?(&:nil?)
 
-      args.all?(Numeric) ? args.min : args.map(&:to_s).min
+      args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
     end
   end
 end
