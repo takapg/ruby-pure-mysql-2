@@ -617,6 +617,32 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'ISNULL() function support' do
+      it 'returns 1 when argument is NULL (SELECT ISNULL(NULL);)' do
+        expect(client.query('SELECT ISNULL(NULL);').first.values.first).to eq(1)
+      end
+
+      it 'returns 0 when argument is not NULL (SELECT ISNULL(1);)' do
+        expect(client.query('SELECT ISNULL(1);').first.values.first).to eq(0)
+      end
+
+      it 'returns 0 when argument is a string (SELECT ISNULL("abc");)' do
+        expect(client.query('SELECT ISNULL("abc");').first.values.first).to eq(0)
+      end
+
+      it 'returns 1 when expression evaluates to NULL (SELECT ISNULL(1 + NULL);)' do
+        expect(client.query('SELECT ISNULL(1 + NULL);').first.values.first).to eq(1)
+      end
+
+      it 'returns an error for ISNULL with no arguments (SELECT ISNULL();)' do
+        expect { client.query('SELECT ISNULL();') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error for ISNULL with too many arguments (SELECT ISNULL(1, 2);)' do
+        expect { client.query('SELECT ISNULL(1, 2);') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'REPLACE() function support' do
       it 'replaces occurrences of a string with another string' do
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')

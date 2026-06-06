@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require_relative 'builtin_string_functions'
+
 module RubyPureMysql
   # 組み込み関数の評価ロジックを提供するモジュール
   module BuiltinFunctions
+    include BuiltinStringFunctions
+
     def handle_complex_builtin(name, args)
       case name
-      when 'coalesce', 'ifnull', 'if', 'nullif' then handle_basic_builtin(name, args)
+      when 'coalesce', 'ifnull', 'if', 'nullif', 'isnull' then handle_basic_builtin(name, args)
       when 'substring', 'substr' then handle_substring(args)
       when 'length', 'char_length', 'character_length' then handle_length_functions(name, args)
       when 'lower', 'lcase', 'upper', 'ucase' then handle_case_conversion(name, args)
@@ -30,6 +34,7 @@ module RubyPureMysql
       when 'ifnull' then handle_ifnull(args)
       when 'if' then handle_if(args)
       when 'nullif' then handle_nullif(args)
+      when 'isnull' then handle_isnull(args)
       end
     end
 
@@ -58,6 +63,12 @@ module RubyPureMysql
       return :error unless args.size == 2
 
       args[0] == args[1] ? nil : args[0]
+    end
+
+    def handle_isnull(args)
+      return :error unless args.size == 1
+
+      args[0].nil? ? 1 : 0
     end
 
     def handle_substring(args)
@@ -94,16 +105,6 @@ module RubyPureMysql
       %w[lower lcase].include?(name) ? str.downcase : str.upcase
     end
 
-    def handle_replace(args)
-      return :error unless args.size == 3
-      return nil if args.any?(&:nil?)
-
-      str, from, to = args.map(&:to_s)
-      return str if from.empty?
-
-      str.gsub(from, to)
-    end
-
     def handle_round(args)
       return :error unless [1, 2].include?(args.size)
       return nil if args.any?(&:nil?)
@@ -129,15 +130,6 @@ module RubyPureMysql
       # rubocop:disable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
       args.all? { |arg| arg.is_a?(Numeric) } ? args.min : args.map(&:to_s).min
       # rubocop:enable Style/PredicateWithKind, Performance/RedundantEqualityComparisonBlock
-    end
-
-    def handle_concat_ws(args)
-      return :error if args.size < 2
-
-      separator = args[0]
-      return nil if separator.nil?
-
-      args[1..].compact.join(separator.to_s)
     end
   end
 end
