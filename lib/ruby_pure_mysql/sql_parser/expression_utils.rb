@@ -233,11 +233,14 @@ module RubyPureMysql
       return evaluate_complex_token(token) if parenthesized?(token) || function_call?(token)
 
       return evaluate_string_literal(token) if string_literal?(token)
-      if token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
-        return token.match?(/\A[-+]?\d+\z/) ? token.to_i : token.to_f
-      end
 
-      :error
+      evaluate_numeric_token(token) || :error
+    end
+
+    def evaluate_numeric_token(token)
+      return nil unless token.match?(/\A[-+]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/)
+
+      token.match?(/\A[-+]?\d+\z/) ? token.to_i : token.to_f
     end
 
     def evaluate_complex_token(token)
