@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'builtin_functions'
+
 module RubyPureMysql
   # 式解析の共通ユーティリティ
   module ExpressionCommon
