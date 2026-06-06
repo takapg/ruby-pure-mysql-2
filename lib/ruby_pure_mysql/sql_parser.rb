@@ -515,7 +515,7 @@ module RubyPureMysql
       operator = '!=' if operator == '<>'
       value_str = match[3].strip.delete_suffix(';')
 
-      value = operator == 'IN' ? parse_in_value(value_str) : convert_value(value_str)
+      value = ['IN', 'NOT IN'].include?(operator) ? parse_in_value(value_str) : convert_value(value_str)
       return value if value.is_a?(Hash) && value[:error]
 
       { column: column, operator: operator, value: value }

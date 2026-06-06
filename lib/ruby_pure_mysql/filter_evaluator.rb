@@ -6,7 +6,10 @@ module RubyPureMysql
     def apply_filter(val, operator, target_value, regex = nil)
       return evaluate_null_guards?(val, operator) if null_operator?(operator)
       return false if val.nil? && operator != '<=>'
-      return regex.match?(val.to_s) if regex.is_a?(Regexp)
+      if regex.is_a?(Regexp)
+        res = regex.match?(val.to_s)
+        return operator.start_with?('NOT ') ? !res : res
+      end
 
       res = compare_value(val, operator, target_value)
       [true, 1].include?(res)
