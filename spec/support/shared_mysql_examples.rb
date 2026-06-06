@@ -379,7 +379,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'allows one argument for CURTIME() (fractional seconds precision)' do
       results = client.query('SELECT CURTIME(1);')
-      expect(results.first.values.first.to_s).to match(/\A\d{2}:\d{2}:\d{2}/)
+      val = results.first.values.first
+      expect(val.respond_to?(:strftime) ? val.strftime('%H:%M:%S') : val.to_s).to match(/\A\d{2}:\d{2}:\d{2}\z/)
     end
 
     it 'returns an error for CURTIME() with too many arguments' do
