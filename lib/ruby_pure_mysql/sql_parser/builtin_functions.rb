@@ -78,22 +78,6 @@ module RubyPureMysql
       (len ? str[start, len] : str[start..]) || ''
     end
 
-    def handle_case_conversion(name, args)
-      return :error unless args.size == 1
-
-      val = args[0]
-      return nil if val.nil?
-
-      str = val.to_s
-      %w[lower lcase].include?(name) ? str.downcase : str.upcase
-    end
-  end
-end
-```
-
-```ruby
-lib/ruby_pure_mysql/sql_parser/expression_common.rb
-<<<<<<< SEARCH
 # frozen_string_literal: true
 
 module RubyPureMysql
