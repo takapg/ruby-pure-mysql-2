@@ -3,17 +3,20 @@
 module RubyPureMysql
   # 算術組み込み関数の評価ロジックを提供するモジュール
   module BuiltinMathFunctions
+    MATH_FUNCTIONS = {
+      'round' => :handle_round,
+      'greatest' => :handle_greatest,
+      'least' => :handle_least,
+      'abs' => :handle_abs,
+      'floor' => :handle_floor,
+      'ceil' => :handle_ceil,
+      'ceiling' => :handle_ceil,
+      'truncate' => :handle_truncate
+    }.freeze
+
     def handle_math_builtin(name, args)
-      case name
-      when 'round' then handle_round(args)
-      when 'greatest' then handle_greatest(args)
-      when 'least' then handle_least(args)
-      when 'abs' then handle_abs(args)
-      when 'floor' then handle_floor(args)
-      when 'ceil', 'ceiling' then handle_ceil(args)
-      when 'truncate' then handle_truncate(args)
-      else :error
-      end
+      handler = MATH_FUNCTIONS[name]
+      handler ? public_send(handler, args) : :error
     end
 
     def handle_round(args)
