@@ -78,13 +78,11 @@ module RubyPureMysql
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
-      if pad.length == 1
-        return str.rjust(len, pad)
+      result = str
+      while result.length < len
+        result = pad + result
       end
-
-      padding_len = len - str.length
-      padding = (pad * (padding_len.to_f / pad.length).ceil)[0, padding_len]
-      padding + str
+      result[-len..-1]
     end
 
     def handle_rpad(args)
@@ -99,13 +97,11 @@ module RubyPureMysql
       return str[0, len] if str.length >= len
       return nil if pad.empty?
 
-      if pad.length == 1
-        return str.ljust(len, pad)
+      result = str
+      while result.length < len
+        result = result + pad
       end
-
-      padding_len = len - str.length
-      padding = (pad * (padding_len.to_f / pad.length).ceil)[0, padding_len]
-      str + padding
+      result[0, len]
     end
 
     def handle_trim(args)
