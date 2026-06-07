@@ -7,28 +7,13 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      search_str = str.downcase
-      search_delim = delim.downcase
-      positions = []
-      start_pos = 0
+      regex = /#{Regexp.escape(delim)}/i
+      parts = str.split(regex, -1)
+      delims = str.scan(regex)
 
-      while (idx = search_str.index(search_delim, start_pos))
-        positions << idx
-        start_pos = idx + search_delim.length
-      end
+      return str if (count.positive? && count >= parts.size) || (count.negative? && count.abs >= parts.size)
 
-      return str if positions.empty?
-
-      parts = []
-      last_pos = 0
-      positions.each do |pos|
-        parts << str[last_pos...pos]
-        parts << str[pos, delim.length]
-        last_pos = pos + delim.length
-      end
-      parts << str[last_pos..-1]
-
-      extract_substring_parts(parts, count)
+      resolve_substring_index_parts(parts, delims, count)
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -43,28 +28,31 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      result = String.new
-      start_pos = 0
-      search_str = str.downcase
-      search_from = from.downcase
-
-      while (idx = search_str.index(search_from, start_pos))
-        result << str[start_pos...idx]
-        result << to
-        start_pos = idx + from.length
-      end
-      result << str[start_pos..-1]
-      result
+      str.gsub(/#{Regexp.escape(from)}/i, to)
     end
 
     private
 
-    def extract_substring_parts(parts, count)
+    def resolve_substring_index_parts(parts, delims, count)
       if count.positive?
-        parts[0...((count * 2) - 1)].join
+        result_parts = parts[0...count]
+        result_delims = delims[0...count - 1]
       else
-        parts[-((count.abs * 2) - 1)..].join
+        abs_count = count.abs
+        result_parts = parts[-abs_count..-1]
+        result_delims = abs_count > 1 ? delims[-(abs_count - 1).. -1] : []
       end
+
+      interleave_parts_and_delims(result_parts, result_delims)
+    end
+
+    def interleave_parts_and_delims(parts, delims)
+      combined = []
+      parts.each_with_index do |p, i|
+        combined << p
+        combined << delims[i] if i < delims.size
+      end
+      combined.join
     end
 
     def execute_padding(args, direction)
