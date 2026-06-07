@@ -6,31 +6,44 @@ module RubyPureMysql
     def calculate_substring_index(str, delim, count)
       return str if delim.empty?
 
-      positions = []
-      pos = 0
-      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
-      while (match = regex.match(str, pos))
-        positions << match.begin(0)
-        pos = match.end(0)
-      end
-
+      positions = find_all_indices(str, delim)
       return str if positions.empty?
 
-      if count.positive?
-        limit = count > positions.size ? str.length : positions[count - 1]
-        str[0, limit]
-      else
-        idx = positions.size + count
-        idx < 0 ? str : str[positions[idx] + delim.length..-1]
-      end
+      count.positive? ? slice_substring_index_positive(str, positions, count) :
+                       slice_substring_index_negative(str, positions, count, delim)
     end
 
     def calculate_locate_index(str, substr, pos)
       return 0 if pos < 1
 
-      regex = Regexp.new(Regexp.escape(substr), Regexp::IGNORECASE)
-      match = regex.match(str, pos - 1)
-      match ? match.begin(0) + 1 : 0
+      down_str = str.downcase
+      down_substr = substr.downcase
+      idx = down_str.index(down_substr, pos - 1)
+      idx ? idx + 1 : 0
+    end
+
+    private
+
+    def find_all_indices(str, substr)
+      down_str = str.downcase
+      down_substr = substr.downcase
+      positions = []
+      pos = 0
+      while (idx = down_str.index(down_substr, pos))
+        positions << idx
+        pos = idx + down_substr.length
+      end
+      positions
+    end
+
+    def slice_substring_index_positive(str, positions, count)
+      limit = count > positions.size ? str.length : positions[count - 1]
+      str[0, limit]
+    end
+
+    def slice_substring_index_negative(str, positions, count, delim)
+      idx = positions.size + count
+      idx < 0 ? str : str[positions[idx] + delim.length..-1]
     end
 
     def execute_padding(args, direction)

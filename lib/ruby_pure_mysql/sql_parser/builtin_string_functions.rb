@@ -29,7 +29,22 @@ module RubyPureMysql
       to = args[2].to_s.force_encoding('UTF-8')
       return str if from.empty?
 
-      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
+      perform_case_insensitive_replace(str, from, to)
+    end
+
+    private
+
+    def perform_case_insensitive_replace(str, from, to)
+      down_str = str.downcase
+      down_from = from.downcase
+      result = ""
+      last_pos = 0
+      while (idx = down_str.index(down_from, last_pos))
+        result << str[last_pos...idx] << to
+        last_pos = idx + from.length
+      end
+      result << (str[last_pos..-1] || "")
+      result
     end
 
     def handle_concat_ws(args)
