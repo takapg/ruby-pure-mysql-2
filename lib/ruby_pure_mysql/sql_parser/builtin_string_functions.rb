@@ -29,7 +29,7 @@ module RubyPureMysql
       to = args[2].to_s.force_encoding('UTF-8')
       return str if from.empty?
 
-      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
+      str.gsub(/#{Regexp.escape(from)}/i) { to }
     end
 
     def handle_concat_ws(args)

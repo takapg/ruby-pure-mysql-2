@@ -26,12 +26,12 @@ module RubyPureMysql
     def collect_delimiter_positions(str, delim)
       positions = []
       curr = 0
-      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+      down_str = str.downcase
+      down_delim = delim.downcase
 
-      while (match = str.match(regex, curr))
-        idx = match.begin(0)
+      while (idx = down_str.index(down_delim, curr))
         positions << idx
-        curr = idx + match[0].length
+        curr = idx + down_delim.length
       end
       positions
     end
