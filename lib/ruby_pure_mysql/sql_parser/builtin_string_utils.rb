@@ -4,7 +4,7 @@ module RubyPureMysql
   # 文字列操作関数のための共通ユーティリティを提供するモジュール
   module BuiltinStringUtils
     def calculate_substring_index(str, delim, count)
-      parts = str.split(delim, -1)
+      parts = str.split(Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE), -1)
       count.positive? ? parts.first(count).join(delim) : parts.last(count.abs).join(delim)
     end
 

@@ -27,7 +27,7 @@ module RubyPureMysql
       str, from, to = args.map(&:to_s)
       return str if from.empty?
 
-      str.gsub(from, to)
+      str.gsub(/#{Regexp.escape(from)}/i, to)
     end
 
     def handle_concat_ws(args)
