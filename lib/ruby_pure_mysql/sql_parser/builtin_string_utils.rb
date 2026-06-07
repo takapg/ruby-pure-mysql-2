@@ -7,10 +7,9 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      # 大文字小文字を区別せずにデリミタの全出現位置を特定する
-      positions = []
       search_str = str.downcase
       search_delim = delim.downcase
+      positions = []
       start_pos = 0
 
       while (idx = search_str.index(search_delim, start_pos))
@@ -20,7 +19,6 @@ module RubyPureMysql
 
       return str if positions.empty?
 
-      # 特定した位置に基づいて、デリミタを保持したまま分割する
       parts = []
       last_pos = 0
       positions.each do |pos|
@@ -43,8 +41,20 @@ module RubyPureMysql
     end
 
     def calculate_replace_value(str, from, to)
-      regex = Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)
-      str.gsub(regex) { to }
+      return str if from.empty?
+
+      result = ''
+      start_pos = 0
+      search_str = str.downcase
+      search_from = from.downcase
+
+      while (idx = search_str.index(search_from, start_pos))
+        result << str[start_pos...idx]
+        result << to
+        start_pos = idx + from.length
+      end
+      result << str[start_pos..-1]
+      result
     end
 
     private
