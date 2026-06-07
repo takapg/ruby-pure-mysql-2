@@ -31,6 +31,15 @@ module RubyPureMysql
 
     def handle_other_builtin(name, args)
       case name
+      when 'replace', 'concat_ws', 'locate', 'left', 'right', 'lpad', 'rpad'
+        handle_string_builtin(name, args)
+      else
+        handle_math_builtin(name, args)
+      end
+    end
+
+    def handle_string_builtin(name, args)
+      case name
       when 'replace' then handle_replace(args)
       when 'concat_ws' then handle_concat_ws(args)
       when 'locate' then handle_locate(args)
@@ -38,7 +47,6 @@ module RubyPureMysql
       when 'right' then handle_right(args)
       when 'lpad' then handle_lpad(args)
       when 'rpad' then handle_rpad(args)
-      else handle_math_builtin(name, args)
       end
     end
 

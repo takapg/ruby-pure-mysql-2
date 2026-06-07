@@ -67,41 +67,11 @@ module RubyPureMysql
     end
 
     def handle_lpad(args)
-      return :error unless args.size == 3
-      return nil if args.any?(&:nil?)
-
-      str = args[0].to_s.force_encoding('UTF-8')
-      len = args[1].to_i
-      padstr = args[2].to_s.force_encoding('UTF-8')
-
-      return nil if len < 0
-
-      if str.length >= len
-        str[0, len]
-      elsif padstr.empty?
-        ''
-      else
-        str.rjust(len, padstr)
-      end
+      execute_padding(args, :left)
     end
 
     def handle_rpad(args)
-      return :error unless args.size == 3
-      return nil if args.any?(&:nil?)
-
-      str = args[0].to_s.force_encoding('UTF-8')
-      len = args[1].to_i
-      padstr = args[2].to_s.force_encoding('UTF-8')
-
-      return nil if len < 0
-
-      if str.length >= len
-        str[0, len]
-      elsif padstr.empty?
-        ''
-      else
-        str.ljust(len, padstr)
-      end
+      execute_padding(args, :right)
     end
 
     def handle_trim(args)
@@ -128,6 +98,21 @@ module RubyPureMysql
 
       idx = str.index(substr, pos - 1)
       idx ? idx + 1 : 0
+    end
+
+    def execute_padding(args, direction)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      len = args[1].to_i
+      padstr = args[2].to_s.force_encoding('UTF-8')
+
+      return nil if len.negative?
+      return str[0, len] if str.length >= len
+      return '' if padstr.empty?
+
+      direction == :left ? str.rjust(len, padstr) : str.ljust(len, padstr)
     end
 
     def execute_trim_operation(args, method)
