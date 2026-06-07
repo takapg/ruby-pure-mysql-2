@@ -31,7 +31,7 @@ module RubyPureMysql
 
       str_down = str.downcase
       from_down = from.downcase
-      result = ''
+      result = String.new
       last_pos = 0
 
       while (idx = str_down.index(from_down, last_pos))
