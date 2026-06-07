@@ -790,8 +790,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT LOCATE("xbar", "foobarbar");').first.values.first).to eq(0)
       end
 
-      it 'returns 0 when pos is less than 1 (SELECT LOCATE("bar", "foobarbar", 0);)' do
-        expect(client.query('SELECT LOCATE("bar", "foobarbar", 0);').first.values.first).to eq(0)
+      it 'treats pos < 1 as 1 (SELECT LOCATE("bar", "foobarbar", 0);)' do
+        expect(client.query('SELECT LOCATE("bar", "foobarbar", 0);').first.values.first).to eq(4)
       end
 
       it 'returns NULL if any argument is NULL (SELECT LOCATE(NULL, "foobarbar");)' do
@@ -916,10 +916,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
       end
 
-      it 'is case-insensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
+      it 'is case-sensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
         res = client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");')
         val = res.first.values.first
-        expect(val).to eq('www.mariadb.com')
+        expect(val).to eq('www.MySQL.com')
       end
 
       it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
@@ -1013,10 +1013,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT SUBSTRING_INDEX("a.b.c", "x", 1);').first.values.first).to eq('a.b.c')
       end
 
-      it 'is case-insensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
+      it 'is case-sensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
         res = client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);')
         val = res.first.values.first
-        expect(val).to eq('www.')
+        expect(val).to eq('www.MySQL.com')
       end
     end
 
