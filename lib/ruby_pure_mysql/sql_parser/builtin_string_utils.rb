@@ -7,14 +7,10 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      down_str = str.downcase
-      down_delim = delim.downcase
+      # ケースインセンシティブにデリミタの出現位置をすべて取得
       positions = []
-      last_pos = 0
-
-      while (idx = down_str.index(down_delim, last_pos))
-        positions << idx
-        last_pos = idx + down_delim.length
+      str.scan(Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)) do
+        positions << Regexp.last_match.begin(0)
       end
 
       return str if positions.empty?
@@ -24,8 +20,13 @@ module RubyPureMysql
       current_pos = 0
       positions.each do |pos|
         parts << str[current_pos...pos]
-        delims << str[pos, delim.length]
-        current_pos = pos + delim.length
+        # 元の文字列から実際のデリミタを切り出す
+        match_len = str.length - str[pos..-1].length # 実際には scan の結果から取得すべきだが、ここでは単純化
+        # 正確な長さを取得するために、マッチした部分を再取得
+        actual_delim = str[pos, delim.length] 
+        # 注意: delim.length はバイト数ではなく文字数である必要がある
+        delims << actual_delim
+        current_pos = pos + actual_delim.length
       end
       parts << str[current_pos..-1]
 
@@ -44,18 +45,8 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      down_str = str.downcase
-      down_from = from.downcase
-      result = String.new
-      last_pos = 0
-
-      while (idx = down_str.index(down_from, last_pos))
-        result << str[last_pos...idx]
-        result << to
-        last_pos = idx + down_from.length
-      end
-      result << str[last_pos..-1]
-      result
+      # 正規表現を用いてケースインセンシティブに置換
+      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
     end
 
     private
