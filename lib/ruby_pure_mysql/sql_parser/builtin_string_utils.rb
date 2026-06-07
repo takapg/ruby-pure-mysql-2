@@ -6,24 +6,10 @@ module RubyPureMysql
     def calculate_substring_index(str, delim, count)
       return str if delim.empty?
 
-      positions = []
-      curr = 0
-      while (idx = str.index(delim, curr))
-        positions << idx
-        curr = idx + delim.length
-      end
-
+      positions = collect_delimiter_positions(str, delim)
       return str if positions.empty?
 
-      if count.positive?
-        end_pos = positions[count - 1] || str.length
-        str[0...end_pos]
-      else
-        return str if count.abs > positions.size
-
-        start_pos = positions[count] + delim.length
-        str[start_pos..-1]
-      end
+      extract_by_count(str, positions, delim, count)
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -36,6 +22,30 @@ module RubyPureMysql
     end
 
     private
+
+    def collect_delimiter_positions(str, delim)
+      positions = []
+      curr = 0
+      down_str = str.downcase
+      down_delim = delim.downcase
+      while (idx = down_str.index(down_delim, curr))
+        positions << idx
+        curr = idx + down_delim.length
+      end
+      positions
+    end
+
+    def extract_by_count(str, positions, delim, count)
+      if count.positive?
+        end_pos = positions[count - 1] || str.length
+        str[0...end_pos]
+      else
+        return str if count.abs > positions.size
+
+        start_pos = positions[count] + delim.length
+        str[start_pos..]
+      end
+    end
 
     def execute_padding(args, direction)
       params = prepare_padding_params(args)
