@@ -43,7 +43,7 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      result = ''
+      result = String.new
       start_pos = 0
       search_str = str.downcase
       search_from = from.downcase
