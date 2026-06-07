@@ -21,7 +21,9 @@ module RubyPureMysql
         end_pos = positions[count - 1] || str.length
         str[0...end_pos]
       else
-        start_pos = positions[count] ? positions[count] + delim.length : 0
+        return str if count.abs > positions.size
+
+        start_pos = positions[count] + delim.length
         str[start_pos..-1]
       end
     end
