@@ -990,7 +990,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", 2);').first.values.first).to eq('www.mysql')
       end
 
-
       it 'extracts substring to the right of the nth delimiter (negative count)' do
         expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", -2);').first.values.first).to eq('mysql.com')
       end
