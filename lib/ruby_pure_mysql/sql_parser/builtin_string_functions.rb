@@ -79,7 +79,7 @@ module RubyPureMysql
       if str.length >= len
         str[0, len]
       elsif padstr.empty?
-        nil
+        ''
       else
         str.rjust(len, padstr)
       end
@@ -98,7 +98,7 @@ module RubyPureMysql
       if str.length >= len
         str[0, len]
       elsif padstr.empty?
-        nil
+        ''
       else
         str.ljust(len, padstr)
       end

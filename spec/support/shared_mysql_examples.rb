@@ -830,9 +830,9 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT RPAD("hi", -1, "?");').first.values.first).to be_nil
       end
 
-      it 'returns NULL if padstr is empty and padding is needed' do
-        expect(client.query('SELECT LPAD("hi", 5, "");').first.values.first).to be_nil
-        expect(client.query('SELECT RPAD("hi", 5, "");').first.values.first).to be_nil
+      it 'returns an empty string if padstr is empty and padding is needed' do
+        expect(client.query('SELECT LPAD("hi", 5, "");').first.values.first).to eq('')
+        expect(client.query('SELECT RPAD("hi", 5, "");').first.values.first).to eq('')
       end
 
       it 'returns NULL if any argument is NULL' do
