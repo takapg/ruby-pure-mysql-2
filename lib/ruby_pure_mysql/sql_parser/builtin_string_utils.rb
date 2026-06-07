@@ -8,9 +8,10 @@ module RubyPureMysql
 
       positions = []
       pos = 0
-      while (idx = str.downcase.index(delim.downcase, pos))
-        positions << idx
-        pos = idx + delim.length
+      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+      while (match = regex.match(str, pos))
+        positions << match.begin(0)
+        pos = match.end(0)
       end
 
       return str if positions.empty?
@@ -27,8 +28,9 @@ module RubyPureMysql
     def calculate_locate_index(str, substr, pos)
       return 0 if pos < 1
 
-      idx = str.downcase.index(substr.downcase, pos - 1)
-      idx ? idx + 1 : 0
+      regex = Regexp.new(Regexp.escape(substr), Regexp::IGNORECASE)
+      match = regex.match(str, pos - 1)
+      match ? match.begin(0) + 1 : 0
     end
 
     def execute_padding(args, direction)
