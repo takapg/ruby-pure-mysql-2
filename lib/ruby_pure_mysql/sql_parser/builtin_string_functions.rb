@@ -11,8 +11,8 @@ module RubyPureMysql
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
 
-      str = args[0].to_s
-      delim = args[1].to_s
+      str = args[0].to_s.force_encoding('UTF-8')
+      delim = args[1].to_s.force_encoding('UTF-8')
       count = args[2].to_i
 
       return '' if count.zero? || delim.empty?
@@ -24,10 +24,12 @@ module RubyPureMysql
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
 
-      str, from, to = args.map(&:to_s)
+      str = args[0].to_s.force_encoding('UTF-8')
+      from = args[1].to_s.force_encoding('UTF-8')
+      to = args[2].to_s.force_encoding('UTF-8')
       return str if from.empty?
 
-      str.gsub(from, to)
+      str.gsub(/#{Regexp.escape(from)}/i, to)
     end
 
     def handle_concat_ws(args)
