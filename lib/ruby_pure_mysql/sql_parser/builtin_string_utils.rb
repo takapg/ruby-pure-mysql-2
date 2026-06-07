@@ -10,11 +10,7 @@ module RubyPureMysql
       parts = str.split(/(#{Regexp.escape(delim)})/, -1)
       return str if parts.size == 1
 
-      if count.positive?
-        parts[0...(count * 2 - 1)].join
-      else
-        parts[-(count.abs * 2 - 1)..-1].join
-      end
+      extract_substring_parts(parts, count)
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -27,6 +23,14 @@ module RubyPureMysql
     end
 
     private
+
+    def extract_substring_parts(parts, count)
+      if count.positive?
+        parts[0...((count * 2) - 1)].join
+      else
+        parts[-((count.abs * 2) - 1)..].join
+      end
+    end
 
     def calculate_replace_value(str, from, to)
       str.gsub(from, to)
