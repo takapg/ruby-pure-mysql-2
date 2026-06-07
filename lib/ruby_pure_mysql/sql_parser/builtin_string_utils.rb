@@ -7,9 +7,28 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      regex = Regexp.new("(#{Regexp.escape(delim)})", Regexp::IGNORECASE)
-      parts = str.split(regex, -1)
-      return str if parts.size == 1
+      # 大文字小文字を区別せずにデリミタの全出現位置を特定する
+      positions = []
+      search_str = str.downcase
+      search_delim = delim.downcase
+      start_pos = 0
+
+      while (idx = search_str.index(search_delim, start_pos))
+        positions << idx
+        start_pos = idx + search_delim.length
+      end
+
+      return str if positions.empty?
+
+      # 特定した位置に基づいて、デリミタを保持したまま分割する
+      parts = []
+      last_pos = 0
+      positions.each do |pos|
+        parts << str[last_pos...pos]
+        parts << str[pos, delim.length]
+        last_pos = pos + delim.length
+      end
+      parts << str[last_pos..-1]
 
       extract_substring_parts(parts, count)
     end
@@ -23,6 +42,11 @@ module RubyPureMysql
       idx ? idx + 1 : 0
     end
 
+    def calculate_replace_value(str, from, to)
+      regex = Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)
+      str.gsub(regex) { to }
+    end
+
     private
 
     def extract_substring_parts(parts, count)
@@ -31,10 +55,6 @@ module RubyPureMysql
       else
         parts[-((count.abs * 2) - 1)..].join
       end
-    end
-
-    def calculate_replace_value(str, from, to)
-      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)) { to }
     end
 
     def execute_padding(args, direction)
