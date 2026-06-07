@@ -32,20 +32,6 @@ module RubyPureMysql
       perform_case_insensitive_replace(str, from, to)
     end
 
-    private
-
-    def perform_case_insensitive_replace(str, from, to)
-      down_str = str.downcase
-      down_from = from.downcase
-      result = ""
-      last_pos = 0
-      while (idx = down_str.index(down_from, last_pos))
-        result << str[last_pos...idx] << to
-        last_pos = idx + from.length
-      end
-      result << (str[last_pos..-1] || "")
-      result
-    end
 
     def handle_concat_ws(args)
       return :error if args.size < 2
@@ -124,6 +110,21 @@ module RubyPureMysql
       return nil if val.nil?
 
       val.to_s.force_encoding('UTF-8').reverse
+    end
+
+    private
+
+    def perform_case_insensitive_replace(str, from, to)
+      down_str = str.downcase
+      down_from = from.downcase
+      result = String.new
+      last_pos = 0
+      while (idx = down_str.index(down_from, last_pos))
+        result << str[last_pos...idx] << to
+        last_pos = idx + from.length
+      end
+      result << (str[last_pos..-1] || "")
+      result
     end
   end
 end
