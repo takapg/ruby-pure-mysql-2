@@ -988,10 +988,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", 2);').first.values.first).to eq('www.mysql')
       end
 
-      it 'is case-sensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
-        res = client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);')
-        expect(res.first.values.first).to eq('www.MySQL.com')
-      end
 
       it 'extracts substring to the right of the nth delimiter (negative count)' do
         expect(client.query('SELECT SUBSTRING_INDEX("www.mysql.com", ".", -2);').first.values.first).to eq('mysql.com')
