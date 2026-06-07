@@ -4,14 +4,29 @@ module RubyPureMysql
   # 文字列操作関数のための共通ユーティリティを提供するモジュール
   module BuiltinStringUtils
     def calculate_substring_index(str, delim, count)
-      parts = str.split(delim, -1)
-      count.positive? ? parts.first(count).join(delim) : parts.last(count.abs).join(delim)
+      indices = []
+      pos = 0
+      while (idx = str.downcase.index(delim.downcase, pos))
+        indices << idx
+        pos = idx + delim.length
+      end
+      return str if indices.empty?
+
+      if count.positive?
+        split_pos = indices[count - 1] || str.length
+        str[0, split_pos]
+      else
+        idx_pos = indices.size + count
+        split_pos = idx_pos < 0 ? nil : indices[idx_pos]
+        start_pos = split_pos ? split_pos + delim.length : 0
+        str[start_pos..-1]
+      end
     end
 
     def calculate_locate_index(str, substr, pos)
       return 0 if pos < 1
 
-      idx = str.index(substr, pos - 1)
+      idx = str.downcase.index(substr.downcase, pos - 1)
       idx ? idx + 1 : 0
     end
 
