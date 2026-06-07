@@ -16,7 +16,8 @@ module RubyPureMysql
       'left' => :handle_left,
       'right' => :handle_right,
       'lpad' => :handle_lpad,
-      'rpad' => :handle_rpad
+      'rpad' => :handle_rpad,
+      'reverse' => :handle_reverse
     }.freeze
 
     def handle_complex_builtin(name, args)
@@ -41,7 +42,7 @@ module RubyPureMysql
 
     def handle_other_builtin(name, args)
       case name
-      when 'replace', 'concat_ws', 'locate', 'left', 'right', 'lpad', 'rpad'
+      when 'replace', 'concat_ws', 'locate', 'left', 'right', 'lpad', 'rpad', 'reverse'
         handle_string_builtin(name, args)
       else
         handle_math_builtin(name, args)

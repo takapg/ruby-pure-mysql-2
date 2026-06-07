@@ -86,6 +86,14 @@ module RubyPureMysql
       execute_trim_operation(args, :rstrip)
     end
 
+    def handle_reverse(args)
+      return :error unless args.size == 1
+      val = args[0]
+      return nil if val.nil?
+
+      val.to_s.force_encoding('UTF-8').reverse
+    end
+
     private
 
     def calculate_substring_index(str, delim, count)

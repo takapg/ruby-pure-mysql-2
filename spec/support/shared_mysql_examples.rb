@@ -807,6 +807,32 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'REVERSE() function support' do
+      it 'reverses a simple string (SELECT REVERSE("hello");)' do
+        expect(client.query('SELECT REVERSE("hello");').first.values.first).to eq('olleh')
+      end
+
+      it 'reverses multi-byte characters (SELECT REVERSE("日本語");)' do
+        expect(client.query('SELECT REVERSE("日本語");').first.values.first).to eq('語本日')
+      end
+
+      it 'returns NULL when argument is NULL (SELECT REVERSE(NULL);)' do
+        expect(client.query('SELECT REVERSE(NULL);').first.values.first).to be_nil
+      end
+
+      it 'casts numeric arguments to string and reverses (SELECT REVERSE(123);)' do
+        expect(client.query('SELECT REVERSE(123);').first.values.first).to eq('321')
+      end
+
+      it 'returns an error for REVERSE() with no arguments' do
+        expect { client.query('SELECT REVERSE();') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error for REVERSE() with too many arguments' do
+        expect { client.query('SELECT REVERSE("a", "b");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'LPAD / RPAD function support' do
       it 'pads string to the left (LPAD)' do
         expect(client.query('SELECT LPAD("hi", 4, "??");').first.values.first).to eq('??hi')
