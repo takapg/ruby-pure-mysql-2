@@ -6,13 +6,17 @@ module RubyPureMysql
     def calculate_substring_index(str, delim, count)
       return str if delim.empty?
 
-      positions = find_all_indices(str, delim)
-      return str if positions.empty?
+      regex = /(#{Regexp.escape(delim)})/i
+      parts = str.split(regex, -1)
+      num_delims = parts.size / 2
+      return str if num_delims == 0
 
       if count.positive?
-        slice_substring_index_positive(str, positions, count)
+        limit = [count * 2 - 1, parts.size].min
+        parts[0...limit].join
       else
-        slice_substring_index_negative(str, positions, count, delim)
+        delim_idx = 2 * num_delims + 2 * count + 1
+        delim_idx.negative? ? str : parts[(delim_idx + 1)..-1].join
       end
     end
 
@@ -26,26 +30,6 @@ module RubyPureMysql
     end
 
     private
-
-    def find_all_indices(str, substr)
-      positions = []
-      pos = 0
-      while (idx = str.index(substr, pos))
-        positions << idx
-        pos = idx + substr.length
-      end
-      positions
-    end
-
-    def slice_substring_index_positive(str, positions, count)
-      limit = count > positions.size ? str.length : positions[count - 1]
-      str[0, limit]
-    end
-
-    def slice_substring_index_negative(str, positions, count, delim)
-      idx = positions.size + count
-      idx.negative? ? str : str[(positions[idx] + delim.length)..]
-    end
 
     def execute_padding(args, direction)
       params = prepare_padding_params(args)
