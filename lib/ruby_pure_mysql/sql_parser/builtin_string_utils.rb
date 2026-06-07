@@ -34,7 +34,7 @@ module RubyPureMysql
     end
 
     def calculate_replace_value(str, from, to)
-      res = +""
+      res = +''
       pos = 0
 
       while (idx = str.index(from, pos))
