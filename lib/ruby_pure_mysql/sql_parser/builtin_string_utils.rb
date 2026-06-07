@@ -5,11 +5,16 @@ module RubyPureMysql
   module BuiltinStringUtils
     def calculate_substring_index(str, delim, count)
       return str if delim.empty?
+      return '' if count.zero?
 
-      positions = collect_delimiter_positions(str, delim)
-      return str if positions.empty?
+      parts = str.split(/(#{Regexp.escape(delim)})/i, -1)
+      return str if parts.size == 1
 
-      extract_by_count(str, positions, delim, count)
+      if count.positive?
+        parts[0...(count * 2 - 1)].join
+      else
+        parts[-(count.abs * 2 - 1)..-1].join
+      end
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -23,27 +28,8 @@ module RubyPureMysql
 
     private
 
-    def collect_delimiter_positions(str, delim)
-      positions = []
-      regex = Regexp.new(Regexp.escape(delim))
-      str.scan(regex) { positions << Regexp.last_match.begin(0) }
-      positions
-    end
-
     def calculate_replace_value(str, from, to)
-      str.gsub(from, to)
-    end
-
-    def extract_by_count(str, positions, delim, count)
-      if count.positive?
-        end_pos = positions[count - 1] || str.length
-        str[0...end_pos]
-      else
-        return str if count.abs > positions.size
-
-        start_pos = positions[count] + delim.length
-        str[start_pos..]
-      end
+      str.gsub(/#{Regexp.escape(from)}/i, to)
     end
 
     def execute_padding(args, direction)
