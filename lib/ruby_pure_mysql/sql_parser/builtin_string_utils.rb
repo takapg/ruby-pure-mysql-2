@@ -6,17 +6,23 @@ module RubyPureMysql
     def calculate_substring_index(str, delim, count)
       return str if delim.empty?
 
-      regex = /(#{Regexp.escape(delim)})/i
-      parts = str.split(regex, -1)
-      num_delims = parts.size / 2
-      return str if num_delims == 0
+      positions = []
+      curr = 0
+      down_str = str.downcase
+      down_delim = delim.downcase
+      while (idx = down_str.index(down_delim, curr))
+        positions << idx
+        curr = idx + delim.length
+      end
+
+      return str if positions.empty?
 
       if count.positive?
-        limit = [count * 2 - 1, parts.size].min
-        parts[0...limit].join
+        end_pos = positions[count - 1] || str.length
+        str[0...end_pos]
       else
-        delim_idx = 2 * num_delims + 2 * count + 1
-        delim_idx.negative? ? str : parts[(delim_idx + 1)..-1].join
+        start_pos = positions[count] ? positions[count] + delim.length : 0
+        str[start_pos..-1]
       end
     end
 
