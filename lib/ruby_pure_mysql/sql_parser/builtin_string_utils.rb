@@ -7,34 +7,29 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
+      down_str = str.downcase
+      down_delim = delim.downcase
       positions = []
-      offset = 0
-      regex = /#{Regexp.escape(delim)}/i
+      last_pos = 0
 
-      while (match = str.match(regex, offset))
-        positions << match.begin(0)
-        offset = match.end(0)
+      while (idx = down_str.index(down_delim, last_pos))
+        positions << idx
+        last_pos = idx + delim.length
       end
 
       return str if positions.empty?
 
       parts = []
       delims = []
-      last_pos = 0
+      current_pos = 0
       positions.each do |pos|
-        parts << str[last_pos...pos]
-        delims << str[pos, match_length(str, pos, regex)]
-        last_pos = pos + match_length(str, pos, regex)
+        parts << str[current_pos...pos]
+        delims << str[pos, delim.length]
+        current_pos = pos + delim.length
       end
-      parts << str[last_pos..-1]
+      parts << str[current_pos..-1]
 
       resolve_substring_index_parts(parts, delims, count)
-    end
-
-    def match_length(str, pos, regex)
-      # 特定の位置からマッチした部分の長さを取得
-      match = str.match(regex, pos)
-      match ? match[0].length : 0
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -49,7 +44,18 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      str.gsub(/#{Regexp.escape(from)}/i, to)
+      down_str = str.downcase
+      down_from = from.downcase
+      result = String.new
+      last_pos = 0
+
+      while (idx = down_str.index(down_from, last_pos))
+        result << str[last_pos...idx]
+        result << to
+        last_pos = idx + from.length
+      end
+      result << str[last_pos..-1]
+      result
     end
 
     private
