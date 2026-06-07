@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
+  # 基本的な組み込み関数の評価ロジックを提供するモジュール
   module BuiltinBasicFunctions
     def handle_basic_builtin(name, args)
       case name

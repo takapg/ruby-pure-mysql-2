@@ -6,6 +6,7 @@ module RubyPureMysql
   # 文字列操作に関する組み込み関数の評価ロジックを提供するモジュール
   module BuiltinStringFunctions
     include BuiltinStringUtils
+
     def handle_substring_index(args)
       return :error unless args.size == 3
       return nil if args.any?(&:nil?)
