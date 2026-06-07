@@ -7,25 +7,20 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      down_str = str.downcase
-      down_delim = delim.downcase
-      positions = []
-      last_pos = 0
-
-      while (idx = down_str.index(down_delim, last_pos))
-        positions << idx
-        last_pos = idx + delim.length
+      matches = []
+      str.scan(Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)) do
+        matches << { pos: Regexp.last_match.begin(0), len: Regexp.last_match[0].length }
       end
 
-      return str if positions.empty?
+      return str if matches.empty?
 
       parts = []
       delims = []
       current_pos = 0
-      positions.each do |pos|
-        parts << str[current_pos...pos]
-        delims << str[pos, delim.length]
-        current_pos = pos + delim.length
+      matches.each do |m|
+        parts << str[current_pos...m[:pos]]
+        delims << str[m[:pos], m[:len]]
+        current_pos = m[:pos] + m[:len]
       end
       parts << str[current_pos..-1]
 
@@ -44,18 +39,7 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      down_str = str.downcase
-      down_from = from.downcase
-      result = String.new
-      last_pos = 0
-
-      while (idx = down_str.index(down_from, last_pos))
-        result << str[last_pos...idx]
-        result << to
-        last_pos = idx + from.length
-      end
-      result << str[last_pos..-1]
-      result
+      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
     end
 
     private
