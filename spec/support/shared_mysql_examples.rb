@@ -836,7 +836,6 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect { client.query('SELECT INSTR("a", "b", "c");') }.to raise_error(Mysql2::Error)
       end
     end
-    end
 
     describe 'REVERSE() function support' do
       it 'reverses a simple string (SELECT REVERSE("hello");)' do
