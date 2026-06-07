@@ -917,7 +917,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'is case-sensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
-        expect(client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");').first.values.first).to eq('www.MySQL.com')
+        res = client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");')
+        expect(res.first.values.first).to eq('www.MySQL.com')
       end
 
       it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
@@ -988,7 +989,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'is case-sensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
-        expect(client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);').first.values.first).to eq('www.MySQL.com')
+        res = client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);')
+        expect(res.first.values.first).to eq('www.MySQL.com')
       end
 
       it 'extracts substring to the right of the nth delimiter (negative count)' do
