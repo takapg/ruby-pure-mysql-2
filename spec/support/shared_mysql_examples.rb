@@ -916,10 +916,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
       end
 
-      it 'is case-sensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
-        res = client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");')
-        val = res.first.values.first
-        expect(val).to eq('www.MySQL.com')
+      it 'is case-insensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
+        expect(client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");').first.values.first).to eq('www.mariadb.com')
       end
 
       it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
@@ -1013,10 +1011,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT SUBSTRING_INDEX("a.b.c", "x", 1);').first.values.first).to eq('a.b.c')
       end
 
-      it 'is case-sensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
-        res = client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);')
-        val = res.first.values.first
-        expect(val).to eq('www.MySQL.com')
+      it 'is case-insensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);').first.values.first).to eq('www.')
       end
     end
 
