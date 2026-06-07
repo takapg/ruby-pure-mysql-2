@@ -50,6 +50,16 @@ module RubyPureMysql
       calculate_locate_index(str, substr, pos)
     end
 
+    def handle_instr(args)
+      return :error unless args.size == 2
+      return nil if args.any?(&:nil?)
+
+      str = args[0].to_s.force_encoding('UTF-8')
+      substr = args[1].to_s.force_encoding('UTF-8')
+
+      calculate_locate_index(str, substr, 1)
+    end
+
     def handle_left(args)
       prepared = prepare_string_args(args)
       return prepared if prepared == :error || prepared.nil?

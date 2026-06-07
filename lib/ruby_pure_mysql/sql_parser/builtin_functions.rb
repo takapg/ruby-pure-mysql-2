@@ -19,7 +19,8 @@ module RubyPureMysql
       'right' => :handle_right,
       'lpad' => :handle_lpad,
       'rpad' => :handle_rpad,
-      'reverse' => :handle_reverse
+      'reverse' => :handle_reverse,
+      'instr' => :handle_instr
     }.freeze
 
     def handle_complex_builtin(name, args)
