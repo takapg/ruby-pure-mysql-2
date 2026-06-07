@@ -101,13 +101,10 @@ module RubyPureMysql
     end
 
     def execute_padding(args, direction)
-      return :error unless args.size == 3
-      return nil if args.any?(&:nil?)
+      params = prepare_padding_params(args)
+      return params if params == :error || params.nil?
 
-      str = args[0].to_s.force_encoding('UTF-8')
-      len = args[1].to_i
-      padstr = args[2].to_s.force_encoding('UTF-8')
-
+      str, len, padstr = params
       return nil if len.negative?
       return str[0, len] if str.length >= len
       return '' if padstr.empty?
@@ -129,6 +126,17 @@ module RubyPureMysql
       return nil if args.any?(&:nil?)
 
       [args[0].to_s.force_encoding('UTF-8'), args[1].to_i]
+    end
+
+    def prepare_padding_params(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      [
+        args[0].to_s.force_encoding('UTF-8'),
+        args[1].to_i,
+        args[2].to_s.force_encoding('UTF-8')
+      ]
     end
   end
 end
