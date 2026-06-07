@@ -807,6 +807,36 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
     end
 
+    describe 'INSTR() function support' do
+      it 'returns the first occurrence position (SELECT INSTR("foobarbar", "bar");)' do
+        expect(client.query('SELECT INSTR("foobarbar", "bar");').first.values.first).to eq(4)
+      end
+
+      it 'returns 0 when not found (SELECT INSTR("foobarbar", "xbar");)' do
+        expect(client.query('SELECT INSTR("foobarbar", "xbar");').first.values.first).to eq(0)
+      end
+
+      it 'supports multi-byte characters (SELECT INSTR("日本語のテスト", "テスト");)' do
+        expect(client.query('SELECT INSTR("日本語のテスト", "テスト");').first.values.first).to eq(5)
+      end
+
+      it 'returns NULL if any argument is NULL (SELECT INSTR(NULL, "bar");)' do
+        expect(client.query('SELECT INSTR(NULL, "bar");').first.values.first).to be_nil
+      end
+
+      it 'returns NULL if any argument is NULL (SELECT INSTR("foo", NULL);)' do
+        expect(client.query('SELECT INSTR("foo", NULL);').first.values.first).to be_nil
+      end
+
+      it 'returns an error for invalid number of arguments (SELECT INSTR("a");)' do
+        expect { client.query('SELECT INSTR("a");') }.to raise_error(Mysql2::Error)
+      end
+
+      it 'returns an error for too many arguments (SELECT INSTR("a", "b", "c");)' do
+        expect { client.query('SELECT INSTR("a", "b", "c");') }.to raise_error(Mysql2::Error)
+      end
+    end
+
     describe 'REVERSE() function support' do
       it 'reverses a simple string (SELECT REVERSE("hello");)' do
         expect(client.query('SELECT REVERSE("hello");').first.values.first).to eq('olleh')
