@@ -7,14 +7,27 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      # キャプチャグループを使用してデリミタを保持したまま分割
-      tokens = str.split(/(#{Regexp.escape(delim)})/i, -1)
+      down_str = str.downcase
+      down_delim = delim.downcase
+      positions = []
+      start_pos = 0
 
-      # tokens は [part, delim, part, delim, part...] の形式になる
-      parts = tokens.each_slice(2).map(&:first)
-      delims = tokens.each_slice(2).map { |s| s[1] }.compact
+      while (idx = down_str.index(down_delim, start_pos))
+        positions << idx
+        start_pos = idx + delim.length
+      end
 
-      return str if delims.empty?
+      return str if positions.empty?
+
+      parts = []
+      delims = []
+      last_pos = 0
+      positions.each do |pos|
+        parts << str[last_pos...pos]
+        delims << str[pos, delim.length]
+        last_pos = pos + delim.length
+      end
+      parts << str[last_pos..-1]
 
       resolve_substring_index_parts(parts, delims, count)
     end
@@ -31,7 +44,18 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      str.gsub(/#{Regexp.escape(from)}/i, to)
+      down_str = str.downcase
+      down_from = from.downcase
+      result = String.new
+      start_pos = 0
+
+      while (idx = down_str.index(down_from, start_pos))
+        result << str[start_pos...idx]
+        result << to
+        start_pos = idx + from.length
+      end
+      result << str[start_pos..-1]
+      result
     end
 
     private
