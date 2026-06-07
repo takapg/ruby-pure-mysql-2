@@ -25,23 +25,13 @@ module RubyPureMysql
 
     def collect_delimiter_positions(str, delim)
       positions = []
-      offset = 0
-      while (idx = str.index(delim, offset))
-        positions << idx
-        offset = idx + delim.length
-      end
+      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+      str.scan(regex) { positions << Regexp.last_match.begin(0) }
       positions
     end
 
     def calculate_replace_value(str, from, to)
-      res = +''
-      pos = 0
-
-      while (idx = str.index(from, pos))
-        res << str[pos...idx] << to
-        pos = idx + from.length
-      end
-      res << str[pos..]
+      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
     end
 
     def extract_by_count(str, positions, delim, count)
