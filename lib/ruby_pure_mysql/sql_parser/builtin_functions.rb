@@ -9,6 +9,16 @@ module RubyPureMysql
     include BuiltinStringFunctions
     include BuiltinMathFunctions
 
+    STRING_BUILTIN_HANDLERS = {
+      'replace' => :handle_replace,
+      'concat_ws' => :handle_concat_ws,
+      'locate' => :handle_locate,
+      'left' => :handle_left,
+      'right' => :handle_right,
+      'lpad' => :handle_lpad,
+      'rpad' => :handle_rpad
+    }.freeze
+
     def handle_complex_builtin(name, args)
       case name
       when 'coalesce', 'ifnull', 'if', 'nullif', 'isnull' then handle_basic_builtin(name, args)
@@ -31,13 +41,16 @@ module RubyPureMysql
 
     def handle_other_builtin(name, args)
       case name
-      when 'replace' then handle_replace(args)
-      when 'concat_ws' then handle_concat_ws(args)
-      when 'locate' then handle_locate(args)
-      when 'left' then handle_left(args)
-      when 'right' then handle_right(args)
-      else handle_math_builtin(name, args)
+      when 'replace', 'concat_ws', 'locate', 'left', 'right', 'lpad', 'rpad'
+        handle_string_builtin(name, args)
+      else
+        handle_math_builtin(name, args)
       end
+    end
+
+    def handle_string_builtin(name, args)
+      handler = STRING_BUILTIN_HANDLERS[name]
+      public_send(handler, args) if handler
     end
 
     def handle_basic_builtin(name, args)

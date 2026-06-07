@@ -66,6 +66,14 @@ module RubyPureMysql
       str[-len..] || str
     end
 
+    def handle_lpad(args)
+      execute_padding(args, :left)
+    end
+
+    def handle_rpad(args)
+      execute_padding(args, :right)
+    end
+
     def handle_trim(args)
       execute_trim_operation(args, :strip)
     end
@@ -92,6 +100,18 @@ module RubyPureMysql
       idx ? idx + 1 : 0
     end
 
+    def execute_padding(args, direction)
+      params = prepare_padding_params(args)
+      return params if params == :error || params.nil?
+
+      str, len, padstr = params
+      return nil if len.negative?
+      return str[0, len] if str.length >= len
+      return '' if padstr.empty?
+
+      direction == :left ? str.rjust(len, padstr) : str.ljust(len, padstr)
+    end
+
     def execute_trim_operation(args, method)
       return :error unless args.size == 1
 
@@ -106,6 +126,17 @@ module RubyPureMysql
       return nil if args.any?(&:nil?)
 
       [args[0].to_s.force_encoding('UTF-8'), args[1].to_i]
+    end
+
+    def prepare_padding_params(args)
+      return :error unless args.size == 3
+      return nil if args.any?(&:nil?)
+
+      [
+        args[0].to_s.force_encoding('UTF-8'),
+        args[1].to_i,
+        args[2].to_s.force_encoding('UTF-8')
+      ]
     end
   end
 end
