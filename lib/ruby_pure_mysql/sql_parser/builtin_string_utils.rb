@@ -25,13 +25,11 @@ module RubyPureMysql
     private
 
     def find_all_indices(str, substr)
-      down_str = str.downcase
-      down_substr = substr.downcase
       positions = []
       pos = 0
-      while (idx = down_str.index(down_substr, pos))
+      while (idx = str.index(substr, pos))
         positions << idx
-        pos = idx + down_substr.length
+        pos = idx + substr.length
       end
       positions
     end
