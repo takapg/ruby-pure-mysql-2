@@ -7,26 +7,24 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      # ケースインセンシティブにデリミタの出現位置をすべて取得
-      positions = []
-      str.scan(Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)) do
-        positions << Regexp.last_match.begin(0)
+      matches = []
+      offset = 0
+      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+
+      while (match = str.match(regex, offset))
+        matches << { pos: match.begin(0), len: match[0].length }
+        offset = match.end(0)
       end
 
-      return str if positions.empty?
+      return str if matches.empty?
 
       parts = []
       delims = []
       current_pos = 0
-      positions.each do |pos|
-        parts << str[current_pos...pos]
-        # 元の文字列から実際のデリミタを切り出す
-        match_len = str.length - str[pos..-1].length # 実際には scan の結果から取得すべきだが、ここでは単純化
-        # 正確な長さを取得するために、マッチした部分を再取得
-        actual_delim = str[pos, delim.length] 
-        # 注意: delim.length はバイト数ではなく文字数である必要がある
-        delims << actual_delim
-        current_pos = pos + actual_delim.length
+      matches.each do |m|
+        parts << str[current_pos...m[:pos]]
+        delims << str[m[:pos], m[:len]]
+        current_pos = m[:pos] + m[:len]
       end
       parts << str[current_pos..-1]
 
@@ -45,8 +43,8 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      # 正規表現を用いてケースインセンシティブに置換
-      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE), to)
+      regex = Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)
+      str.gsub(regex, to)
     end
 
     private
