@@ -16,7 +16,7 @@ module RubyPureMysql
       return str if positions.empty?
 
       if count.positive?
-        limit = count >= positions.size ? str.length : positions[count - 1]
+        limit = count > positions.size ? str.length : positions[count - 1]
         str[0, limit]
       else
         idx = positions.size + count
