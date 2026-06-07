@@ -9,8 +9,11 @@ module RubyPureMysql
       positions = find_all_indices(str, delim)
       return str if positions.empty?
 
-      count.positive? ? slice_substring_index_positive(str, positions, count) :
-                       slice_substring_index_negative(str, positions, count, delim)
+      if count.positive?
+        slice_substring_index_positive(str, positions, count)
+      else
+        slice_substring_index_negative(str, positions, count, delim)
+      end
     end
 
     def calculate_locate_index(str, substr, pos)
@@ -41,7 +44,7 @@ module RubyPureMysql
 
     def slice_substring_index_negative(str, positions, count, delim)
       idx = positions.size + count
-      idx < 0 ? str : str[positions[idx] + delim.length..-1]
+      idx.negative? ? str : str[(positions[idx] + delim.length)..]
     end
 
     def execute_padding(args, direction)

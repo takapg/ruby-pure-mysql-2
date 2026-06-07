@@ -32,7 +32,6 @@ module RubyPureMysql
       str.gsub(from, to)
     end
 
-
     def handle_concat_ws(args)
       return :error if args.size < 2
 
@@ -111,7 +110,5 @@ module RubyPureMysql
 
       val.to_s.force_encoding('UTF-8').reverse
     end
-
-    private
   end
 end
