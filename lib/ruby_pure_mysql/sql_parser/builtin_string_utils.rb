@@ -7,7 +7,10 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      parts, delims = split_case_insensitive(str, delim)
+      regex = /#{Regexp.escape(delim)}/i
+      parts = str.split(regex, -1)
+      delims = str.scan(regex)
+
       return str if delims.empty?
 
       resolve_substring_index_parts(parts, delims, count)
@@ -25,48 +28,10 @@ module RubyPureMysql
     def calculate_replace_value(str, from, to)
       return str if from.empty?
 
-      perform_case_insensitive_replace(str, from, to)
+      str.gsub(/#{Regexp.escape(from)}/i, to)
     end
 
     private
-
-    def split_case_insensitive(str, delim)
-      search_str = str.downcase
-      search_delim = delim.downcase
-      positions = []
-      start_pos = 0
-
-      while (idx = search_str.index(search_delim, start_pos))
-        positions << idx
-        start_pos = idx + search_delim.length
-      end
-
-      parts = []
-      delims = []
-      last_pos = 0
-      positions.each do |pos|
-        parts << str[last_pos...pos]
-        delims << str[pos, delim.length]
-        last_pos = pos + delim.length
-      end
-      parts << str[last_pos..-1]
-      [parts, delims]
-    end
-
-    def perform_case_insensitive_replace(str, from, to)
-      result = String.new
-      start_pos = 0
-      search_str = str.downcase
-      search_from = from.downcase
-
-      while (idx = search_str.index(search_from, start_pos))
-        result << str[start_pos...idx]
-        result << to
-        start_pos = idx + from.length
-      end
-      result << str[start_pos..-1]
-      result
-    end
 
     def resolve_substring_index_parts(parts, delims, count)
       if count.positive?
