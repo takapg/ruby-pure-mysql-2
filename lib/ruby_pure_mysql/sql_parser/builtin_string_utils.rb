@@ -30,10 +30,9 @@ module RubyPureMysql
     def find_all_indices(str, substr)
       positions = []
       pos = 0
-      regex = Regexp.new(Regexp.escape(substr), Regexp::IGNORECASE)
-      while (match = str.match(regex, pos))
-        positions << match.begin(0)
-        pos = match.end(0)
+      while (idx = str.index(substr, pos))
+        positions << idx
+        pos = idx + substr.length
       end
       positions
     end
