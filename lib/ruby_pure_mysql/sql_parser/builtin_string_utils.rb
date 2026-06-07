@@ -7,7 +7,8 @@ module RubyPureMysql
       return str if delim.empty?
       return '' if count.zero?
 
-      parts = str.split(Regexp.new("(#{Regexp.escape(delim)})", Regexp::IGNORECASE), -1)
+      regex = Regexp.new("(#{Regexp.escape(delim)})", Regexp::IGNORECASE)
+      parts = str.split(regex, -1)
       return str if parts.size == 1
 
       extract_substring_parts(parts, count)
@@ -33,7 +34,7 @@ module RubyPureMysql
     end
 
     def calculate_replace_value(str, from, to)
-      str.gsub(/#{Regexp.escape(from)}/i, to)
+      str.gsub(Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)) { to }
     end
 
     def execute_padding(args, direction)
