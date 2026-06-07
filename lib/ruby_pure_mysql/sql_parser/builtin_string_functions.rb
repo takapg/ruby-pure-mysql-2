@@ -29,18 +29,7 @@ module RubyPureMysql
       to = args[2].to_s.force_encoding('UTF-8')
       return str if from.empty?
 
-      str_down = str.downcase
-      from_down = from.downcase
-      result = String.new
-      last_pos = 0
-
-      while (idx = str_down.index(from_down, last_pos))
-        result << str[last_pos...idx]
-        result << to
-        last_pos = idx + from.length
-      end
-      result << str[last_pos..-1]
-      result
+      str.gsub(from, to)
     end
 
     def handle_concat_ws(args)

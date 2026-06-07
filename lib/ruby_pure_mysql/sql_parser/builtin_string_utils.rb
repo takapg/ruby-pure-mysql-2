@@ -8,9 +8,7 @@ module RubyPureMysql
 
       positions = []
       curr = 0
-      down_str = str.downcase
-      down_delim = delim.downcase
-      while (idx = down_str.index(down_delim, curr))
+      while (idx = str.index(delim, curr))
         positions << idx
         curr = idx + delim.length
       end
