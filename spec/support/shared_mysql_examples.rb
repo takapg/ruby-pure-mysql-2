@@ -817,7 +817,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       end
 
       it 'supports multi-byte characters (SELECT INSTR("日本語のテスト", "テスト");)' do
-        expect(client.query('SELECT INSTR("日本語のテスト", "テスト");').first.values.first).to eq(6)
+        expect(client.query('SELECT INSTR("日本語のテスト", "テスト");').first.values.first).to eq(5)
       end
 
       it 'returns NULL if any argument is NULL (SELECT INSTR(NULL, "bar");)' do
