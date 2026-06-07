@@ -4,15 +4,71 @@ module RubyPureMysql
   # 文字列操作関数のための共通ユーティリティを提供するモジュール
   module BuiltinStringUtils
     def calculate_substring_index(str, delim, count)
-      parts = str.split(delim, -1)
-      count.positive? ? parts.first(count).join(delim) : parts.last(count.abs).join(delim)
+      return str if delim.empty?
+      return '' if count.zero?
+
+      matches = []
+      offset = 0
+      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+
+      while (match = str.match(regex, offset))
+        matches << { pos: match.begin(0), len: match[0].length }
+        offset = match.end(0)
+      end
+
+      return str if matches.empty?
+
+      parts = []
+      delims = []
+      current_pos = 0
+      matches.each do |m|
+        parts << str[current_pos...m[:pos]]
+        delims << str[m[:pos], m[:len]]
+        current_pos = m[:pos] + m[:len]
+      end
+      parts << str[current_pos..-1]
+
+      resolve_substring_index_parts(parts, delims, count)
     end
 
     def calculate_locate_index(str, substr, pos)
       return 0 if pos < 1
 
-      idx = str.index(substr, pos - 1)
+      down_str = str.downcase
+      down_substr = substr.downcase
+      idx = down_str.index(down_substr, pos - 1)
       idx ? idx + 1 : 0
+    end
+
+    def calculate_replace_value(str, from, to)
+      return str if from.empty?
+
+      regex = Regexp.new(Regexp.escape(from), Regexp::IGNORECASE)
+      str.gsub(regex, to)
+    end
+
+    private
+
+    def resolve_substring_index_parts(parts, delims, count)
+      if count.positive?
+        result_parts = parts[0...count]
+        result_delims = delims[0...count - 1]
+      else
+        abs_count = count.abs
+        result_parts = parts[-abs_count..-1]
+        result_delims = abs_count > 1 ? delims[-(abs_count - 1).. -1] : []
+      end
+
+      interleave_parts_and_delims(result_parts, result_delims)
+    end
+
+    def interleave_parts_and_delims(parts, delims)
+      combined = []
+      parts.each_with_index do |p, i|
+        combined << p
+        combined << delims[i] if i < delims.size
+      end
+      combined.join
     end
 
     def execute_padding(args, direction)
@@ -33,7 +89,7 @@ module RubyPureMysql
       val = args[0]
       return nil if val.nil?
 
-      val.to_s.public_send(method)
+      val.to_s.force_encoding('UTF-8').public_send(method)
     end
 
     def prepare_string_args(args)

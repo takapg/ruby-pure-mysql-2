@@ -766,6 +766,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT LOCATE("bar", "foobarbar");').first.values.first).to eq(4)
       end
 
+      it 'is case-insensitive (SELECT LOCATE("bar", "FOOBAR");)' do
+        expect(client.query('SELECT LOCATE("bar", "FOOBAR");').first.values.first).to eq(4)
+      end
+
       it 'returns 1 when substr is an empty string (SELECT LOCATE("", "abc");)' do
         expect(client.query('SELECT LOCATE("", "abc");').first.values.first).to eq(1)
       end
@@ -810,6 +814,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     describe 'INSTR() function support' do
       it 'returns the first occurrence position (SELECT INSTR("foobarbar", "bar");)' do
         expect(client.query('SELECT INSTR("foobarbar", "bar");').first.values.first).to eq(4)
+      end
+
+      it 'is case-insensitive (SELECT INSTR("FOOBAR", "BAR");)' do
+        expect(client.query('SELECT INSTR("FOOBAR", "BAR");').first.values.first).to eq(4)
       end
 
       it 'returns 0 when not found (SELECT INSTR("foobarbar", "xbar");)' do
@@ -908,6 +916,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT REPLACE("www.mysql.com", "w", "W");').first.values.first).to eq('WWW.mysql.com')
       end
 
+      it 'is case-insensitive (SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");)' do
+        expect(client.query('SELECT REPLACE("www.MySQL.com", "mysql", "mariadb");').first.values.first).to eq('www.mariadb.com')
+      end
+
       it 'returns the original string when the from string is empty (SELECT REPLACE("abc", "", "X");)' do
         expect(client.query('SELECT REPLACE("abc", "", "X");').first.values.first).to eq('abc')
       end
@@ -997,6 +1009,10 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
       it 'returns the whole string if delimiter is not found' do
         expect(client.query('SELECT SUBSTRING_INDEX("a.b.c", "x", 1);').first.values.first).to eq('a.b.c')
+      end
+
+      it 'is case-insensitive (SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);)' do
+        expect(client.query('SELECT SUBSTRING_INDEX("www.MySQL.com", "mysql", 1);').first.values.first).to eq('www.')
       end
     end
 
