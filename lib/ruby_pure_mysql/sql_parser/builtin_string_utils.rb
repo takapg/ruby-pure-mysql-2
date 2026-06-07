@@ -14,7 +14,7 @@ module RubyPureMysql
     end
 
     def calculate_locate_index(str, substr, pos)
-      pos = 1 if pos < 1
+      return 0 if pos < 1
 
       down_str = str.downcase
       down_substr = substr.downcase

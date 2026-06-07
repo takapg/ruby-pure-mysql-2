@@ -790,8 +790,8 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
         expect(client.query('SELECT LOCATE("xbar", "foobarbar");').first.values.first).to eq(0)
       end
 
-      it 'treats pos < 1 as 1 (SELECT LOCATE("bar", "foobarbar", 0);)' do
-        expect(client.query('SELECT LOCATE("bar", "foobarbar", 0);').first.values.first).to eq(4)
+      it 'returns 0 when pos is less than 1 (SELECT LOCATE("bar", "foobarbar", 0);)' do
+        expect(client.query('SELECT LOCATE("bar", "foobarbar", 0);').first.values.first).to eq(0)
       end
 
       it 'returns NULL if any argument is NULL (SELECT LOCATE(NULL, "foobarbar");)' do
