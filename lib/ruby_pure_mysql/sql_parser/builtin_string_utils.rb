@@ -26,7 +26,8 @@ module RubyPureMysql
     def collect_delimiter_positions(str, delim)
       positions = []
       curr = 0
-      while (idx = str.index(delim, curr))
+      regex = Regexp.new(Regexp.escape(delim), Regexp::IGNORECASE)
+      while (idx = str.index(regex, curr))
         positions << idx
         curr = idx + delim.length
       end
